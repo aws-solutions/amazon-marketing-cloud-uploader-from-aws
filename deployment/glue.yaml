@@ -1,0 +1,399 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "(SO0222) - amcufa. AWS CloudFormation template that defines Glue ETL resources."
+
+Parameters:
+  ArtifactBucketName:
+    Type: String
+  DataBucketName:
+    Type: String
+  CustomerManagedKey:
+    Type: String
+
+Conditions:
+  EnableCmkEncryptionCondition: !Not [!Equals [!Ref CustomerManagedKey, ""]]
+
+Mappings:
+  Glue:
+    Script:
+      RegionalS3Bucket: "%%REGIONAL_BUCKET_NAME%%"
+      CodeKeyPrefix: "%%SOLUTION_NAME%%/%%VERSION%%"
+      Filename: "amc_transformations.py"
+      Library: "address_normalizer.zip"
+
+Resources:
+
+  CopyGlueEtlScripts:
+    Type: Custom::GlueDeployHelper
+    Properties:
+      ServiceToken: !GetAtt GlueDeployHelper.Arn
+
+  GlueHelperRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "Glue helper Lambda requires ability to read / write to both artifact bucket and build bucket"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: !Sub "${AWS::StackName}-GlueHelperS3Access"
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "s3:GetObject"
+                Resource:
+                  - !Join [
+                    "",
+                    [
+                      "arn:aws:s3:::",
+                      !FindInMap ["Glue", "Script", "RegionalS3Bucket"],
+                      "-",
+                      Ref: "AWS::Region",
+                      "/",
+                      !FindInMap ["Glue", "Script", "CodeKeyPrefix"],
+                      "/*"
+                    ]
+                  ]
+              - Effect: Allow
+                Action:
+                  - "s3:PutObject"
+                  - "s3:DeleteObject"
+                Resource:
+                  - !Join [
+                    "",
+                    [
+                      "arn:aws:s3:::",
+                      Ref: ArtifactBucketName,
+                      "/*"
+                    ]
+                  ]
+              - Effect: Allow
+                Action:
+                  - "s3:ListBucket"
+                Resource:
+                  - !Join [
+                    "",
+                    [
+                      "arn:aws:s3:::",
+                      Ref: ArtifactBucketName,
+                    ]
+                  ]
+              - Effect: Allow
+                Action:
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*"
+              - Fn::If: 
+                - EnableCmkEncryptionCondition
+                - Effect: Allow
+                  Action:
+                    - "kms:GenerateDataKey"
+                  Resource:
+                    - !Ref CustomerManagedKey
+                - !Ref AWS::NoValue
+
+  GlueDeployHelper:
+    # Glue Helper function 
+    # - copy glue etl script and normalization library to artifact bucket
+    Type: AWS::Lambda::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W58
+            reason: "The role includes permission to write to CloudWatch Logs"
+          - id: W89
+            reason: "This Lambda function does not need to access any resource provisioned within a VPC."
+          - id: W92
+            reason: "This function does not require performance optimization, so the default concurrency limits suffice."
+    Properties:
+      Environment:
+        Variables:
+          DESTINATION_BUCKET: !Ref ArtifactBucketName
+          GLUE_SCRIPT_FILE: !FindInMap ["Glue", "Script", "Filename"]
+          NORMALIZATION_LIBRARY_FILE: !FindInMap ["Glue", "Script", "Library"]
+          SOURCE_BUCKET: !Join ["-", [!FindInMap ["Glue", "Script", "RegionalS3Bucket"], Ref: "AWS::Region"]]
+          SOURCE_FOLDER: !FindInMap ["Glue", "Script", "CodeKeyPrefix"]
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+          import logging
+          import os
+          from urllib.request import build_opener, HTTPHandler, Request
+          LOGGER = logging.getLogger()
+          LOGGER.setLevel(logging.INFO)
+          
+          
+          def lambda_handler(event, context):
+            """
+            Handle Lambda event from AWS
+            """
+            print("We got the following event:\n", event)
+            try:
+              LOGGER.info('REQUEST RECEIVED:\n {s}'.format(s=event))
+              LOGGER.info('REQUEST RECEIVED:\n {s}'.format(s=context))
+              if event['RequestType'] == 'Create':
+                LOGGER.info('CREATE!')
+                copy_source(event, context)
+              elif event['RequestType'] == 'Update':
+                LOGGER.info('UPDATE!')
+                copy_source(event, context)
+              elif event['RequestType'] == 'Delete':
+                LOGGER.info('DELETE!')
+                purge_bucket(event, context)
+                send_response(event, context, "SUCCESS", {"Message": "Resource deletion successful!"})
+              else:
+                LOGGER.info('FAILED!')
+                send_response(event, context, "FAILED", {"Message": "Unexpected event received from CloudFormation"})
+            except Exception as e:
+              LOGGER.info('FAILED!')
+              send_response(event, context, "FAILED", {"Message": "Exception during processing: {e}".format(e=e)})
+
+
+          def purge_bucket(event, context):
+            try:
+              s3 = boto3.resource('s3')
+              bucket_name = os.environ["DESTINATION_BUCKET"]
+              LOGGER.info("Purging bucket, " + bucket_name)
+              bucket = s3.Bucket(bucket_name) 
+              bucket.objects.all().delete()
+            except Exception as e:
+              LOGGER.info("Unable to purge artifact bucket while deleting stack: {e}".format(e=e))
+              send_response(event, context, "FAILED", {"Message": "Unexpected event received from CloudFormation"})
+            else:
+              send_response(event, context, "SUCCESS", {"Message": "Resource creation successful!"})
+          
+          
+          def copy_source(event, context):
+            try:
+              s3 = boto3.resource('s3')
+              dst = s3.Bucket(os.environ["DESTINATION_BUCKET"])
+              dst.copy({'Bucket': os.environ["SOURCE_BUCKET"], 'Key': os.environ["SOURCE_FOLDER"] + '/' + os.environ["GLUE_SCRIPT_FILE"]}, os.environ["GLUE_SCRIPT_FILE"])
+              dst.copy({'Bucket': os.environ["SOURCE_BUCKET"], 'Key': os.environ["SOURCE_FOLDER"] + '/' + os.environ["NORMALIZATION_LIBRARY_FILE"]}, os.environ["NORMALIZATION_LIBRARY_FILE"])
+            except Exception as e:
+              LOGGER.info("Unable to copy Glue ETL scripts into the artifact bucket: {e}".format(e=e))
+              send_response(event, context, "FAILED", {"Message": "Unexpected event received from CloudFormation"})
+            else:
+              send_response(event, context, "SUCCESS", {"Message": "Resource creation successful!"})
+          
+          def send_response(event, context, response_status, response_data):
+            """
+            Send a resource manipulation status response to CloudFormation
+            """
+            response_body = json.dumps({
+                "Status": response_status,
+                "Reason": "See the details in CloudWatch Log Stream: " + context.log_stream_name,
+                "PhysicalResourceId": context.log_stream_name,
+                "StackId": event['StackId'],
+                "RequestId": event['RequestId'],
+                "LogicalResourceId": event['LogicalResourceId'],
+                "Data": response_data
+            })
+
+            LOGGER.info('ResponseURL: {s}'.format(s=event['ResponseURL']))
+            LOGGER.info('ResponseBody: {s}'.format(s=response_body))
+
+            opener = build_opener(HTTPHandler)
+            request = Request(event['ResponseURL'], data=response_body.encode('utf-8'))
+            request.add_header('Content-Type', '')
+            request.add_header('Content-Length', len(response_body))
+            request.get_method = lambda: 'PUT'
+            response = opener.open(request)
+      Handler: index.lambda_handler
+      Runtime: python3.9
+      MemorySize: 256
+      Timeout: 900
+      Role: !GetAtt GlueHelperRole.Arn
+      Tags:
+        - Key: "Environment"
+          Value: "amcufa"
+
+  GlueDeployHelperLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      KmsKeyId: !GetAtt AmcGlueJobKey.Arn
+      LogGroupName: !Join ['/', ['/aws/lambda', !Ref GlueDeployHelper]]
+      RetentionInDays: 30
+
+  AmcGlueJobRole:
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "Glue helper Lambda requires read and write access to both the artifact bucket and the build bucket."
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "glue.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        -
+          PolicyName: "AmcGlueJobRole"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "s3:GetObject"
+                  - "s3:PutObject"
+                Resource:
+                  - !Join [
+                      "",
+                    [
+                        "arn:aws:s3:::",
+                        Ref: ArtifactBucketName,
+                        "/*"
+                    ]
+                  ]
+              - Effect: "Allow"
+                Action:
+                  - "s3:GetObject"
+                Resource:
+                  - !Join [
+                      "",
+                    [
+                        "arn:aws:s3:::",
+                        Ref: DataBucketName,
+                        "/*"
+                    ]
+                  ]
+              - Effect: "Allow"
+                Action:
+                  - "s3:GetObject"
+                Resource: "arn:aws:s3:::aws-data-wrangler-public-artifacts/*"
+              - Effect: "Allow"
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                  - "logs:AssociateKmsKey"
+                Resource: "arn:aws:logs:*:*:/aws-glue/*"
+              - Fn::If:
+                  - EnableCmkEncryptionCondition
+                  - Effect: Allow
+                    Action:
+                      - "kms:Decrypt"
+                      - "kms:GenerateDataKey"
+                    Resource:
+                      - !Ref CustomerManagedKey
+                  - !Ref AWS::NoValue
+
+  AmcGlueJobKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: "KMS key for the Glue security configuration"
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: 
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: 'kms:*'
+            Resource: '*'
+          - Effect: Allow
+            Principal:
+              Service: "logs.us-east-1.amazonaws.com"
+            Action:
+              - "kms:Encrypt*"
+              - "kms:Decrypt*"
+              - "kms:ReEncrypt*"
+              - "kms:GenerateDataKey*"
+              - "kms:Describe*"
+            Resource: '*'
+            Condition:
+              StringEquals:
+                'aws:SourceAccount': !Ref 'AWS::AccountId'
+          - Effect: Allow
+            Principal:
+              Service: "glue.amazonaws.com"
+            Action:
+              - "kms:Encrypt*"
+            Resource: '*'
+            Condition:
+              StringEquals:
+                'aws:SourceAccount': !Ref 'AWS::AccountId'
+
+  AmcGlueJobKeyAlias:
+    Type: 'AWS::KMS::Alias'
+    Properties:
+      AliasName: !Sub "alias/${AWS::StackName}-AmcGlueJobKey"
+      TargetKeyId: !Ref AmcGlueJobKey
+
+  AmcGlueJobSecurityConfiguration:
+    Type: AWS::Glue::SecurityConfiguration
+    Properties:
+      Name: !Sub "${AWS::StackName}-SecurityConfiguration"
+      EncryptionConfiguration:
+        CloudWatchEncryption:
+          CloudWatchEncryptionMode: "SSE-KMS"
+          KmsKeyArn: !GetAtt AmcGlueJobKey.Arn
+        JobBookmarksEncryption:
+          JobBookmarksEncryptionMode: "DISABLED"
+        S3Encryptions:
+          - S3EncryptionMode: "SSE-S3"
+
+  AmcGlueJob:
+    Type: AWS::Glue::Job
+    DependsOn: 
+      - CopyGlueEtlScripts
+    Properties:
+      Name: !Sub "${AWS::StackName}-amc-transformation-job"
+      Role: !GetAtt AmcGlueJobRole.Arn
+      NumberOfWorkers: 2
+      WorkerType: "Standard"
+      GlueVersion: "3.0"
+      Description: "Time series partitioning and data normalization for AMC"
+      SecurityConfiguration: !Ref AmcGlueJobSecurityConfiguration
+      Command:
+        Name: "glueetl"
+        PythonVersion: "3"
+        ScriptLocation: !Join [
+          "",
+          [
+            !Sub "s3://${ArtifactBucketName}/",
+            !FindInMap ["Glue", "Script", "Filename"]
+          ]
+        ]
+      DefaultArguments:
+        "--job-bookmark-option": "job-bookmark-enable"
+        "--job-language": "python"
+        "--extra-py-files": !Join [
+          "",
+          [
+            !Sub "s3://${ArtifactBucketName}/",
+            !FindInMap ["Glue", "Script", "Library"],
+            ",s3://aws-data-wrangler-public-artifacts/releases/2.14.0/awswrangler-2.14.0-py3-none-any.whl"
+          ]
+        ]
+        "--additional-python-modules": "awswrangler==2.14.0,phonenumbers"
+        "--source_bucket": !Sub "${DataBucketName}"
+        "--output_bucket": !Sub "${ArtifactBucketName}"
+        "--source_key": ""
+        "--pii_fields": ""
+        "--deleted_fields": ""
+        "--dataset_id": ""
+      ExecutionProperty:
+        MaxConcurrentRuns: 2
+      MaxRetries: 0
+
+Outputs:
+  AmcGlueJobName:
+    Value: !Ref AmcGlueJob

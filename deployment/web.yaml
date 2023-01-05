@@ -1,0 +1,365 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "(SO0222) - amcufa. AWS CloudFormation template that defines front-end resources."
+
+Parameters:
+  DataBucketName:
+    Type: String
+  ArtifactBucketName:
+    Type: String
+  UserPoolId:
+    Type: String
+  IdentityPoolId:
+    Type: String
+  PoolClientId:
+    Type: String
+  ApiEndpoint:
+    Type: String
+  RestAPIId:
+    Type: String
+  CustomerManagedKey:
+    Type: String
+
+Conditions:
+  EnableCmkEncryptionCondition: !Not [!Equals [!Ref CustomerManagedKey, ""]]
+
+Mappings:
+  SourceCode:
+    General:
+      RegionalS3Bucket: "%%REGIONAL_BUCKET_NAME%%"
+      CodeKeyPrefix: "%%SOLUTION_NAME%%/%%VERSION%%"
+      WebsitePrefix: "%%SOLUTION_NAME%%/%%VERSION%%/website"
+
+Resources:
+  # Web application resources
+  # WebsiteBucketNameFunction - derive a name for the website bucket based on the lower case stack name.
+  WebsiteBucketNameFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W58
+            reason: "The role includes permission to write to CloudWatch Logs"
+          - id: W89
+            reason: "This resource does not need to access any other resource provisioned within a VPC."
+          - id: W92
+            reason: "This function does not require performance optimization, so the default concurrency limits suffice."
+    Properties:
+      Code:
+        ZipFile: |
+          import string
+          import random
+          import cfnresponse
+          def handler(event, context):
+            print("We got the following event:\n", event)
+            stack_name = event['StackId'].split('/')[1].split('-Uuid')[0]
+            response_data = {'Data': stack_name.lower() + '-website'}
+            cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data, "CustomResourcePhysicalID")
+      Handler: index.handler
+      Runtime: python3.9
+      Role: !GetAtt WebsiteBucketNameExecutionRole.Arn
+
+  WebsiteBucketNameFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W84
+            reason: "The data generated via this role does not need to be encrypted."
+    Properties:
+      LogGroupName: !Join ['/', ['/aws/lambda', !Ref WebsiteBucketNameFunction]]
+      RetentionInDays: 30
+
+  WebsiteBucketNameFunctionPermissions:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt WebsiteBucketNameFunction.Arn
+      Principal: 'cloudformation.amazonaws.com'
+
+  WebsiteBucketNameExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: 'arn:aws:logs:*:*:*'
+
+  GetWebsiteBucketName:
+    Type: Custom::CustomResource
+    Properties:
+      ServiceToken: !GetAtt WebsiteBucketNameFunction.Arn
+
+  WebsiteBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: "Delete"
+    Properties:
+      AccessControl: LogDeliveryWrite
+      BucketName: !GetAtt GetWebsiteBucketName.Data
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      WebsiteConfiguration:
+        IndexDocument: "index.html"
+        ErrorDocument: "index.html"
+      LoggingConfiguration:
+        DestinationBucketName: !GetAtt GetWebsiteBucketName.Data
+        LogFilePrefix: "access_logs/"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: "Keep access log for 3 days"
+            Status: Enabled
+            Prefix: "access_logs/"
+            ExpirationInDays: 3
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+          - Id: "Keep cloudfront log for 3 days"
+            Status: Enabled
+            Prefix: "cf_logs/"
+            ExpirationInDays: 3
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+
+  CopyWebSource:
+    Type: Custom::WebsiteDeployHelper
+    Properties:
+      ServiceToken: !GetAtt WebsiteDeployHelper.Arn
+      WebsiteCodeBucket: !Join ["-", [!FindInMap ["SourceCode", "General", "RegionalS3Bucket"], Ref: "AWS::Region"]]
+      WebsiteCodePrefix: !FindInMap ["SourceCode", "General", "WebsitePrefix"]
+      DeploymentBucket: !GetAtt WebsiteBucket.DomainName
+
+  OriginAccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub "access-identity-${WebsiteBucket}"
+
+  WebsiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: "WebsiteBucket"
+      PolicyDocument:
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - "s3:GetObject"
+            Resource:
+              - !Sub "arn:aws:s3:::${WebsiteBucket}"
+              - !Sub "arn:aws:s3:::${WebsiteBucket}/*"
+            Principal:
+              CanonicalUser: !GetAtt OriginAccessIdentity.S3CanonicalUserId
+          - Effect: Deny
+            Principal: "*"
+            Action: "*"
+            Resource:
+              - !Sub "arn:aws:s3:::${WebsiteBucket}/*"
+              - !Sub "arn:aws:s3:::${WebsiteBucket}"
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+  WebsiteDistribution:
+    Type: AWS::CloudFront::Distribution
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W70
+            reason: "Specifying a TLS version is unnecessary because we're using the CloudFront default certificate."
+    Properties:
+      DistributionConfig:
+        Comment: "Website distribution for Amcufa solution"
+        Logging:
+          Bucket: !Sub "${WebsiteBucket}.s3.amazonaws.com"
+          Prefix: cf_logs/
+          IncludeCookies: true
+        Origins:
+          - Id: S3-solution-website
+            DomainName: !Sub "${WebsiteBucket}.s3.${AWS::Region}.amazonaws.com"
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${OriginAccessIdentity}"
+        DefaultCacheBehavior:
+          TargetOriginId: S3-solution-website
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            - PUT
+            - POST
+            - DELETE
+            - PATCH
+          CachedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          ForwardedValues:
+            QueryString: false
+          ViewerProtocolPolicy: redirect-to-https
+          ResponseHeadersPolicyId: !Ref WebsiteResponseHeaders
+        DefaultRootObject: "index.html"
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponsePagePath: "/index.html"
+            ResponseCode: 200
+          - ErrorCode: 403
+            ResponsePagePath: "/index.html"
+            ResponseCode: 200
+        IPV6Enabled: true
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+        Enabled: true
+        HttpVersion: 'http2'
+        
+  WebsiteResponseHeaders:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: !Sub "${AWS::StackName}-Response-Headers-Policy"
+        Comment: "Response headers based on AWS solution builder guidelines"
+        SecurityHeadersConfig:
+          ContentSecurityPolicy:
+            ContentSecurityPolicy: !Sub "default-src 'self' ${RestAPIId}.execute-api.${AWS::Region}.amazonaws.com cognito-idp.${AWS::Region}.amazonaws.com cognito-identity.${AWS::Region}.amazonaws.com; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:;"
+            Override: false
+          ContentTypeOptions: 
+            # You don't need to specify a value for 'X-Content-Type-Options'.
+            # Simply including it in the template sets its value to 'nosniff'.
+            Override: false
+          FrameOptions:
+            FrameOption: SAMEORIGIN
+            Override: false
+          ReferrerPolicy:
+            ReferrerPolicy: same-origin
+            Override: false
+          StrictTransportSecurity:
+            AccessControlMaxAgeSec: 63072000
+            IncludeSubdomains: true
+            Preload: true
+            Override: false
+          XSSProtection:
+            ModeBlock: true 
+            # You can set ModeBlock to 'true' OR set a value for ReportUri, but not both
+            Protection: true
+            Override: false
+
+  WebsiteHelperRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "Website helper Lambda requires read / write access to both the website bucket and the build bucket"
+    DependsOn: WebsiteBucket
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: !Sub "${AWS::StackName}-WebsiteHelperS3Access"
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "s3:GetObject"
+                  - "s3:PutObject"
+                  - "s3:DeleteObject"
+                Resource:
+                  - !Sub ${WebsiteBucket.Arn}/*
+                  - Fn::Sub:
+                      - arn:aws:s3:::${websitecode}/*
+                      - websitecode: !Join ["-", [!FindInMap ["SourceCode", "General", "RegionalS3Bucket"], Ref: "AWS::Region"]]
+              - Effect: Allow
+                Action:
+                  - "s3:ListBucket"
+                  - "s3:PutBucketLogging"
+                Resource:
+                  - !Sub ${WebsiteBucket.Arn}
+                  - Fn::Sub:
+                      - arn:aws:s3:::${websitecode}
+                      - websitecode:  !Join ["-", [!FindInMap ["SourceCode", "General", "RegionalS3Bucket"], Ref: "AWS::Region"]]
+              - Effect: Allow
+                Action:
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*"
+
+  WebsiteDeployHelper:
+    Type: AWS::Lambda::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W58
+            reason: "The role includes permission to write to CloudWatch Logs"
+          - id: W89
+            reason: "This resource does not need to access any other resource provisioned within a VPC."
+          - id: W92
+            reason: "This function does not require performance optimization, so the default concurrency limits suffice."
+    Properties:
+      Code:
+        S3Bucket:  !Join ["-", [!FindInMap ["SourceCode", "General", "RegionalS3Bucket"], Ref: "AWS::Region"]]
+        S3Key:
+          !Join [
+              "/",
+            [
+              !FindInMap ["SourceCode", "General", "CodeKeyPrefix"],
+              "websitehelper.zip",
+            ],
+          ]
+      Handler: website_helper.lambda_handler
+      MemorySize: 256
+      Role: !GetAtt WebsiteHelperRole.Arn
+      Runtime: python3.9
+      Timeout: 900
+      Environment:
+        Variables:
+          UserPoolId: !Ref UserPoolId
+          IdentityPoolId: !Ref IdentityPoolId
+          AwsRegion: !Ref AWS::Region
+          PoolClientId: !Ref PoolClientId
+          ApiEndpoint: !Ref ApiEndpoint
+          DataBucketName: !Ref DataBucketName 
+          ArtifactBucketName: !Ref ArtifactBucketName
+          EncryptionMode: !If [EnableCmkEncryptionCondition, "aws-kms", "default"]
+
+  WebsiteDeployHelperLogGroup:
+    Type: AWS::Logs::LogGroup
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W84
+            reason: "The data generated via this role does not need to be encrypted."
+    Properties:
+      LogGroupName: !Join ['/', ['/aws/lambda', !Ref WebsiteDeployHelper]]
+      RetentionInDays: 30
+
+Outputs:
+  CloudfrontUrl:
+    Value: !Join ["", ["https://", !GetAtt WebsiteDistribution.DomainName]]
+
