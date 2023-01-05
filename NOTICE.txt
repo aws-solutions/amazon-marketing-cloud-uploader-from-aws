@@ -1,0 +1,35 @@
+Amazon Marketing Cloud Uploader from AWS
+
+Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+**********************
+THIRD PARTY COMPONENTS
+**********************
+This software includes third party software subject to the following copyrights:
+
+aws_xray_sdk under the Apache License Version 2.0
+aws-amplify under the Apache License Version 2.0
+aws-amplify-vue under the Apache License Version 2.0
+awsglue under the Amazon Software License 1.0
+awswrangler under the Apache License Version 2.0
+babel-eslint under the Massachusetts Institute of Technology license
+boto3 under the Apache License Version 2.0
+botocore under the Apache License Version 2.0
+chalice under the Apache License Version 2.0
+eslint under the Massachusetts Institute of Technology license
+eslint-plugin-vue under the Massachusetts Institute of Technology license
+pandas under the three-clause BSD license
+phonenumbers under the Apache License Version 2.0
+pytest under the Massachusetts Institute of Technology license
+register-service-worker under the Massachusetts Institute of Technology license
+requests under the Apache License Version 2.0
+requests_aws4auth under the Massachusetts Institute of Technology license
+urllib under the Massachusetts Institute of Technology license
+vue under the Massachusetts Institute of Technology license
+vue-cli under the Massachusetts Institute of Technology license
+vue-highlightjs under the Massachusetts Institute of Technology license
+vue-router under the Massachusetts Institute of Technology license
+vuex under the Massachusetts Institute of Technology license
+vuex-persistedstate under the Massachusetts Institute of Technology license
+webpack-subresource-integrity under the Massachusetts Institute of Technology license
+

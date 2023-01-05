@@ -1,0 +1,308 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "(SO0222) - amcufa. AWS CloudFormation template that provisions Cognito resources."
+
+Parameters:
+  ParentStackName:
+    Description: Parent stack name
+    Type: String
+  AdminEmail:
+    Description: Email address of the solution administrator
+    Type: String
+  DataBucketName:
+    Description: Name of the first-party data source bucket
+    Type: String
+  RestApiId:
+    Description: REST API ID
+    Type: String
+    
+Resources:
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      MfaConfiguration: OPTIONAL
+      UserPoolAddOns:
+        AdvancedSecurityMode: "ENFORCED"
+      EnabledMfas:
+        - SOFTWARE_TOKEN_MFA
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: True
+        InviteMessageTemplate:
+          EmailMessage: !Join ["", [
+            "Your username is {username} and temporary password is {####}<br>Stack name: ",
+            !Ref ParentStackName
+          ]]
+          EmailSubject: "Welcome to Amazon Marketing Cloud uploader from AWS"
+      EmailConfiguration:
+        EmailSendingAccount: 'COGNITO_DEFAULT'
+      AutoVerifiedAttributes: ['email']
+
+  UserPoolRiskConfiguration:
+    Type: AWS::Cognito::UserPoolRiskConfigurationAttachment
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientId: "ALL"
+      AccountTakeoverRiskConfiguration:
+        Actions:
+          HighAction:
+            EventAction: "MFA_REQUIRED"
+            Notify: False
+          MediumAction:
+            EventAction: "MFA_IF_CONFIGURED"
+            Notify: False
+          LowAction:
+            EventAction: "MFA_IF_CONFIGURED"
+            Notify: False
+
+  WebAppClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+
+    # Service - cognito / security infrastructure
+
+    # CognitoRoleMappingTransformer is a hack meant to workaround
+    # Cognito's (current) lack of CF support. References:
+    # https://forums.aws.amazon.com/message.jspa?messageID=790437#790437
+    # https://stackoverflow.com/questions/53131052/aws-cloudformation-can-not-create-stack-when-awscognitoidentitypoolroleattac
+
+  CognitoRoleMappingTransformer:
+      Type: AWS::Lambda::Function
+      Metadata:
+        cfn_nag:
+          rules_to_suppress:
+            - id: W58
+              reason: "The role includes permission to write to CloudWatch Logs" 
+            - id: W89
+              reason: "This resource does not need to access any other resource provisioned within a VPC."
+            - id: W92
+              reason: "This function does not performance optimization, so the default concurrency limits suffice."
+      Properties:
+        Code:
+          ZipFile: |
+            import json
+            import cfnresponse
+
+            def handler(event, context):
+                print("Event: %s" % json.dumps(event))
+                resourceProperties = event["ResourceProperties"]
+                responseData = {
+                    "RoleMapping": {
+                        resourceProperties["IdentityProvider"]: {
+                            "Type": resourceProperties["Type"]
+                        }
+                    }
+                }
+                if resourceProperties["AmbiguousRoleResolution"]:
+                    responseData["RoleMapping"][resourceProperties["IdentityProvider"]]["AmbiguousRoleResolution"] = \
+                    resourceProperties["AmbiguousRoleResolution"]
+
+                print(responseData)
+                cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+        Handler: !Join
+          - ''
+          - - index
+            - .handler
+        Role: !GetAtt CognitoRoleMapperLambdaExecutionRole.Arn
+        Runtime: python3.9
+        Timeout: 30
+  
+  CognitoRoleMappingTransformerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W84
+            reason: "The data generated via this role does not need to be encrypted."
+    Properties:
+      LogGroupName: !Join ['/', ['/aws/lambda', !Ref CognitoRoleMappingTransformer]]
+      RetentionInDays: 30
+
+  CognitoRoleMapperLambdaExecutionRole:
+      Type: 'AWS::IAM::Role'
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: 2012-10-17
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - 'sts:AssumeRole'
+        Path: /
+        Policies:
+          - PolicyName: root
+            PolicyDocument:
+              Version: 2012-10-17
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - 'logs:CreateLogStream'
+                    - 'logs:PutLogEvents'
+                  Resource: 'arn:aws:logs:*:*:*'
+
+  IdentityPool:
+    Type: AWS::Cognito::IdentityPool
+    Properties:
+      AllowUnauthenticatedIdentities: False
+      CognitoIdentityProviders:
+        - ClientId: !Ref WebAppClient
+          ProviderName: !GetAtt UserPool.ProviderName
+
+  CognitoStandardAuthDefaultRole:
+    Type: "AWS::IAM::Role"
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: F38
+            reason: "The wildcard is used for a deny action, not an allow action."
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Federated: "cognito-identity.amazonaws.com"
+            Action:
+              - "sts:AssumeRoleWithWebIdentity"
+            Condition:
+              StringEquals:
+                "cognito-identity.amazonaws.com:aud": !Ref IdentityPool
+              "ForAnyValue:StringEquals":
+                "cognito-identity.amazonaws.com:amr": authenticated
+      Policies:
+        - PolicyName: !Sub "${AWS::StackName}-AuthNoGroup"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Action: "*"
+                Resource: "*"
+                Effect: "Deny"
+
+  CognitoStandardUnauthDefaultRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Federated: "cognito-identity.amazonaws.com"
+            Action:
+              - "sts:AssumeRoleWithWebIdentity"
+            Condition:
+              StringEquals:
+                "cognito-identity.amazonaws.com:aud": !Ref IdentityPool
+              "ForAnyValue:StringEquals":
+                "cognito-identity.amazonaws.com:amr": unauthenticated
+
+  IdentityPoolRoleMapping:
+    Type: AWS::Cognito::IdentityPoolRoleAttachment
+    Properties:
+      IdentityPoolId: !Ref IdentityPool
+      RoleMappings:
+        TransformedRoleMapping:
+          IdentityProvider:
+            'Fn::Join':
+              - ':'
+              - - 'Fn::GetAtt':
+                    - UserPool
+                    - ProviderName
+                - Ref: WebAppClient
+          AmbiguousRoleResolution: Deny
+          Type: Token
+      Roles:
+        authenticated: !GetAtt CognitoStandardAuthDefaultRole.Arn
+        unauthenticated: !GetAtt CognitoStandardUnauthDefaultRole.Arn
+
+  AdminGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      Description: 'User group for solution administrators'
+      RoleArn: !GetAtt AdminRole.Arn
+      UserPoolId: !Ref UserPool
+      GroupName: !Sub "${AWS::StackName}-Admins"
+
+  AdminAccount:
+    Type: AWS::Cognito::UserPoolUser
+    Properties:
+      DesiredDeliveryMediums:
+        - EMAIL
+      UserAttributes: [{"Name": "email", "Value": !Ref AdminEmail}]
+      Username: !Ref AdminEmail
+      UserPoolId: !Ref UserPool
+
+  AdminRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Federated: "cognito-identity.amazonaws.com"
+            Action:
+              - "sts:AssumeRoleWithWebIdentity"
+            Condition:
+              StringEquals:
+                "cognito-identity.amazonaws.com:aud": !Ref IdentityPool
+              "ForAnyValue:StringEquals":
+                "cognito-identity.amazonaws.com:amr": authenticated
+      Policies:
+        - PolicyName:  !Sub "${AWS::StackName}-AdminPolicy"
+          PolicyDocument: !Sub
+            - |-
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Action": [
+                        "execute-api:Invoke"
+                    ],
+                    "Effect": "Allow",
+                    "Resource": [
+                        "arn:aws:execute-api:${region}:${account}:${restApi}/*"
+                    ]
+                  },
+                  {
+                    "Action": [
+                      "s3:PutObject"
+                    ],
+                    "Effect": "Allow",
+                    "Resource": [
+                      "arn:aws:s3:::${DataBucketName}/public/*"
+                    ]
+                  },
+                  {
+                    "Action": [
+                      "s3:ListBucket"
+                    ],
+                    "Effect": "Allow",
+                    "Resource": "arn:aws:s3:::${DataBucketName}"
+                  }
+                ]
+              }
+            - {
+              region: !Ref "AWS::Region",
+              account: !Ref "AWS::AccountId",
+              restApi: !Ref RestApiId,
+              DataBucketName: !Ref DataBucketName
+            }
+
+  AddAdminUserToAdminGroup:
+    DependsOn: AdminAccount
+    Type: AWS::Cognito::UserPoolUserToGroupAttachment
+    Properties:
+      GroupName: !Ref AdminGroup
+      Username: !Ref AdminEmail
+      UserPoolId: !Ref UserPool
+
+Outputs:
+  AdminRoleArn:
+    Value: !GetAtt AdminRole.Arn
+  UserPoolId:
+    Value: !Ref UserPool
+  IdentityPoolId:
+    Value: !Ref IdentityPool
+  UserPoolClientId:
+    Value: !Ref WebAppClient
