@@ -1,0 +1,18 @@
+# For local desktop build suppression:
+.idea
+.venv
+source/website/node_modules
+deployment/global-s3-assets
+deployment/regional-s3-assets
+source/api/.chalice/deployments/*
+source/amc_uploader/dist/*
+source/helper/dist/*
+
+# Account Id is public and available through an AWS Lambda Managed layer for AWS Data Wrangler Lambda
+deployment/amazon-marketing-cloud-uploader-from-aws.yaml:326
+source/api/external_resources.json:221
+
+deployment/lambda_layer_factory/lambda_layer-python3.8.zip
+deployment/lambda_layer_factory/lambda_layer-python3.9.zip
+
+

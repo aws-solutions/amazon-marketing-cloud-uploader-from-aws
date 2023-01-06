@@ -1,0 +1,120 @@
+name: pr-workflow
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches:
+      - development
+  workflow_dispatch:
+
+jobs:
+  viperlight-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out pr branch
+        uses: actions/checkout@v2.3.4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Viperlight scan
+        run: |
+          echo "Installing content scanning utility"
+          sudo apt-get install wget -y
+          wget -v "https://s3.amazonaws.com/viperlight-scanner/latest/.viperlightrc"
+          wget -v "https://s3.amazonaws.com/viperlight-scanner/latest/viperlight.zip"
+          unzip -q viperlight.zip -d ../viperlight
+          rm -r ./viperlight.zip
+          echo "Content scanning utility installation complete `date`"
+          echo "Starting content scanning `date` in `pwd`"
+          ../viperlight/bin/viperlight scan -x python-pipoutdated -x python-bandit
+          echo "Completed content scanning `date`"
+
+  cfn-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out pr branch
+        uses: actions/checkout@v2.3.4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Run cfn_nag
+        uses: stelligent/cfn_nag@master
+        continue-on-error: true
+        with:
+          input_path: deployment
+
+  build:
+    needs: 
+      - viperlight-scan
+      - cfn-scan
+    runs-on: ubuntu-latest
+    outputs:
+      REGION: ${{ steps.setup_build_environment.outputs.REGION }}
+      DIST_OUTPUT_BUCKET: ${{ steps.setup_build_environment.outputs.DIST_OUTPUT_BUCKET }}
+      TEMPLATE_OUTPUT_BUCKET: ${{ steps.setup_build_environment.outputs.TEMPLATE_OUTPUT_BUCKET }}
+    steps:
+      - name: Check out pr branch
+        uses: actions/checkout@v2.3.4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Initialize AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Setup build environment
+        id: setup_build_environment
+        run: |
+          REGION="us-east-1"
+          DATETIME=$(date '+%s')
+          DIST_OUTPUT_BUCKET=pr-amcufa-$DATETIME-dist
+          TEMPLATE_OUTPUT_BUCKET=pr-amcufa-$DATETIME
+          EMAIL=${{ secrets.EMAIL_ADDRESS }}
+          VERSION="0.0.0"
+          echo "REGION=$REGION" >> $GITHUB_ENV
+          echo "DIST_OUTPUT_BUCKET=$DIST_OUTPUT_BUCKET" >> $GITHUB_ENV
+          echo "TEMPLATE_OUTPUT_BUCKET=$TEMPLATE_OUTPUT_BUCKET" >> $GITHUB_ENV
+          echo "EMAIL=$EMAIL" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "SHORT_SHA=`git rev-parse --short HEAD`" >> $GITHUB_ENV
+          echo "REGION=$REGION" >> $GITHUB_OUTPUT
+          echo "DIST_OUTPUT_BUCKET=$DIST_OUTPUT_BUCKET" >> $GITHUB_OUTPUT
+          echo "TEMPLATE_OUTPUT_BUCKET=$TEMPLATE_OUTPUT_BUCKET" >> $GITHUB_OUTPUT
+
+      - name: Run build script
+        run: |
+          STACK_NAME="pr${SHORT_SHA}"
+          cd deployment
+          aws s3 mb s3://$DIST_OUTPUT_BUCKET-$REGION --region $REGION
+          aws s3 mb s3://$TEMPLATE_OUTPUT_BUCKET --region $REGION
+          echo "./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name amazon-marketing-cloud-uploader-from-aws --version ${VERSION} --region ${REGION}"
+          echo y | ./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name amazon-marketing-cloud-uploader-from-aws --version ${VERSION} --region ${REGION} | tee >( grep TEMPLATE >template )
+          TEMPLATE=$(cat template | cut -f 2 -d "'")
+          rm -f template
+          for y in `find . -name "*.yaml" | grep -v node_modules`; do echo "============= $y ================" ; cfn_nag --fail-on-warnings $y || ec1=$?; done
+
+      - name: Initialize test AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+  cleanup:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Initialize AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Remove build artifacts
+        run: |
+          aws s3 rb s3://${{needs.build.outputs.DIST_OUTPUT_BUCKET}}-${{needs.build.outputs.REGION}} --region ${{needs.build.outputs.REGION}} --force
+          aws s3 rb s3://${{needs.build.outputs.TEMPLATE_OUTPUT_BUCKET}} --force
