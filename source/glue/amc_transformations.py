@@ -452,6 +452,11 @@ if timestamp_column:
             if timestamp_str_old == '':
                 # ...unless we're just starting out.
                 timestamp_str_old = timestamp_str
+                # Get all the events that occurred at the first timestamp
+                # so that they can be recorded when we read the next timestamp.
+                df_partition = df[df[timestamp_column] == timestamp]
+                df_partition[timestamp_column] = df_partition[timestamp_column].dt.strftime(datetime_format)
+                # Now proceed to the next unique timestamp.
                 continue
             # write the old df_partition to s3
             output_file = 's3://'+output_bucket+'/'+amc_str+'/'+dataset_id+'/'+timeseries_partition_size+'/'+filename+'-'+timestamp_str_old+'.gz'
