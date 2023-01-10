@@ -125,6 +125,7 @@ jobs:
           aws cloudformation wait stack-create-complete --stack-name $STACK_NAME
 
   cleanup:
+    if: always()
     needs: 
       - deploy
       - build
@@ -141,6 +142,7 @@ jobs:
           aws s3 rb s3://${{needs.build.outputs.DIST_OUTPUT_BUCKET}}-${{needs.build.outputs.REGION}} --force
           aws s3 rb s3://${{needs.build.outputs.TEMPLATE_OUTPUT_BUCKET}} --force
       - name: Remove stack
+        if: needs.deploy.result == 'success'
         run: |
           STACK_NAME=${{needs.deploy.outputs.STACK_NAME}}
           echo "Removing stack $STACK_NAME"
