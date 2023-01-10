@@ -63,10 +63,9 @@ jobs:
           REGION="us-east-1"
           VERSION="0.0.0"
           SOLUTION_NAME="amazon-marketing-cloud-uploader-from-aws"
-          DATETIME=$(date '+%s')
-          DIST_OUTPUT_BUCKET=pr-amcufa-$DATETIME-dist
-          TEMPLATE_OUTPUT_BUCKET=pr-amcufa-$DATETIME
           SHORT_SHA=$(git rev-parse --short HEAD)
+          DIST_OUTPUT_BUCKET=github-pr-workflow-$SHORT_SHA-dist
+          TEMPLATE_OUTPUT_BUCKET=github-pr-workflow-$SHORT_SHA
           echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
           echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_OUTPUT
           echo "REGION=$REGION" >> $GITHUB_ENV
@@ -110,7 +109,7 @@ jobs:
       - name: Setup deploy environment
         id: init
         run: |
-          STACK_NAME=pr-worklfow-${{needs.build.outputs.SHORT_SHA}}
+          STACK_NAME=github-pr-worklfow-${{needs.build.outputs.SHORT_SHA}}
           echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
           echo "STACK_NAME=$STACK_NAME" >> $GITHUB_OUTPUT
           echo "EMAIL=${{secrets.EMAIL_ADDRESS}}" >> $GITHUB_ENV
