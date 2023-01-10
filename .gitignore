@@ -14,3 +14,4 @@ source/.coverage
 source/amc_uploader/amc_uploader.egg-info/
 source/tests/coverage-reports/
 deployment/open-source
+__pycache__
