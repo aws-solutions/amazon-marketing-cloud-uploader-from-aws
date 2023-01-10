@@ -112,7 +112,7 @@ def _start_fact_upload(bucket, key):
         if dataset_definition['period'] != time_partition:
             logger.info("Changing dataset time period from " + dataset_definition['period'] + " to " + time_partition)
             dataset_definition['period'] = time_partition
-            logger.info("POST " + path + " " + json.dumps(dataset_definition))
+            logger.info("PUT " + path + " " + json.dumps(dataset_definition))
             # Send request to update time period:
             sigv4.put(path, json.dumps(dataset_definition))
             dataset_definition = json.loads(sigv4.get(path).text)
@@ -143,6 +143,7 @@ def _start_dimension_upload(bucket, key):
         logger.info("Uploading s3://"+bucket+"/"+key)
         data = {"sourceS3Bucket": bucket, "sourceFileS3Key": key}
         path = '/data/' + dataset_id + '/uploads'
+        logger.info("POST " + path + " " + json.dumps(data))
         response = sigv4.post(path, json.dumps(data))
         return response.text
     except Exception as e:
