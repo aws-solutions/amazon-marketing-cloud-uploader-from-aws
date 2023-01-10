@@ -133,7 +133,8 @@ Resources:
       BucketName:
         'Fn::Join':
           - ""
-          - - "etl-artifacts-"
+          - - !Ref "AWS::StackName"
+            - "-etl-artifacts-"
             - !GetAtt GetShortUUID.Data
       BucketEncryption:
         ServerSideEncryptionConfiguration:
@@ -183,7 +184,9 @@ Resources:
       SourceArn:
         'Fn::Join':
           - ""
-          - - 'arn:aws:s3:::etl-artifacts-'
+          - - 'arn:aws:s3:::'
+            - !Ref "AWS::StackName" 
+            - '-etl-artifacts-'
             - !GetAtt GetShortUUID.Data
       SourceAccount: !Ref AWS::AccountId
 
@@ -229,7 +232,9 @@ Resources:
                 Resource:
                   'Fn::Join':
                     - ""
-                    - - 'arn:aws:s3:::etl-artifacts'
+                    - - 'arn:aws:s3:::'
+                      - !Ref "AWS::StackName"
+                      - '-etl-artifacts-'
                       - !GetAtt GetShortUUID.Data
                       - '/*' 
         - PolicyName: invokeAmcApi
