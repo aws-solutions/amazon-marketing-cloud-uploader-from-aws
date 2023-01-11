@@ -51,6 +51,7 @@ jobs:
       SHORT_SHA: ${{ steps.init.outputs.SHORT_SHA }}
       DIST_OUTPUT_BUCKET: ${{ steps.init.outputs.DIST_OUTPUT_BUCKET }}
       TEMPLATE_OUTPUT_BUCKET: ${{ steps.init.outputs.TEMPLATE_OUTPUT_BUCKET }}
+      VERSION: ${{ steps.init.outputs.VERSION }}
       TEMPLATE: ${{ steps.builder.outputs.TEMPLATE }}
     steps:
       - name: Check out pr branch
@@ -123,11 +124,70 @@ jobs:
           aws cloudformation create-stack --stack-name $STACK_NAME --template-url $TEMPLATE --parameters ParameterKey=AdminEmail,ParameterValue=$EMAIL ParameterKey=DataBucketName,ParameterValue=$DATA_BUCKET_NAME ParameterKey=AmcEndpointUrl,ParameterValue=$AMC_API_ENDPOINT ParameterKey=DataUploadAccountId,ParameterValue=$DATA_UPLOAD_ACCOUNT_ID --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --disable-rollback
           aws cloudformation wait stack-create-complete --stack-name $STACK_NAME
 
+   integration_test:
+    needs: 
+      - deploy
+      - build
+    runs-on: ubuntu-latest
+    outputs:
+      STACK_NAME: ${{ steps.init.outputs.STACK_NAME }}
+      AMC_GLUE_JOB_ROLE_NAME: ${{ steps.api_integration_test.outputs.AMC_GLUE_JOB_ROLE_NAME }}
+    steps:
+      - name: Initialize AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{needs.build.outputs.REGION}}
+      - name: api_integration_test
+        run: |
+          STACK_NAME=${{needs.deploy.outputs.STACK_NAME}}
+          echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
+          apt-get update
+          apt-get install -y git python3.9 python3.9-venv python3.8-venv python3-pip nodejs npm zip
+          RESOURCE_ID=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id GlueStack --query "StackResources[0].PhysicalResourceId")
+          echo $RESOURCE_ID
+          NESTED_STACK_ID=$(echo $RESOURCE_ID | cut -d "/" -f 2)
+          echo "$NESTED_STACK_ID"
+          AMC_GLUE_JOB_NAME=$(aws cloudformation describe-stack-resources --stack-name $NESTED_STACK_ID --logical-resource-id "AmcGlueJob" --query "StackResources[0].PhysicalResourceId")
+          AMC_GLUE_JOB_NAME=$(echo "$TEST_AMC_GLUE_JOB_NAME" | tr -d '"')
+          ARTIFACT_BUCKET=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id "ArtifactBucket" --query "StackResources[0].PhysicalResourceId")
+          ARTIFACT_BUCKET=$(echo $ARTIFACT_BUCKET | tr -d '"')
+          echo $ARTIFACT_BUCKET
+          ROLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id "AmcApiAccessRole" --query "StackResources[0].PhysicalResourceId")
+          ROLE_NAME=$(echo $ROLE_NAME | tr -d '"')
+          echo $ROLE_NAME
+          CURRENT_ASSUME_ROLE_POLICY1=$(aws iam get-role --role-name $ROLE_NAME --query "Role.AssumeRolePolicyDocument.Statement[0]")
+          CURRENT_ASSUME_ROLE_POLICY2=$(aws iam get-role --role-name $ROLE_NAME --query "Role.AssumeRolePolicyDocument.Statement[1]")
+          TEST_IAM_USER_POLICY='{"Version":"2012-10-17","Statement":['$CURRENT_ASSUME_ROLE_POLICY1', '$CURRENT_ASSUME_ROLE_POLICY2', {"Effect":"Allow","Principal":{"AWS":"'${{ secrets.TEST_USER_ARN }}'"},"Action":"sts:AssumeRole"}]}'
+          echo $TEST_IAM_USER_POLICY
+          aws iam update-assume-role-policy --role-name $ROLE_NAME --policy-document $TEST_IAM_USER_POLICY
+          AMC_GLUE_JOB_ROLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $NESTED_STACK_ID --logical-resource-id "AmcGlueJobRole" --query "StackResources[0].PhysicalResourceId")
+          AMC_GLUE_JOB_ROLE_NAME=$(echo $AMC_GLUE_JOB_ROLE_NAME | tr -d '"')
+          echo "AMC_GLUE_JOB_ROLE_NAME=$AMC_GLUE_JOB_ROLE_NAME" >> $GITHUB_ENV
+          echo "AMC_API_ROLE_ARN="arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}role/$ROLE_NAME" >> $GITHUB_ENV
+          echo "TEST_S3_BUCKET_NAME=${{ secrets.TEST_S3_BUCKET_NAME }} >> $GITHUB_ENV
+          echo "TEST_S3_KEY_NAME=${{ secrets.TEST_S3_KEY_NAME }} >> $GITHUB_ENV
+          echo "TEST_S3_KEY_NAME_CSV=${{ secrets.TEST_S3_KEY_NAME_CSV }} >> $GITHUB_ENV
+          echo "TEST_S3_KEY_NAME_SUB=${{ secrets.TEST_S3_KEY_NAME_SUB }} >> $GITHUB_ENV
+          echo "TEST_OUTPUT_BUCKET=$ARTIFACT_BUCKET >> $GITHUB_ENV
+          echo "CUSTOMER_MANAGED_KEY=${{ secrets.TEST_S3_KEY_NAME_SUB }}" >> $GITHUB_ENV
+          echo "AWS_XRAY_CONTEXT_MISSING=${{ secrets.AWS_XRAY_CONTEXT_MISSING }} >> $GITHUB_ENV
+          aws iam attach-role-policy --role-name $AMC_GLUE_JOB_ROLE_NAME --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+          cd ..
+          pip3 install virtualenv
+          virtualenv venv
+          source venv/bin/activate
+          pip3 install -r source/api/requirements-test.txt
+          pytest source/api/tests/test_api_integration.py -vv
+
+
   cleanup:
     if: always()
     needs: 
       - deploy
       - build
+      - integration_test
     runs-on: ubuntu-latest
     steps:
       - name: Initialize AWS credentials
@@ -143,6 +203,7 @@ jobs:
       - name: Remove stack
         if: needs.deploy.result == 'success'
         run: |
+          aws iam detach-role-policy --role-name ${{needs.integration_test.outputs.AMC_GLUE_JOB_ROLE_NAME}} --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess"
           STACK_NAME=${{needs.deploy.outputs.STACK_NAME}}
           echo "Removing stack $STACK_NAME"
           aws cloudformation delete-stack --stack-name $STACK_NAME

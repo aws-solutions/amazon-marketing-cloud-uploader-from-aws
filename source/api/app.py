@@ -351,10 +351,10 @@ def get_data_columns():
 
 def log_request_parameters():
     logger.info("Processing the following request:\n")
-    logger.info("resource path: " + app.current_request.context['resourcePath'])
-    logger.info("method: " + app.current_request.method)
-    logger.info("uri parameters: " + str(app.current_request.uri_params))
-    logger.info("query parameters: " + str(app.current_request.query_params))
-    logger.info("request ID: " + app.current_request.context.get('requestId'))
-    logger.info('request body: ' + app.current_request.raw_body.decode())
+    logger.info(f"resource path: {app.current_request.context['resourcePath']}")
+    logger.info(f"method: {app.current_request.method}")
+    logger.info(f"uri parameters: {app.current_request.uri_params}")
+    logger.info(f"query parameters: {app.current_request.query_params}")
+    logger.info(f"request ID: {app.current_request.context.get('requestId')}")
+    logger.info(f"request body: {app.current_request.raw_body.decode()}")
     logger.info(app.current_request.to_dict())
