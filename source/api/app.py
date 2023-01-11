@@ -330,23 +330,44 @@ def get_data_columns():
     log_request_parameters()
     try:
         bucket = json.loads(app.current_request.raw_body.decode())['s3bucket']
-        key = json.loads(app.current_request.raw_body.decode())['s3key']
-        file_format = json.loads(app.current_request.raw_body.decode())['file_format']
-        if file_format != 'CSV' and file_format != 'JSON':
-            raise TypeError('File format must be CSV or JSON')
-        # Read first row
-        logger.info("Reading " + 's3://'+bucket+'/'+key)
-        if file_format == 'JSON':
-            dfs = wr.s3.read_json(path=['s3://'+bucket+'/'+key], chunksize=1, lines=True)
-        elif file_format == 'CSV':
-            dfs = wr.s3.read_csv(path=['s3://'+bucket+'/'+key], chunksize=1)
-        chunk = next(dfs)
-        columns = list(chunk.columns.values)
-        result = json.dumps({'columns': columns})
+        keys = json.loads(app.current_request.raw_body.decode())['s3key']
+        keys_to_validate = [x.strip() for x in keys.split(',')]
+
+        # for concurrent glue jobs, can only run a max of 200 per account
+        if(len(keys_to_validate) > 200):
+            return Response(body={"Error": "Number of files selected cannot exceed 200"},
+                            status_code=400,
+                            headers={'Content-Type': 'text/plain'})
+        
+        # get first columns to compare against to ensure all files have same schema        
+        base_key = keys_to_validate[0]
+
+        for key in keys_to_validate:
+            file_format = json.loads(app.current_request.raw_body.decode())['file_format']
+            if file_format != 'CSV' and file_format != 'JSON':
+                raise TypeError('File format must be CSV or JSON')
+            # Read first row
+            logger.info("Reading " + 's3://'+bucket+'/'+key)
+            if file_format == 'JSON':
+                dfs = wr.s3.read_json(path=['s3://'+bucket+'/'+key], chunksize=1, lines=True)
+            elif file_format == 'CSV':
+                dfs = wr.s3.read_csv(path=['s3://'+bucket+'/'+key], chunksize=1)
+            chunk = next(dfs)
+            columns = list(chunk.columns.values)
+
+            if(key == base_key):
+                base_columns = columns
+                result = json.dumps({'columns': base_columns})
+
+            if set(columns) != set(base_columns):
+                return Response(body={"Error": "Schemas must match for multi-upload. File " + key + " schema does not match file " + base_key},
+                                status_code=400,
+                                headers={'Content-Type': 'text/plain'})
+
         return result
     except Exception as e:
         logger.error(e)
-        return {"Status": "Error", "Message": e}
+        return {"Status": "Error", "Message": json.dumps(e)}
 
 
 def log_request_parameters():

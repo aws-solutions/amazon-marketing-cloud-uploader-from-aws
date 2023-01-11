@@ -56,7 +56,7 @@ SPDX-License-Identifier: Apache-2.0
                 :items="results"
                 :fields="fields"
                 :busy="isBusy"
-                select-mode="single"
+                select-mode="multi"
                 responsive="sm"
                 selectable
                 small
@@ -133,7 +133,9 @@ SPDX-License-Identifier: Apache-2.0
         this.$router.push('Step2')
       },
       onRowSelected(items) {
-        this.new_s3key = items[0].key
+        let newKeys = [];
+        for(let item of items) newKeys.push(item.key)
+        this.new_s3key = newKeys.join(", ");
       },
       async send_request(method, resource, data) {
         this.results = []

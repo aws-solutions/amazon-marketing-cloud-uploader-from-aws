@@ -38,8 +38,8 @@ SPDX-License-Identifier: Apache-2.0
             </b-row>
             <b-row>
               <b-col cols="7">
-                <h5>Input file:</h5>
-                {{ "s3://" + DATA_BUCKET_NAME + "/" + s3key }}
+                <h5>Input files from {{"s3://" + DATA_BUCKET_NAME}}:</h5>
+                {{ s3key }}
                 <br>
                 <br>
                 <h5>Dataset Attributes:</h5>
@@ -168,18 +168,22 @@ SPDX-License-Identifier: Apache-2.0
           console.log("Dataset defined successfully")
           
           // Start Glue ETL job now that the dataset has been accepted by AMC
-          console.log("Starting Glue ETL job for s3://" + this.DATA_BUCKET_NAME + "/" + this.s3key)
-          resource = 'start_amc_transformation'
-          data = {'sourceBucket': this.DATA_BUCKET_NAME, 'sourceKey': this.s3key, 'outputBucket': this.ARTIFACT_BUCKET_NAME, 'piiFields': JSON.stringify(this.pii_fields),'deletedFields': JSON.stringify(this.deleted_columns), 'timestampColumn': this.timestamp_column_name, 'datasetId': this.dataset_definition.dataSetId}
-          let requestOpts = {
-            headers: {'Content-Type': 'application/json'},
-            body: data
-          };
-          console.log("POST " + resource + " " + JSON.stringify(requestOpts))
-          response = await this.$Amplify.API.post(apiName, resource, requestOpts);
-          console.log(response)
-          console.log(JSON.stringify(response))
-          console.log("Started Glue ETL job")
+          let s3keysList = this.s3key.split(',').map((item) => item.trim())
+
+          for (let key of s3keysList) {
+            console.log("Starting Glue ETL job for s3://" + this.DATA_BUCKET_NAME + "/" + key)
+            resource = 'start_amc_transformation'
+            data = {'sourceBucket': this.DATA_BUCKET_NAME, 'sourceKey': key, 'outputBucket': this.ARTIFACT_BUCKET_NAME, 'piiFields': JSON.stringify(this.pii_fields),'deletedFields': JSON.stringify(this.deleted_columns), 'timestampColumn': this.timestamp_column_name, 'datasetId': this.dataset_definition.dataSetId}
+            let requestOpts = {
+              headers: {'Content-Type': 'application/json'},
+              body: data
+            };
+            console.log("POST " + resource + " " + JSON.stringify(requestOpts))
+            response = await this.$Amplify.API.post(apiName, resource, requestOpts);
+            console.log(response)
+            console.log(JSON.stringify(response))
+            console.log("Started Glue ETL job")
+          }
           
           // Navigate to next step
           this.$router.push('Step5')
