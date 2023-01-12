@@ -1,0 +1,6 @@
+pytest
+requests
+requests_aws4auth
+webdriver-manager
+selenium
+boto3

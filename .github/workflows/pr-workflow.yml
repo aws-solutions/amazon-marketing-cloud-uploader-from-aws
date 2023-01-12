@@ -86,6 +86,11 @@ jobs:
       - name: Run build script
         id: builder
         run: |
+          sudo apt update
+          sudo apt install software-properties-common
+          sudo add-apt-repository ppa:deadsnakes/ppa
+          sudo apt-get install python3.9 nodejs npm zip
+          sudo apt-get install python3.9-venv python3.8-venv python3-pip
           cd deployment
           aws s3 mb s3://$DIST_OUTPUT_BUCKET-$REGION 
           aws s3 mb s3://$TEMPLATE_OUTPUT_BUCKET 
