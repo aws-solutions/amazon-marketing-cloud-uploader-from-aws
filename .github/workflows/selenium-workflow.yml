@@ -1,50 +1,13 @@
-name: pr-workflow
+name: selenium-workflow
 
 on:
-  pull_request:
-    types: [opened, synchronize]
-    branches:
-      - development
+  schedule:
+    - cron: '0 4 * * *'
   workflow_dispatch:
 
 jobs:
-  viperlight-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out pr branch
-        uses: actions/checkout@v2.3.4
-        with:
-          ref: ${{ github.sha }}
-      - name: Viperlight scan
-        run: |
-          echo "Installing content scanning utility"
-          sudo apt-get install wget -y
-          wget -v "https://s3.amazonaws.com/viperlight-scanner/latest/.viperlightrc"
-          wget -v "https://s3.amazonaws.com/viperlight-scanner/latest/viperlight.zip"
-          unzip -q viperlight.zip -d ../viperlight
-          rm -r ./viperlight.zip
-          echo "Content scanning utility installation complete `date`"
-          echo "Starting content scanning `date` in `pwd`"
-          ../viperlight/bin/viperlight scan -x python-pipoutdated -x python-bandit
-          echo "Completed content scanning `date`"
-
-  cfn-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out pr branch
-        uses: actions/checkout@v2.3.4
-        with:
-          ref: ${{ github.sha }}
-      - name: Run cfn_nag
-        uses: stelligent/cfn_nag@master
-        continue-on-error: true
-        with:
-          input_path: deployment
-
   build:
     needs: 
-      - viperlight-scan
-      - cfn-scan
     runs-on: ubuntu-latest
     outputs:
       REGION: ${{ steps.init.outputs.REGION }}
@@ -63,9 +26,10 @@ jobs:
           REGION="us-east-1"
           VERSION="0.0.0"
           SOLUTION_NAME="amazon-marketing-cloud-uploader-from-aws"
+          DATETIME=$(date '+%s')
+          DIST_OUTPUT_BUCKET=pr-amcufa-$DATETIME-dist
+          TEMPLATE_OUTPUT_BUCKET=pr-amcufa-$DATETIME
           SHORT_SHA=$(git rev-parse --short HEAD)
-          DIST_OUTPUT_BUCKET=github-pr-workflow-$SHORT_SHA-dist
-          TEMPLATE_OUTPUT_BUCKET=github-pr-workflow-$SHORT_SHA
           echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
           echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_OUTPUT
           echo "REGION=$REGION" >> $GITHUB_ENV
@@ -109,7 +73,7 @@ jobs:
       - name: Setup deploy environment
         id: init
         run: |
-          STACK_NAME=github-pr-worklfow-${{needs.build.outputs.SHORT_SHA}}
+          STACK_NAME=pr-worklfow-${{needs.build.outputs.SHORT_SHA}}
           echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
           echo "STACK_NAME=$STACK_NAME" >> $GITHUB_OUTPUT
           echo "EMAIL=${{secrets.EMAIL_ADDRESS}}" >> $GITHUB_ENV
@@ -123,8 +87,41 @@ jobs:
           aws cloudformation create-stack --stack-name $STACK_NAME --template-url $TEMPLATE --parameters ParameterKey=AdminEmail,ParameterValue=$EMAIL ParameterKey=DataBucketName,ParameterValue=$DATA_BUCKET_NAME ParameterKey=AmcEndpointUrl,ParameterValue=$AMC_API_ENDPOINT ParameterKey=DataUploadAccountId,ParameterValue=$DATA_UPLOAD_ACCOUNT_ID --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --disable-rollback
           aws cloudformation wait stack-create-complete --stack-name $STACK_NAME
 
+  selenium:
+    needs:
+      - build
+      - deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Initialize AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{needs.build.outputs.REGION}}
+      - name: Setup test environment
+        id: init
+        run: |
+          STACK_NAME=${{needs.deploy.outputs.STACK_NAME}}"
+          echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
+          echo EMAIL=${{ secrets.EMAIL_ADDRESS }} >> $GITHUB_ENV
+          echo PASSWORD=${{ secrets.PASSWORD }} >> $GITHUB_ENV
+          echo DATA_BUCKET_NAME=${{ secrets.DATA_BUCKET_NAME }} >> $GITHUB_ENV
+      - name: Setup Chromedriver
+        uses: nanasess/setup-chromedriver@master
+      - name: Get user pool id
+        run: |
+          echo "USER_POOL_ID=`aws cloudformation describe-stacks --query 'Stacks[?starts_with(StackName, \`$STACK_NAME\`)].Outputs[1].OutputValue' --output text`" >> $GITHUB_ENV
+      - name: Reset CL user password
+        run: |
+          aws cognito-idp admin-set-user-password --user-pool-id $USER_POOL_ID --username $EMAIL --password $PASSWORD --permanent
+      - name: Run e2e tests
+        run: |
+          cd $GITHUB_WORKSPACE
+          cd source/tests/e2e
+          ./run_e2e.sh
+
   cleanup:
-    if: always()
     needs: 
       - deploy
       - build
@@ -141,7 +138,6 @@ jobs:
           aws s3 rb s3://${{needs.build.outputs.DIST_OUTPUT_BUCKET}}-${{needs.build.outputs.REGION}} --force
           aws s3 rb s3://${{needs.build.outputs.TEMPLATE_OUTPUT_BUCKET}} --force
       - name: Remove stack
-        if: needs.deploy.result == 'success'
         run: |
           STACK_NAME=${{needs.deploy.outputs.STACK_NAME}}
           echo "Removing stack $STACK_NAME"
