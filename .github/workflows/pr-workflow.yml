@@ -95,8 +95,7 @@ jobs:
           make -j 12
           sudo make altinstall
           python3.9 --version
-          sudo apt install nodejs npm zip
-          sudo apt install python3.9-venv python3-pip
+          sudo apt-get install python3-virtualenv python3-pip
           cd ..
           cd deployment
           aws s3 mb s3://$DIST_OUTPUT_BUCKET-$REGION 
