@@ -6,8 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    needs: 
+  build: 
     runs-on: ubuntu-latest
     outputs:
       REGION: ${{ steps.init.outputs.REGION }}
