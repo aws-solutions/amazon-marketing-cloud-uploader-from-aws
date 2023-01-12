@@ -101,8 +101,8 @@ jobs:
       - name: Setup test environment
         id: init
         run: |
-          STACK_NAME=${{needs.deploy.outputs.STACK_NAME}}"
-          echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
+          STACK_NAME="${{needs.deploy.outputs.STACK_NAME}}"
+          echo STACK_NAME=$STACK_NAME >> $GITHUB_ENV
           echo EMAIL=${{ secrets.EMAIL_ADDRESS }} >> $GITHUB_ENV
           echo PASSWORD=${{ secrets.PASSWORD }} >> $GITHUB_ENV
           echo DATA_BUCKET_NAME=${{ secrets.DATA_BUCKET_NAME }} >> $GITHUB_ENV
