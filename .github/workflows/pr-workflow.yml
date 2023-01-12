@@ -51,7 +51,7 @@ jobs:
       SHORT_SHA: ${{ steps.init.outputs.SHORT_SHA }}
       DIST_OUTPUT_BUCKET: ${{ steps.init.outputs.DIST_OUTPUT_BUCKET }}
       TEMPLATE_OUTPUT_BUCKET: ${{ steps.init.outputs.TEMPLATE_OUTPUT_BUCKET }}
-      TEMPLATE: ${{ steps.builder.TEMPLATE }}
+      TEMPLATE: ${{ steps.builder.outputs.TEMPLATE }}
     steps:
       - name: Check out pr branch
         uses: actions/checkout@v2.3.4
@@ -85,6 +85,8 @@ jobs:
       - name: Run build script
         id: builder
         run: |
+          apt-get update
+          apt-get install -y git python3.9 python3.9-venv python3.8-venv python3-pip nodejs npm zip
           cd deployment
           aws s3 mb s3://$DIST_OUTPUT_BUCKET-$REGION 
           aws s3 mb s3://$TEMPLATE_OUTPUT_BUCKET 
