@@ -98,10 +98,10 @@ jobs:
           sudo apt-get install python3-virtualenv
           cd ..
           cd deployment
-          aws s3 mb s3://$DIST_OUTPUT_BUCKET-$REGION 
-          aws s3 mb s3://$TEMPLATE_OUTPUT_BUCKET 
-          echo "./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name ${SOLUTION_NAME} --version ${VERSION} --region ${REGION}"
-          echo y | ./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name ${SOLUTION_NAME} --version ${VERSION}  --region ${REGION} | tee >( grep TEMPLATE >template )
+        # aws s3 mb s3://$DIST_OUTPUT_BUCKET-$REGION 
+        # aws s3 mb s3://$TEMPLATE_OUTPUT_BUCKET 
+        # echo "./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name ${SOLUTION_NAME} --version ${VERSION} --region ${REGION}"
+        # echo y | ./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name ${SOLUTION_NAME} --version ${VERSION}  --region ${REGION} | tee >( grep TEMPLATE >template )
         # TEMPLATE=$(cat template | cut -f 2 -d "'")
         # echo "TEMPLATE=$TEMPLATE" >> $GITHUB_OUTPUT
 
@@ -169,9 +169,9 @@ jobs:
           CURRENT_ASSUME_ROLE_POLICY1=$(aws iam get-role --role-name $ROLE_NAME --query "Role.AssumeRolePolicyDocument.Statement[0]")
           CURRENT_ASSUME_ROLE_POLICY2=$(aws iam get-role --role-name $ROLE_NAME --query "Role.AssumeRolePolicyDocument.Statement[1]")
           TEST_USER_ARN="arn:aws:iam::${{ secrets.DATA_UPLOAD_ACCOUNT_ID }}:user/gitlabBuilderBot"
-          TEST_IAM_USER_POLICY=''{"Version":"2012-10-17","Statement":['$CURRENT_ASSUME_ROLE_POLICY1', '$CURRENT_ASSUME_ROLE_POLICY2', {"Effect":"Allow","Principal":{"AWS":"'$TEST_USER_ARN'"},"Action":"sts:AssumeRole"}]}''
+          TEST_IAM_USER_POLICY='{"Version":"2012-10-17","Statement":['$CURRENT_ASSUME_ROLE_POLICY1', '$CURRENT_ASSUME_ROLE_POLICY2', {"Effect":"Allow","Principal":{"AWS":"'$TEST_USER_ARN'"},"Action":"sts:AssumeRole"}]}'
           echo $TEST_IAM_USER_POLICY
-          aws iam update-assume-role-policy --role-name $ROLE_NAME --policy-document $TEST_IAM_USER_POLICY
+          aws iam update-assume-role-policy --role-name $ROLE_NAME --policy-document "'$TEST_IAM_USER_POLICY'"
           AMC_GLUE_JOB_ROLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $NESTED_STACK_ID --logical-resource-id "AmcGlueJobRole" --query "StackResources[0].PhysicalResourceId")
           AMC_GLUE_JOB_ROLE_NAME=$(echo $AMC_GLUE_JOB_ROLE_NAME | tr -d '"')
           echo "AMC_GLUE_JOB_ROLE_NAME=$AMC_GLUE_JOB_ROLE_NAME" >> $GITHUB_ENV
@@ -192,28 +192,28 @@ jobs:
           pytest source/api/tests/test_api_integration.py -vv
           aws iam detach-role-policy --role-name $AMC_GLUE_JOB_ROLE_NAME --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess"
 
-  cleanup:
-    if: always()
-    needs: 
-      - deploy
-      - build
-      - integration_test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Initialize AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{needs.build.outputs.REGION}}
-      # - name: Remove build artifacts
-      #   run: |
-      #     aws s3 rb s3://${{needs.build.outputs.DIST_OUTPUT_BUCKET}}-${{needs.build.outputs.REGION}} --force
-      #     aws s3 rb s3://${{needs.build.outputs.TEMPLATE_OUTPUT_BUCKET}} --force
-      # - name: Remove stack
-      #   if: needs.deploy.result == 'success'
-      #   run: |
-      #     STACK_NAME=${{needs.deploy.outputs.STACK_NAME}}
-      #     echo "Removing stack $STACK_NAME"
-      #     aws cloudformation delete-stack --stack-name $STACK_NAME
-      #     aws cloudformation wait stack-delete-complete --stack-name $STACK_NAME
+  # cleanup:
+  #   if: always()
+  #   needs: 
+  #     - deploy
+  #     - build
+  #     - integration_test
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Initialize AWS credentials
+  #       uses: aws-actions/configure-aws-credentials@v1
+  #       with:
+  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #         aws-region: ${{needs.build.outputs.REGION}}
+  #     - name: Remove build artifacts
+  #       run: |
+  #         aws s3 rb s3://${{needs.build.outputs.DIST_OUTPUT_BUCKET}}-${{needs.build.outputs.REGION}} --force
+  #         aws s3 rb s3://${{needs.build.outputs.TEMPLATE_OUTPUT_BUCKET}} --force
+  #     - name: Remove stack
+  #       if: needs.deploy.result == 'success'
+  #       run: |
+  #         STACK_NAME=${{needs.deploy.outputs.STACK_NAME}}
+  #         echo "Removing stack $STACK_NAME"
+  #         aws cloudformation delete-stack --stack-name $STACK_NAME
+  #         aws cloudformation wait stack-delete-complete --stack-name $STACK_NAME
