@@ -121,6 +121,7 @@ jobs:
           ./run_e2e.sh
 
   cleanup:
+    if: always()
     needs: 
       - deploy
       - build
