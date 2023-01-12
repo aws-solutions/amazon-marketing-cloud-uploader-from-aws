@@ -51,7 +51,7 @@ jobs:
       SHORT_SHA: ${{ steps.init.outputs.SHORT_SHA }}
       DIST_OUTPUT_BUCKET: ${{ steps.init.outputs.DIST_OUTPUT_BUCKET }}
       TEMPLATE_OUTPUT_BUCKET: ${{ steps.init.outputs.TEMPLATE_OUTPUT_BUCKET }}
-      TEMPLATE: ${{ steps.builder.outputs.TEMPLATE }}
+      TEMPLATE: ${{ steps.builder.TEMPLATE }}
     steps:
       - name: Check out pr branch
         uses: actions/checkout@v2.3.4
