@@ -168,14 +168,14 @@ jobs:
           AMC_GLUE_JOB_ROLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $NESTED_STACK_ID --logical-resource-id "AmcGlueJobRole" --query "StackResources[0].PhysicalResourceId")
           AMC_GLUE_JOB_ROLE_NAME=$(echo $AMC_GLUE_JOB_ROLE_NAME | tr -d '"')
           echo "AMC_GLUE_JOB_ROLE_NAME=$AMC_GLUE_JOB_ROLE_NAME" >> $GITHUB_ENV
-          echo "AMC_API_ROLE_ARN="arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}role/$ROLE_NAME" >> $GITHUB_ENV
-          echo "TEST_S3_BUCKET_NAME=${{ secrets.SOURCE_OUTPUT_BUCKET }} >> $GITHUB_ENV
-          echo "TEST_S3_KEY_NAME=${{ secrets.TEST_S3_KEY_NAME }} >> $GITHUB_ENV
-          echo "TEST_S3_KEY_NAME_CSV=${{ secrets.TEST_S3_KEY_NAME_CSV }} >> $GITHUB_ENV
-          echo "TEST_S3_KEY_NAME_SUB=${{ secrets.TEST_S3_KEY_NAME_SUB }} >> $GITHUB_ENV
+          echo "AMC_API_ROLE_ARN='arn:aws:iam::${{ secrets.DATA_UPLOAD_ACCOUNT_ID }}role/$ROLE_NAME' >> $GITHUB_ENV
+          echo "TEST_S3_BUCKET_NAME=${{ secrets.DATA_BUCKET_NAME }} >> $GITHUB_ENV
+          echo "TEST_S3_KEY_NAME='amc-data-integ-test-2kb.json' >> $GITHUB_ENV
+          echo "TEST_S3_KEY_NAME_CSV='amc-data-integ-test-2kb-csv.csv' >> $GITHUB_ENV
+          echo "TEST_S3_KEY_NAME_SUB_DIR='integ_test_data/amc-data-integ-test-5kb.json' >> $GITHUB_ENV
           echo "TEST_OUTPUT_BUCKET=$ARTIFACT_BUCKET >> $GITHUB_ENV
-          echo "CUSTOMER_MANAGED_KEY=${{ secrets.CUSTOMER_MANAGED_KEY }}" >> $GITHUB_ENV
-          echo "AWS_XRAY_CONTEXT_MISSING=${{ secrets.AWS_XRAY_CONTEXT_MISSING }} >> $GITHUB_ENV
+          echo "CUSTOMER_MANAGED_KEY=''" >> $GITHUB_ENV
+          echo "AWS_XRAY_CONTEXT_MISSING='LOG_ERROR' >> $GITHUB_ENV
           aws iam attach-role-policy --role-name $AMC_GLUE_JOB_ROLE_NAME --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess"
           cd ..
           pip3 install virtualenv

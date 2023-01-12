@@ -13,7 +13,7 @@ python3 -m venv .venv &&
 source .venv/bin/activate &&
 cd tests &&
 pip install -r requirements-test.txt &&
-export AMC_ENDPOINT_URL="" &&
+export AMC_API_ENDPOINT="" &&
 export AMC_API_ROLE_ARN="" &&
 export SOLUTION_NAME="" &&
 export VERSION="" &&
@@ -27,7 +27,7 @@ export TEST_S3_BUCKET_NAME="" &&
 export TEST_S3_KEY_NAME="" &&
 export TEST_S3_KEY_NAME_CSV="" &&
 export TEST_OUTPUT_BUCKET="" &&
-export TEST_S3_KEY_NAME_SUB="" &&
+export TEST_S3_KEY_NAME_SUB_DIR="" &&
 pytest test_api_integration.py -vv
 """
 
@@ -52,7 +52,7 @@ _test_configs = {
     "s3bucket": os.environ['TEST_S3_BUCKET_NAME'],
     "s3key": os.environ['TEST_S3_KEY_NAME'],
     "s3key_csv": os.environ['TEST_S3_KEY_NAME_CSV'],
-    "s3key_sub": os.environ['TEST_S3_KEY_NAME_SUB'],
+    "s3key_sub_dir": os.environ['TEST_S3_KEY_NAME_SUB_DIR'],
     "outputBucket": os.environ['TEST_OUTPUT_BUCKET'],
 }
 
@@ -352,7 +352,7 @@ def test_create_upload_delete_dataset_FACT_CSV(test_configs, test_data_set_type,
    test_data_set_type("FACT", "CSV", test_configs, get_etl_data_by_job_id)
 
 def test_create_upload_delete_dataset_DIMENSION_JSON_SUB_DIRECTORY(test_configs, test_data_set_type, get_etl_data_by_job_id):
-   test_data_set_type("DIMENSION", "JSON", test_configs, get_etl_data_by_job_id, override_s3_test_key=test_configs["s3key_sub"])
+   test_data_set_type("DIMENSION", "JSON", test_configs, get_etl_data_by_job_id, override_s3_test_key=test_configs["s3key_sub_dir"])
 
 def test_create_upload_delete_dataset_FACT_JSON_SUB_DIRECTORY(test_configs, test_data_set_type, get_etl_data_by_job_id):
-   test_data_set_type("FACT", "JSON", test_configs, get_etl_data_by_job_id, override_s3_test_key=test_configs["s3key_sub"])
+   test_data_set_type("FACT", "JSON", test_configs, get_etl_data_by_job_id, override_s3_test_key=test_configs["s3key_sub_dir"])
