@@ -171,7 +171,7 @@ jobs:
           TEST_USER_ARN="arn:aws:iam::${{ secrets.DATA_UPLOAD_ACCOUNT_ID }}:user/gitlabBuilderBot"
           TEST_IAM_USER_POLICY='{"Version":"2012-10-17","Statement":['$CURRENT_ASSUME_ROLE_POLICY1', '$CURRENT_ASSUME_ROLE_POLICY2', {"Effect":"Allow","Principal":{"AWS":"'$TEST_USER_ARN'"},"Action":"sts:AssumeRole"}]}'
           echo $TEST_IAM_USER_POLICY
-          aws iam update-assume-role-policy --role-name $ROLE_NAME --policy-document '"$TEST_IAM_USER_POLICY"'
+          aws iam update-assume-role-policy --role-name $ROLE_NAME --policy-document '$TEST_IAM_USER_POLICY'
           AMC_GLUE_JOB_ROLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $NESTED_STACK_ID --logical-resource-id "AmcGlueJobRole" --query "StackResources[0].PhysicalResourceId")
           AMC_GLUE_JOB_ROLE_NAME=$(echo $AMC_GLUE_JOB_ROLE_NAME | tr -d '"')
           echo "AMC_GLUE_JOB_ROLE_NAME=$AMC_GLUE_JOB_ROLE_NAME" >> $GITHUB_ENV
