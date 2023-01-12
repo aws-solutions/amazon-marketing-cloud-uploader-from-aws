@@ -64,7 +64,7 @@ jobs:
           REGION="us-east-1"
           VERSION="0.0.0"
           SOLUTION_NAME="amazon-marketing-cloud-uploader-from-aws"
-          SHORT_SHA=$(git rev-parse --short HEAD)
+          SHORT_SHA="08b7597"
           DIST_OUTPUT_BUCKET=github-pr-workflow-$SHORT_SHA-dist
           TEMPLATE_OUTPUT_BUCKET=github-pr-workflow-$SHORT_SHA
           echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
