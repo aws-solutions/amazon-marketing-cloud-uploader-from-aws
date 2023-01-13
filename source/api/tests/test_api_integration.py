@@ -112,7 +112,8 @@ def test_get_data_columns(test_configs):
                 "file_format": 'CSV'
             })
         )
-        assert response.json_body == {'columns': ['{"first_name":"Annie"', 'last_name:"Fisher"', 'email:"don\'twhile@example.com"', 'timestamp:"2020-04-01 21:25:30-0400"', 'product_quantity:87', 'product_name:"Product B"}']}
+        assert response.json_body == {'columns': ['{"first_name":"Caroline"', 'last_name:"Crane"', 'email:"funis@example.com"', 'timestamp:"2020-04-01 21:07:30-0400"', 'product_quantity:67', 'product_name:"Product C"}']}
+        
 
 @pytest.fixture
 def get_etl_data_by_job_id():
