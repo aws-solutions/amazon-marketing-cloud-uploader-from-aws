@@ -143,6 +143,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{needs.build.outputs.REGION}}
       - name: Remove build artifacts
+        if: needs.deploy.result == 'success' || needs.deploy.result == 'failure'
         run: |
           aws s3 rb s3://${{needs.build.outputs.DIST_OUTPUT_BUCKET}}-${{needs.build.outputs.REGION}} --force
           aws s3 rb s3://${{needs.build.outputs.TEMPLATE_OUTPUT_BUCKET}} --force
