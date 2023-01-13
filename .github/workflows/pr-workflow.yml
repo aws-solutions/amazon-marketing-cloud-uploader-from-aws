@@ -88,13 +88,13 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-      # - name: Run build script
-      #   id: builder
-      #   run: |
-      #     python3.9 --version
-      #     aws s3 mb s3://$DIST_OUTPUT_BUCKET-$REGION 
-      #     aws s3 mb s3://$TEMPLATE_OUTPUT_BUCKET
-      #     cd deployment
+      - name: Run build script
+        id: builder
+        run: |
+          python3.9 --version
+          aws s3 mb s3://$DIST_OUTPUT_BUCKET-$REGION 
+          aws s3 mb s3://$TEMPLATE_OUTPUT_BUCKET
+          cd deployment
       #     echo "./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name ${SOLUTION_NAME} --version ${VERSION} --region ${REGION}"
       #     echo y | ./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name ${SOLUTION_NAME} --version ${VERSION}  --region ${REGION} | tee >( grep TEMPLATE >template )
       #     TEMPLATE=$(cat template | cut -f 2 -d "'")
