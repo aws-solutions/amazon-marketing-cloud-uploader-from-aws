@@ -96,6 +96,8 @@ jobs:
           aws s3 mb s3://$TEMPLATE_OUTPUT_BUCKET
           ls -l
           cd deployment
+          cd ..
+          ls -l
       #     echo "./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name ${SOLUTION_NAME} --version ${VERSION} --region ${REGION}"
       #     echo y | ./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name ${SOLUTION_NAME} --version ${VERSION}  --region ${REGION} | tee >( grep TEMPLATE >template )
       #     TEMPLATE=$(cat template | cut -f 2 -d "'")
@@ -134,7 +136,6 @@ jobs:
   integration_test:
     needs: 
       - deploy
-      - build
     runs-on: ubuntu-latest
     outputs:
       STACK_NAME: ${{ steps.init.outputs.STACK_NAME }}
@@ -152,6 +153,7 @@ jobs:
           aws-region: ${{needs.build.outputs.REGION}}
       - name: api_integration_test
         run: |
+          ls -l
           STACK_NAME=${{needs.deploy.outputs.STACK_NAME}}
           echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
           RESOURCE_ID=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id GlueStack --query "StackResources[0].PhysicalResourceId")
@@ -182,6 +184,8 @@ jobs:
           VENV=$(mktemp -d) && echo "$VENV"
           python3.9 -m venv "$VENV"
           source "$VENV"/bin/activate
+          cd ..
+          ls -l
           cd ..
           ls -l
           pip3 install -r source/api/tests/requirements-test.txt
