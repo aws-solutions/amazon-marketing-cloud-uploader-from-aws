@@ -174,7 +174,7 @@ jobs:
           echo $ROLE_NAME
           AMC_GLUE_JOB_ROLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $NESTED_STACK_ID --logical-resource-id "AmcGlueJobRole" --query "StackResources[0].PhysicalResourceId")
           AMC_GLUE_JOB_ROLE_NAME=$(echo $AMC_GLUE_JOB_ROLE_NAME | tr -d '"')
-          export AMC_GLUE_JOB_ROLE_NAME=$AMC_GLUE_JOB_ROLE_NAME
+          export AMC_GLUE_JOB_NAME=$AMC_GLUE_JOB_ROLE_NAME
           export AMC_API_ROLE_ARN='arn:aws:iam::${{ secrets.DATA_UPLOAD_ACCOUNT_ID }}role/$ROLE_NAME'
           export TEST_S3_BUCKET_NAME=${{ secrets.DATA_BUCKET_NAME }}
           export AMC_ENDPOINT_URL=${{ secrets.AMC_API_ENDPOINT }}
