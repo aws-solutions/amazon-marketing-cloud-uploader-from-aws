@@ -175,13 +175,21 @@ jobs:
           ROLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id "AmcApiAccessRole" --query "StackResources[0].PhysicalResourceId")
           ROLE_NAME=$(echo $ROLE_NAME | tr -d '"')
           echo $ROLE_NAME
+          CURRENT_ASSUME_ROLE_POLICY1=$(aws iam get-role --role-name $ROLE_NAME --query "Role.AssumeRolePolicyDocument.Statement[0]")
+          CURRENT_ASSUME_ROLE_POLICY2=$(aws iam get-role --role-name $ROLE_NAME --query "Role.AssumeRolePolicyDocument.Statement[1]")
+          TEST_USER_ARN="arn:aws:iam::'$TEST_DATA_UPLOAD_ACCOUNT_ID':user/gitlabBuilderBot"
+          TEST_USER_ASSUME_ROLE_POLICY='{"Effect":"Allow","Principal":{"AWS":"'$TEST_USER_ARN'"},"Action":"sts:AssumeRole"}'
+          echo "$TEST_USER_ASSUME_ROLE_POLICY"
+          TEST_IAM_USER_POLICY='{"Version":"2012-10-17","Statement":['$CURRENT_ASSUME_ROLE_POLICY1', '$CURRENT_ASSUME_ROLE_POLICY2', '$TEST_USER_ASSUME_ROLE_POLICY']}'
+          echo ""$TEST_IAM_USER_POLICY""
+          aws iam update-assume-role-policy --role-name $ROLE_NAME --policy-document "$TEST_IAM_USER_POLICY"
           AMC_GLUE_JOB_ROLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $NESTED_STACK_ID --logical-resource-id "AmcGlueJobRole" --query "StackResources[0].PhysicalResourceId")
           AMC_GLUE_JOB_ROLE_NAME=$(echo $AMC_GLUE_JOB_ROLE_NAME | tr -d '"')
           echo "AMC_GLUE_JOB_ROLE_NAME=$AMC_GLUE_JOB_ROLE_NAME" >> $GITHUB_ENV
           echo "ARTIFACT_BUCKET=$ARTIFACT_BUCKET" >> $GITHUB_ENV
           echo "ROLE_NAME=$ROLE_NAME" >> $GITHUB_ENV
           export AMC_GLUE_JOB_NAME=$AMC_GLUE_JOB_ROLE_NAME
-          export AMC_API_ROLE_ARN="arn:aws:iam::'$TEST_DATA_UPLOAD_ACCOUNT_ID':role/'$ROLE_NAME'"
+          export AMC_API_ROLE_ARN="arn:aws:iam::$TEST_DATA_UPLOAD_ACCOUNT_ID:role/$ROLE_NAME"
           export TEST_S3_BUCKET_NAME=${{ secrets.DATA_BUCKET_NAME }}
           export AMC_ENDPOINT_URL=${{ secrets.AMC_API_ENDPOINT }}
           export TEST_S3_KEY_NAME='amc-data-integ-test-2kb.json'
