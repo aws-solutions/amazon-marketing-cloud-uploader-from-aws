@@ -151,7 +151,7 @@ jobs:
           aws-region: ${{needs.build.outputs.REGION}}
       - name: api_integration_test
         with:
-          input_path: deployment
+          input_path: source
         run: |
           STACK_NAME=${{needs.deploy.outputs.STACK_NAME}}
           echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
