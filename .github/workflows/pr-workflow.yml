@@ -180,6 +180,8 @@ jobs:
           VENV=$(mktemp -d) && echo "$VENV"
           python3.9 -m venv "$VENV"
           source "$VENV"/bin/activate
+          cd ..
+          ls -l
           cd amazon-marketing-cloud-uploader-from-aws
           ls -l
           pip3 install -r source/api/tests/requirements-test.txt
