@@ -139,6 +139,10 @@ jobs:
       STACK_NAME: ${{ steps.init.outputs.STACK_NAME }}
       AMC_GLUE_JOB_ROLE_NAME: ${{ steps.api_integration_test.outputs.AMC_GLUE_JOB_ROLE_NAME }}
     steps:
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
       - name: Initialize AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -173,6 +177,7 @@ jobs:
           echo "CUSTOMER_MANAGED_KEY=''" >> $GITHUB_ENV
           echo "AWS_XRAY_CONTEXT_MISSING='LOG_ERROR'" >> $GITHUB_ENV
           aws iam attach-role-policy --role-name $AMC_GLUE_JOB_ROLE_NAME --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+          ls -l
           VENV=$(mktemp -d) && echo "$VENV"
           python3.9 -m venv "$VENV"
           source "$VENV"/bin/activate
