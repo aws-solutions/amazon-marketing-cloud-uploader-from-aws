@@ -87,16 +87,16 @@ jobs:
         id: cache-python-3-9
         uses: actions/cache@v3
         env:
-          cache-name: cache-python-3-9
+          cache-name: cache-python3
         with:
           path: |
             ~/.cache
             Python-3.9.1
             /usr/local/bin/python3.9
             /usr/local/share/man/man1/python3.9.1
-          key: ${{ runner.os }}-python-3-9-build-${{ env.cache-name }}-3-9
+          key: ${{ runner.os }}-Python-3-9-build-${{ env.cache-name }}
           restore-keys: |
-            Linux-python-3-9-build-cache-python3
+            Linux-Python-3-9-build-cache-python3
       - if: ${{ steps.cache-python-3-9.outputs.cache-hit != 'true' }}
         name: State of python 3.9
         continue-on-error: true
