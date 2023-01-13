@@ -98,8 +98,7 @@ jobs:
       - name: Install Python 3.9
         id: install-python3-9
         run: |
-          command -v python3.9 > /dev/null
-          if [ $? -ne 0 ]; then
+          if [[ ! -x "$(command -v python3.9 > /dev/null)" ]]; then
               sudo apt-get update
               sudo apt-get install build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev wget libbz2-dev
               wget https://www.python.org/ftp/python/3.9.1/Python-3.9.1.tgz
