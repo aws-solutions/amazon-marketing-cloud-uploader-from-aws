@@ -177,9 +177,9 @@ jobs:
           echo "AMC_GLUE_JOB_ROLE_NAME=$AMC_GLUE_JOB_ROLE_NAME" >> $GITHUB_ENV
           echo "ARTIFACT_BUCKET=$ARTIFACT_BUCKET" >> $GITHUB_ENV
           echo "ROLE_NAME=$ROLE_NAME" >> $GITHUB_ENV
-          echo "${{ format('arn:aws:iam::{0}role/', secrets.DATA_UPLOAD_ACCOUNT_ID) }}$ROLE_NAME" >> $GITHUB_ENV
+          echo "AMC_API_ROLE_ARN=${{ format('arn:aws:iam::{0}role/', secrets.DATA_UPLOAD_ACCOUNT_ID) }}" >> $GITHUB_ENV
           export AMC_GLUE_JOB_NAME=$AMC_GLUE_JOB_ROLE_NAME
-          export AMC_API_ROLE_ARN=${{ format('arn:aws:iam::{0}role/', secrets.DATA_UPLOAD_ACCOUNT_ID) }}$ROLE_NAME
+          export AMC_API_ROLE_ARN=$AMC_API_ROLE_ARN$ROLE_NAME
           export TEST_S3_BUCKET_NAME=${{ secrets.DATA_BUCKET_NAME }}
           export AMC_ENDPOINT_URL=${{ secrets.AMC_API_ENDPOINT }}
           export TEST_S3_KEY_NAME='amc-data-integ-test-2kb.json'
