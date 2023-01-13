@@ -56,7 +56,7 @@ _test_configs = {
     "outputBucket": os.environ['TEST_OUTPUT_BUCKET'],
 }
 
-domain_name = "https://p5elzntd2c.execute-api.us-east-1.amazonaws.com/api/"
+domain_name = "https://p5elzntd2c.execute-api.us-east-1.amazonaws.com/api"
 
 @pytest.fixture
 def test_configs():
