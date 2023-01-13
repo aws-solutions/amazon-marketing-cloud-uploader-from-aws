@@ -134,7 +134,8 @@ jobs:
       #     aws cloudformation wait stack-create-complete --stack-name $STACK_NAME
 
   integration_test:
-    needs: 
+    needs:
+      - build
       - deploy
     runs-on: ubuntu-latest
     outputs:
