@@ -174,6 +174,7 @@ jobs:
           echo "AMC_GLUE_JOB_ROLE_NAME=$AMC_GLUE_JOB_ROLE_NAME" >> $GITHUB_ENV
           echo "AMC_API_ROLE_ARN='arn:aws:iam::${{ secrets.DATA_UPLOAD_ACCOUNT_ID }}role/$ROLE_NAME'" >> $GITHUB_ENV
           echo "TEST_S3_BUCKET_NAME=${{ secrets.DATA_BUCKET_NAME }}" >> $GITHUB_ENV
+          echo "AMC_ENDPOINT_URL=${{ secrets.AMC_API_ENDPOINT }}" >> $GITHUB_ENV
           echo "TEST_S3_KEY_NAME='amc-data-integ-test-2kb.json'" >> $GITHUB_ENV
           echo "TEST_S3_KEY_NAME_CSV='amc-data-integ-test-2kb-csv.csv'" >> $GITHUB_ENV
           echo "TEST_S3_KEY_NAME_SUB_DIR='integ_test_data/amc-data-integ-test-5kb.json'" >> $GITHUB_ENV
