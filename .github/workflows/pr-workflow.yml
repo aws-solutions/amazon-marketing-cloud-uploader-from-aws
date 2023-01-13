@@ -171,16 +171,26 @@ jobs:
           echo $ROLE_NAME
           AMC_GLUE_JOB_ROLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $NESTED_STACK_ID --logical-resource-id "AmcGlueJobRole" --query "StackResources[0].PhysicalResourceId")
           AMC_GLUE_JOB_ROLE_NAME=$(echo $AMC_GLUE_JOB_ROLE_NAME | tr -d '"')
-          echo "AMC_GLUE_JOB_ROLE_NAME=$AMC_GLUE_JOB_ROLE_NAME" >> $GITHUB_ENV
-          echo "AMC_API_ROLE_ARN='arn:aws:iam::${{ secrets.DATA_UPLOAD_ACCOUNT_ID }}role/$ROLE_NAME'" >> $GITHUB_ENV
-          echo "TEST_S3_BUCKET_NAME=${{ secrets.DATA_BUCKET_NAME }}" >> $GITHUB_ENV
-          echo "AMC_ENDPOINT_URL=${{ secrets.AMC_API_ENDPOINT }}" >> $GITHUB_ENV
-          echo "TEST_S3_KEY_NAME='amc-data-integ-test-2kb.json'" >> $GITHUB_ENV
-          echo "TEST_S3_KEY_NAME_CSV='amc-data-integ-test-2kb-csv.csv'" >> $GITHUB_ENV
-          echo "TEST_S3_KEY_NAME_SUB_DIR='integ_test_data/amc-data-integ-test-5kb.json'" >> $GITHUB_ENV
-          echo "TEST_OUTPUT_BUCKET=$ARTIFACT_BUCKET" >> $GITHUB_ENV
-          echo "CUSTOMER_MANAGED_KEY=''" >> $GITHUB_ENV
-          echo "AWS_XRAY_CONTEXT_MISSING='LOG_ERROR'" >> $GITHUB_ENV
+        # echo "AMC_GLUE_JOB_ROLE_NAME=$AMC_GLUE_JOB_ROLE_NAME" >> $GITHUB_ENV
+        # echo "AMC_API_ROLE_ARN='arn:aws:iam::${{ secrets.DATA_UPLOAD_ACCOUNT_ID }}role/$ROLE_NAME'" >> $GITHUB_ENV
+        # echo "TEST_S3_BUCKET_NAME=${{ secrets.DATA_BUCKET_NAME }}" >> $GITHUB_ENV
+        # echo "AMC_ENDPOINT_URL=${{ secrets.AMC_API_ENDPOINT }}" >> $GITHUB_ENV
+        # echo "TEST_S3_KEY_NAME='amc-data-integ-test-2kb.json'" >> $GITHUB_ENV
+        # echo "TEST_S3_KEY_NAME_CSV='amc-data-integ-test-2kb-csv.csv'" >> $GITHUB_ENV
+        # echo "TEST_S3_KEY_NAME_SUB_DIR='integ_test_data/amc-data-integ-test-5kb.json'" >> $GITHUB_ENV
+        # echo "TEST_OUTPUT_BUCKET=$ARTIFACT_BUCKET" >> $GITHUB_ENV
+        # echo "CUSTOMER_MANAGED_KEY=''" >> $GITHUB_ENV
+        # echo "AWS_XRAY_CONTEXT_MISSING='LOG_ERROR'" >> $GITHUB_ENV
+          export AMC_GLUE_JOB_ROLE_NAME=$AMC_GLUE_JOB_ROLE_NAME
+          export AMC_API_ROLE_ARN='arn:aws:iam::${{ secrets.DATA_UPLOAD_ACCOUNT_ID }}role/$ROLE_NAME'
+          export TEST_S3_BUCKET_NAME=${{ secrets.DATA_BUCKET_NAME }}
+          export AMC_ENDPOINT_URL=${{ secrets.AMC_API_ENDPOINT }}
+          export TEST_S3_KEY_NAME='amc-data-integ-test-2kb.json'
+          export TEST_S3_KEY_NAME_CSV='amc-data-integ-test-2kb-csv.csv'
+          export TEST_S3_KEY_NAME_SUB_DIR='integ_test_data/amc-data-integ-test-5kb.json'
+          export TEST_OUTPUT_BUCKET=$ARTIFACT_BUCKET
+          export CUSTOMER_MANAGED_KEY=''
+          export AWS_XRAY_CONTEXT_MISSING='LOG_ERROR'
           aws iam attach-role-policy --role-name $AMC_GLUE_JOB_ROLE_NAME --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess"
           VENV=$(mktemp -d) && echo "$VENV"
           python3.9 -m venv "$VENV"
