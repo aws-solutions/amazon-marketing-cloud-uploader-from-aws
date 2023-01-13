@@ -149,6 +149,11 @@ jobs:
       - name: Remove stack
         if: needs.selenium.result == 'success'
         run: |
+          WEB_STACK_NAME=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id WebStack --query 'StackResources[0].PhysicalResourceId' --output text | cut -f 2 -d '/')
+          WEBSITE_BUCKET=$(aws cloudformation describe-stack-resources --stack-name $WEB_STACK_NAME --logical-resource-id WebsiteBucket --query 'StackResources[0].PhysicalResourceId' --output text)
+          ARTIFACT_BUCKET=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id ArtifactLogsBucket --query 'StackResources[0].PhysicalResourceId' --output text)
+          aws s3 rb s3://$WEBSITE_BUCKET --force --profile amc2
+          aws s3 rb s3://$ARTIFACT_BUCKET --force --profile amc2
           STACK_NAME=${{needs.deploy.outputs.STACK_NAME}}
           echo "Removing stack $STACK_NAME"
           aws cloudformation delete-stack --stack-name $STACK_NAME
