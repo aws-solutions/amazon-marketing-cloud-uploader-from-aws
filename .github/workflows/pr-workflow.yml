@@ -173,7 +173,6 @@ jobs:
           echo "CUSTOMER_MANAGED_KEY=''" >> $GITHUB_ENV
           echo "AWS_XRAY_CONTEXT_MISSING='LOG_ERROR'" >> $GITHUB_ENV
           aws iam attach-role-policy --role-name $AMC_GLUE_JOB_ROLE_NAME --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-          cd ..
           pip3 install virtualenv
           virtualenv venv
           source venv/bin/activate
