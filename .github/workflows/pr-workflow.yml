@@ -93,7 +93,6 @@ jobs:
             ~/.cache
             Python-3.9.1
             /usr/local/bin/python3.9
-            /usr/local/share/man/man1/python3.9.1
           key: ${{ runner.os }}-build-${{ env.cache-name }}
           restore-keys: |
             Linux-build-cache-python-3-9
