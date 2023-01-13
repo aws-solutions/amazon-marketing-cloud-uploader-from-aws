@@ -178,7 +178,7 @@ jobs:
           CURRENT_ASSUME_ROLE_POLICY1=$(aws iam get-role --role-name $ROLE_NAME --query "Role.AssumeRolePolicyDocument.Statement[0]")
           CURRENT_ASSUME_ROLE_POLICY2=$(aws iam get-role --role-name $ROLE_NAME --query "Role.AssumeRolePolicyDocument.Statement[1]")
           TEST_USER_ARN="arn:aws:iam::$TEST_DATA_UPLOAD_ACCOUNT_ID:user/gitlabBuilderBot"
-          TEST_USER_ASSUME_ROLE_POLICY='{"Effect":"Allow","Principal":{"AWS":"$TEST_USER_ARN"},"Action":"sts:AssumeRole"}'
+          TEST_USER_ASSUME_ROLE_POLICY='{"Effect":"Allow","Principal":{"AWS":'"$TEST_USER_ARN"'},"Action":"sts:AssumeRole"}'
           echo "$TEST_USER_ASSUME_ROLE_POLICY"
           TEST_IAM_USER_POLICY='{"Version":"2012-10-17","Statement":['$CURRENT_ASSUME_ROLE_POLICY1', '$CURRENT_ASSUME_ROLE_POLICY2', '$TEST_USER_ASSUME_ROLE_POLICY']}'
           echo ""$TEST_IAM_USER_POLICY""
