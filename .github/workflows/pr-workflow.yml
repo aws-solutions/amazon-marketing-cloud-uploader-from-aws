@@ -173,9 +173,10 @@ jobs:
           echo "CUSTOMER_MANAGED_KEY=''" >> $GITHUB_ENV
           echo "AWS_XRAY_CONTEXT_MISSING='LOG_ERROR'" >> $GITHUB_ENV
           aws iam attach-role-policy --role-name $AMC_GLUE_JOB_ROLE_NAME --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-          pip3 install virtualenv
-          virtualenv venv
-          source venv/bin/activate
+          VENV=$(mktemp -d) && echo "$VENV"
+          python3.9 -m venv "$VENV"
+          source "$VENV"/bin/activate
+          cd ..
           ls -l
           pip3 install -r source/api/tests/requirements-test.txt
           pytest source/api/tests/test_api_integration.py -vv
