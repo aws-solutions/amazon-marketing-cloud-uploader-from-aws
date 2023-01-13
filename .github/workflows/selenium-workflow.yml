@@ -6,8 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    needs: 
+  build: 
     runs-on: ubuntu-latest
     outputs:
       REGION: ${{ steps.init.outputs.REGION }}
@@ -16,6 +15,9 @@ jobs:
       TEMPLATE_OUTPUT_BUCKET: ${{ steps.init.outputs.TEMPLATE_OUTPUT_BUCKET }}
       TEMPLATE: ${{ steps.builder.outputs.TEMPLATE }}
     steps:
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
       - name: Check out pr branch
         uses: actions/checkout@v2.3.4
         with:
@@ -73,7 +75,7 @@ jobs:
       - name: Setup deploy environment
         id: init
         run: |
-          STACK_NAME=pr-worklfow-${{needs.build.outputs.SHORT_SHA}}
+          STACK_NAME=github-selenium-${{needs.build.outputs.SHORT_SHA}}
           echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
           echo "STACK_NAME=$STACK_NAME" >> $GITHUB_OUTPUT
           echo "EMAIL=${{secrets.EMAIL_ADDRESS}}" >> $GITHUB_ENV
@@ -93,6 +95,10 @@ jobs:
       - deploy
     runs-on: ubuntu-latest
     steps:
+      - name: Check out pr branch
+        uses: actions/checkout@v2.3.4
+        with:
+          ref: ${{ github.sha }}
       - name: Initialize AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -102,8 +108,8 @@ jobs:
       - name: Setup test environment
         id: init
         run: |
-          STACK_NAME=${{needs.deploy.outputs.STACK_NAME}}"
-          echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
+          STACK_NAME="${{needs.deploy.outputs.STACK_NAME}}"
+          echo STACK_NAME=$STACK_NAME >> $GITHUB_ENV
           echo EMAIL=${{ secrets.EMAIL_ADDRESS }} >> $GITHUB_ENV
           echo PASSWORD=${{ secrets.PASSWORD }} >> $GITHUB_ENV
           echo DATA_BUCKET_NAME=${{ secrets.DATA_BUCKET_NAME }} >> $GITHUB_ENV
@@ -111,7 +117,8 @@ jobs:
         uses: nanasess/setup-chromedriver@master
       - name: Get user pool id
         run: |
-          echo "USER_POOL_ID=`aws cloudformation describe-stacks --query 'Stacks[?starts_with(StackName, \`$STACK_NAME\`)].Outputs[1].OutputValue' --output text`" >> $GITHUB_ENV
+          USER_POOL_ID=$(aws cloudformation describe-stacks --query 'Stacks[?starts_with(StackName, `'$STACK_NAME'-AuthStack`)].Outputs[1].OutputValue' --output text)
+          echo USER_POOL_ID=$USER_POOL_ID >> $GITHUB_ENV
       - name: Reset CL user password
         run: |
           aws cognito-idp admin-set-user-password --user-pool-id $USER_POOL_ID --username $EMAIL --password $PASSWORD --permanent
@@ -119,12 +126,14 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
           cd source/tests/e2e
-          ./run_e2e.sh
+          ./run_e2e.sh --stack-name $STACK_NAME --region ${{needs.build.outputs.REGION}}
 
   cleanup:
+    if: always()
     needs: 
       - deploy
       - build
+      - selenium
     runs-on: ubuntu-latest
     steps:
       - name: Initialize AWS credentials
@@ -134,12 +143,19 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{needs.build.outputs.REGION}}
       - name: Remove build artifacts
+        if: needs.deploy.result == 'success' || needs.deploy.result == 'failure'
         run: |
           aws s3 rb s3://${{needs.build.outputs.DIST_OUTPUT_BUCKET}}-${{needs.build.outputs.REGION}} --force
           aws s3 rb s3://${{needs.build.outputs.TEMPLATE_OUTPUT_BUCKET}} --force
       - name: Remove stack
+        if: needs.selenium.result == 'success'
         run: |
           STACK_NAME=${{needs.deploy.outputs.STACK_NAME}}
+          WEB_STACK_NAME=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id WebStack --query 'StackResources[0].PhysicalResourceId' --output text | cut -f 2 -d '/')
+          WEBSITE_BUCKET=$(aws cloudformation describe-stack-resources --stack-name $WEB_STACK_NAME --logical-resource-id WebsiteBucket --query 'StackResources[0].PhysicalResourceId' --output text)
+          ARTIFACT_BUCKET=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id ArtifactLogsBucket --query 'StackResources[0].PhysicalResourceId' --output text)
+          aws s3 rb s3://$WEBSITE_BUCKET --force
+          aws s3 rb s3://$ARTIFACT_BUCKET --force
           echo "Removing stack $STACK_NAME"
           aws cloudformation delete-stack --stack-name $STACK_NAME
           aws cloudformation wait stack-delete-complete --stack-name $STACK_NAME
