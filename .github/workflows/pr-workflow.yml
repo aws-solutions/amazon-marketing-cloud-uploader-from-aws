@@ -52,6 +52,7 @@ jobs:
       DIST_OUTPUT_BUCKET: ${{ steps.init.outputs.DIST_OUTPUT_BUCKET }}
       TEMPLATE_OUTPUT_BUCKET: ${{ steps.init.outputs.TEMPLATE_OUTPUT_BUCKET }}
       VERSION: ${{ steps.init.outputs.VERSION }}
+      SOLUTION_NAME: ${{ steps.init.outputs.SOLUTION_NAME }}
       TEMPLATE: ${{ steps.builder.outputs.TEMPLATE }}
     steps:
       - name: Check out pr branch
@@ -136,7 +137,6 @@ jobs:
       - deploy
     runs-on: ubuntu-latest
     outputs:
-      STACK_NAME: ${{ steps.init.outputs.STACK_NAME }}
       AMC_GLUE_JOB_ROLE_NAME: ${{ steps.api_integration_test.outputs.AMC_GLUE_JOB_ROLE_NAME }}
     steps:
       - name: Set up Python 3.9
@@ -156,7 +156,10 @@ jobs:
       - name: api_integration_test
         run: |
           STACK_NAME=${{needs.deploy.outputs.STACK_NAME}}
+          SOLUTION_NAME=${{needs.build.outputs.SOLUTION_NAME}}
+          VERSION=${{needs.build.outputs.VERSION}}
           echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
+          echo "SOLUTION_NAME=$SOLUTION_NAME" >> $GITHUB_ENV
           RESOURCE_ID=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id GlueStack --query "StackResources[0].PhysicalResourceId")
           echo $RESOURCE_ID
           NESTED_STACK_ID=$(echo $RESOURCE_ID | cut -d "/" -f 2)
@@ -179,8 +182,12 @@ jobs:
           export TEST_S3_KEY_NAME_CSV='amc-data-integ-test-2kb-csv.csv'
           export TEST_S3_KEY_NAME_SUB_DIR='integ_test_data/amc-data-integ-test-5kb.json'
           export TEST_OUTPUT_BUCKET=$ARTIFACT_BUCKET
+          export SOLUTION_NAME=$SOLUTION_NAME
           export CUSTOMER_MANAGED_KEY=''
           export AWS_XRAY_CONTEXT_MISSING='LOG_ERROR'
+          export botoConfig="{}"
+          export VERSION=$VERSION
+          export AWS_REGION="us-east-1"
           aws iam attach-role-policy --role-name $AMC_GLUE_JOB_ROLE_NAME --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess"
           VENV=$(mktemp -d) && echo "$VENV"
           python3.9 -m venv "$VENV"
