@@ -150,6 +150,8 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{needs.build.outputs.REGION}}
       - name: api_integration_test
+        with:
+            input_path: deployment
         run: |
           STACK_NAME=${{needs.deploy.outputs.STACK_NAME}}
           echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
@@ -180,9 +182,6 @@ jobs:
           VENV=$(mktemp -d) && echo "$VENV"
           python3.9 -m venv "$VENV"
           source "$VENV"/bin/activate
-          cd ..
-          ls -l
-          cd amazon-marketing-cloud-uploader-from-aws
           ls -l
           pip3 install -r source/api/tests/requirements-test.txt
           pytest source/api/tests/test_api_integration.py -vv
