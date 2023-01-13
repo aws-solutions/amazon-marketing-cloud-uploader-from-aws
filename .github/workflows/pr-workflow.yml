@@ -89,7 +89,11 @@ jobs:
         env:
           cache-name: cache-python-3-9
         with:
-          path: Python-3.9.1
+          path: |
+            ~/.cache
+            Python-3.9.1
+            /usr/local/bin/python3.9
+            /usr/local/share/man/man1/python3.9.1
           key: ${{ runner.os }}-python-3-9-build-${{ env.cache-name }}-3-9
           restore-keys: |
             Linux-python-3-9-build-cache-python3
