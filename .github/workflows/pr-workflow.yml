@@ -87,10 +87,12 @@ jobs:
         id: cache-python-3-9
         uses: actions/cache@v3
         env:
-          cache-name: cache-python3
+          cache-name: cache-python-3-9
         with:
           path: Python-3.9.1
-          key: ${{ runner.os }}-Python-3-9-build-${{ env.cache-name }}
+          key: ${{ runner.os }}-python-3-9-build-${{ env.cache-name }}-3-9
+          restore-keys: |
+            Linux-python-3-9-build-cache-python3
       - if: ${{ steps.cache-python-3-9.outputs.cache-hit != 'true' }}
         name: State of python 3.9
         continue-on-error: true
@@ -197,7 +199,8 @@ jobs:
           CURRENT_ASSUME_ROLE_POLICY1=$(aws iam get-role --role-name $ROLE_NAME --query "Role.AssumeRolePolicyDocument.Statement[0]")
           CURRENT_ASSUME_ROLE_POLICY2=$(aws iam get-role --role-name $ROLE_NAME --query "Role.AssumeRolePolicyDocument.Statement[1]")
           TEST_USER_ARN="arn:aws:iam::${{ secrets.DATA_UPLOAD_ACCOUNT_ID }}:user/gitlabBuilderBot"
-          TEST_IAM_USER_POLICY='{"Version":"2012-10-17","Statement":['$CURRENT_ASSUME_ROLE_POLICY1', '$CURRENT_ASSUME_ROLE_POLICY2', {"Effect":"Allow","Principal":{"AWS":'"$TEST_USER_ARN"'},"Action":"sts:AssumeRole"}]}'
+          TEST_USER_ASSUME_ROLE_POLICY='{"Effect":"Allow","Principal":{"AWS":'"$TEST_USER_ARN"'},"Action":"sts:AssumeRole"}'
+          TEST_IAM_USER_POLICY='{"Version":"2012-10-17","Statement":['$CURRENT_ASSUME_ROLE_POLICY1', '$CURRENT_ASSUME_ROLE_POLICY2', '$TEST_USER_ASSUME_ROLE_POLICY']}'
           echo "$TEST_IAM_USER_POLICY"
           aws iam update-assume-role-policy --role-name $ROLE_NAME --policy-document "$TEST_IAM_USER_POLICY"
           AMC_GLUE_JOB_ROLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $NESTED_STACK_ID --logical-resource-id "AmcGlueJobRole" --query "StackResources[0].PhysicalResourceId")
