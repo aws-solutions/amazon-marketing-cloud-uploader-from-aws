@@ -177,6 +177,7 @@ jobs:
           pip3 install virtualenv
           virtualenv venv
           source venv/bin/activate
+          ls -l
           pip3 install -r source/api/tests/requirements-test.txt
           pytest source/api/tests/test_api_integration.py -vv
           aws iam detach-role-policy --role-name $AMC_GLUE_JOB_ROLE_NAME --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess"
