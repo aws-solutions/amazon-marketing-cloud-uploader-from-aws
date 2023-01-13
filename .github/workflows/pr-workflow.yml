@@ -150,6 +150,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{needs.build.outputs.REGION}}
       - name: api_integration_test
+        uses: actions/checkout@v2.3.4
         with:
           input_path: source
         run: |
