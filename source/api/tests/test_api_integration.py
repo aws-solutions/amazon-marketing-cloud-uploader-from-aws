@@ -56,6 +56,8 @@ _test_configs = {
     "outputBucket": os.environ['TEST_OUTPUT_BUCKET'],
 }
 
+domain_name = "https://p5elzntd2c.execute-api.us-east-1.amazonaws.com/api/"
+
 @pytest.fixture
 def test_configs():
    return _test_configs
@@ -64,7 +66,7 @@ def test_configs():
 def test_version():
     with Client(app.app) as client:
         response = client.http.get(
-            '/version',
+            f'{domain_name}/version',
             headers={'Content-Type': 'application/json'},
         )
         assert response.status_code == 200
@@ -160,7 +162,7 @@ def test_data_set_type():
 
                 # create_dataset
                 response = client.http.post(
-                    '/create_dataset',
+                    f'{domain_name}/create_dataset',
                     headers={'Content-Type': 'application/json'},
                     body=json.dumps(
                         {
@@ -251,7 +253,7 @@ def test_data_set_type():
 
                 # start_amc_transformation
                 response = client.http.post(
-                    '/start_amc_transformation',
+                    f'{domain_name}/start_amc_transformation',
                     headers={'Content-Type': 'application/json'},
                     body=json.dumps(
                         {
