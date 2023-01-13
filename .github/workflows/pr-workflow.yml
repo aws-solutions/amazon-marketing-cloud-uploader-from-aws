@@ -94,10 +94,7 @@ jobs:
           python3.9 --version
           aws s3 mb s3://$DIST_OUTPUT_BUCKET-$REGION 
           aws s3 mb s3://$TEMPLATE_OUTPUT_BUCKET
-          ls -l
           cd deployment
-          cd ..
-          ls -l
       #     echo "./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name ${SOLUTION_NAME} --version ${VERSION} --region ${REGION}"
       #     echo y | ./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name ${SOLUTION_NAME} --version ${VERSION}  --region ${REGION} | tee >( grep TEMPLATE >template )
       #     TEMPLATE=$(cat template | cut -f 2 -d "'")
@@ -154,7 +151,6 @@ jobs:
           aws-region: ${{needs.build.outputs.REGION}}
       - name: api_integration_test
         run: |
-          ls -l
           STACK_NAME=${{needs.deploy.outputs.STACK_NAME}}
           echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
           RESOURCE_ID=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id GlueStack --query "StackResources[0].PhysicalResourceId")
@@ -181,13 +177,10 @@ jobs:
           echo "CUSTOMER_MANAGED_KEY=''" >> $GITHUB_ENV
           echo "AWS_XRAY_CONTEXT_MISSING='LOG_ERROR'" >> $GITHUB_ENV
           aws iam attach-role-policy --role-name $AMC_GLUE_JOB_ROLE_NAME --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-          ls -l
           VENV=$(mktemp -d) && echo "$VENV"
           python3.9 -m venv "$VENV"
           source "$VENV"/bin/activate
-          cd ..
-          ls -l
-          cd ..
+          cd amazon-marketing-cloud-uploader-from-aws
           ls -l
           pip3 install -r source/api/tests/requirements-test.txt
           pytest source/api/tests/test_api_integration.py -vv
