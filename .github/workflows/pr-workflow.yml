@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  TEST_DATA_UPLOAD_ACCOUNT_ID: ${{ secrets.DATA_UPLOAD_ACCOUNT_ID }}
+  TEST_DATA_UPLOAD_ACCOUNT_ID: "719420829223"
 
 jobs:
   viperlight-scan:
