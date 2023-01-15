@@ -36,6 +36,16 @@ SPDX-License-Identifier: Apache-2.0
           <p><strong>default:</strong> AWS Glue and AMC will perform default encryption on your behalf.</p>
           <p><strong>aws-kms:</strong> AWS Glue and AMC will encrypt data using the key specified in the `CustomerManagedKey` parameter of the base AWS CloudFormation template. The benefit to using a customer generated encryption key is the ability to revoke AMC’s access to uploaded data at any point. In addition, customers can monitor encryption key access via AWS CloudTrail event logs. See the AMC data upload documentation for more information.</p>
         </b-modal>
+        <b-modal id="modal-dataset-period" title="File Partitioning">
+          <p>When uploading time series data, each file uploaded must correspond to a specific unit of time. This unit of time is defined on the dataset and is referred to as the dataset period. Uploaded files must be partitioned according to the atomic units of the dataset period. The available period options are:</p>
+          <ul>
+            <li>PT1M (minute)</li>
+            <li>PT1H (hour)</li>
+            <li>P1D (day)</li>
+            <li>P7D (7 days)</li>
+          </ul>
+          <p>By default, this tool will automatically detect the dataset period and partition input files accordingly. However, if you have already partitioned your files and you are uploading the individual file partitions with this tool, then you can bypass the automatic file partitioning by specifying a dataset period of PT1M, PT1H, P1D, or P7D.</p>
+        </b-modal>
         <b-row style="text-align: left">
           <b-col cols="2">
             <Sidebar :is-step2-active="true" />
@@ -124,6 +134,23 @@ SPDX-License-Identifier: Apache-2.0
                   ></b-form-radio-group>
                 </b-form-group>
               </b-col>
+              <b-col v-if="dataset_type==='FACT'" sm="3">
+                <b-form-group v-slot="{ ariaDescribedby }">
+                  <slot name="label">
+                    Dataset Period:
+                    <b-link v-b-modal.modal-dataset-period>
+                      <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
+                    </b-link>
+                  </slot>
+                  <b-form-radio-group
+                    v-model="time_period"
+                    :options="time_period_options"
+                    :aria-describedby="ariaDescribedby"
+                    name="time-period-radios"
+                    stacked
+                  ></b-form-radio-group>
+                </b-form-group>
+              </b-col>
             </b-row>
             <b-row>
               <b-col sm="2">
@@ -172,7 +199,14 @@ SPDX-License-Identifier: Apache-2.0
         dataset_type: '',
         file_format: '',
         // time_period is autodetected in Glue ETL and updated in amc_uploader.py 
-        time_period: 'P1D',
+        time_period: 'autodetect',
+        time_period_options: [
+          { value: "autodetect", text: "Autodetect" },
+          { value: "PT1M", text: "PT1M" },
+          { value: "PT1H", text: "PT1H" },
+          { value: "P1D", text: "P1D" },
+          { value: "P7D", text: "P7D" }
+        ],
         isStep2Active: true,
         file_format_options: ["CSV","JSON"],
         dataset_type_options: ["FACT","DIMENSION"],
@@ -210,7 +244,7 @@ SPDX-License-Identifier: Apache-2.0
           this.file_format = "JSON" 
         }
       }
-      // this.time_period = this.new_dataset_definition['period']
+      this.time_period = Object.keys(this.new_dataset_definition).includes('period')?this.new_dataset_definition['period']:this.time_period
       this.dataset_type = this.new_dataset_definition['dataSetType']
     },
     methods: {

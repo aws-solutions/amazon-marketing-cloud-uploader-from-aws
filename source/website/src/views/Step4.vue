@@ -129,7 +129,6 @@ SPDX-License-Identifier: Apache-2.0
       dataset() {
         let {columns, ...other_attributes} = this.dataset_definition
         other_attributes['encryption_mode'] = this.ENCRYPTION_MODE
-        other_attributes['period'] = "autodetect"
         return {"columns": columns, "other_attributes": Object.entries(other_attributes)}
       }
     },
@@ -170,7 +169,7 @@ SPDX-License-Identifier: Apache-2.0
           // Start Glue ETL job now that the dataset has been accepted by AMC
           console.log("Starting Glue ETL job for s3://" + this.DATA_BUCKET_NAME + "/" + this.s3key)
           resource = 'start_amc_transformation'
-          data = {'sourceBucket': this.DATA_BUCKET_NAME, 'sourceKey': this.s3key, 'outputBucket': this.ARTIFACT_BUCKET_NAME, 'piiFields': JSON.stringify(this.pii_fields),'deletedFields': JSON.stringify(this.deleted_columns), 'timestampColumn': this.timestamp_column_name, 'datasetId': this.dataset_definition.dataSetId}
+          data = {'sourceBucket': this.DATA_BUCKET_NAME, 'sourceKey': this.s3key, 'outputBucket': this.ARTIFACT_BUCKET_NAME, 'piiFields': JSON.stringify(this.pii_fields),'deletedFields': JSON.stringify(this.deleted_columns), 'timestampColumn': this.timestamp_column_name, 'datasetId': this.dataset_definition.dataSetId, 'period': this.dataset_definition.period}
           let requestOpts = {
             headers: {'Content-Type': 'application/json'},
             body: data
