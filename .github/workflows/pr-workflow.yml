@@ -165,7 +165,7 @@ jobs:
           NESTED_STACK_ID=$(echo $RESOURCE_ID | cut -d "/" -f 2)
           echo "$NESTED_STACK_ID"
           AMC_GLUE_JOB_NAME=$(aws cloudformation describe-stack-resources --stack-name $NESTED_STACK_ID --logical-resource-id "AmcGlueJob" --query "StackResources[0].PhysicalResourceId")
-          AMC_GLUE_JOB_NAME=$(echo "$TEST_AMC_GLUE_JOB_NAME" | tr -d '"')
+          AMC_GLUE_JOB_NAME=$(echo "$AMC_GLUE_JOB_NAME" | tr -d '"')
           ARTIFACT_BUCKET=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id "ArtifactBucket" --query "StackResources[0].PhysicalResourceId")
           ARTIFACT_BUCKET=$(echo $ARTIFACT_BUCKET | tr -d '"')
           echo $ARTIFACT_BUCKET
