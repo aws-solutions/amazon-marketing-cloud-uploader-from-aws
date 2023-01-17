@@ -328,32 +328,32 @@ def test_data_set_type():
             logger.debug(f"Cleaning up {data_set_id}.")
 
             # # delete_dataset
-            # response = client.http.post(
-            #     '/delete_dataset',
-            #     headers={'Content-Type': 'application/json'},
-            #     body=json.dumps(
-            #         {
-            #             "dataSetId": data_set_id,
-            #         })
-            # )
-            # assert response.status_code == 200
-            # assert response.json_body == {}
+            response = client.http.post(
+                '/delete_dataset',
+                headers={'Content-Type': 'application/json'},
+                body=json.dumps(
+                    {
+                        "dataSetId": data_set_id,
+                    })
+            )
+            assert response.status_code == 200
+            assert response.json_body == {}
     return _method
 
 def test_create_upload_delete_dataset_DIMENSION_JSON(test_configs, test_data_set_type, get_etl_data_by_job_id):
    test_data_set_type("DIMENSION", "JSON", test_configs, get_etl_data_by_job_id)
 
-# def test_create_upload_delete_dataset_DIMENSION_CSV(test_configs, test_data_set_type, get_etl_data_by_job_id):
-#    test_data_set_type("DIMENSION", "CSV", test_configs, get_etl_data_by_job_id)
+def test_create_upload_delete_dataset_DIMENSION_CSV(test_configs, test_data_set_type, get_etl_data_by_job_id):
+   test_data_set_type("DIMENSION", "CSV", test_configs, get_etl_data_by_job_id)
 
 def test_create_upload_delete_dataset_FACT_JSON(test_configs, test_data_set_type, get_etl_data_by_job_id):
    test_data_set_type("FACT", "JSON", test_configs, get_etl_data_by_job_id)
 
-# def test_create_upload_delete_dataset_FACT_CSV(test_configs, test_data_set_type, get_etl_data_by_job_id):
-#    test_data_set_type("FACT", "CSV", test_configs, get_etl_data_by_job_id)
+def test_create_upload_delete_dataset_FACT_CSV(test_configs, test_data_set_type, get_etl_data_by_job_id):
+   test_data_set_type("FACT", "CSV", test_configs, get_etl_data_by_job_id)
 
-# def test_create_upload_delete_dataset_DIMENSION_JSON_SUB_DIRECTORY(test_configs, test_data_set_type, get_etl_data_by_job_id):
-#    test_data_set_type("DIMENSION", "JSON", test_configs, get_etl_data_by_job_id, override_s3_test_key=test_configs["s3key_sub_dir"])
+def test_create_upload_delete_dataset_DIMENSION_JSON_SUB_DIRECTORY(test_configs, test_data_set_type, get_etl_data_by_job_id):
+   test_data_set_type("DIMENSION", "JSON", test_configs, get_etl_data_by_job_id, override_s3_test_key=test_configs["s3key_sub_dir"])
 
-# def test_create_upload_delete_dataset_FACT_JSON_SUB_DIRECTORY(test_configs, test_data_set_type, get_etl_data_by_job_id):
-#    test_data_set_type("FACT", "JSON", test_configs, get_etl_data_by_job_id, override_s3_test_key=test_configs["s3key_sub_dir"])
+def test_create_upload_delete_dataset_FACT_JSON_SUB_DIRECTORY(test_configs, test_data_set_type, get_etl_data_by_job_id):
+   test_data_set_type("FACT", "JSON", test_configs, get_etl_data_by_job_id, override_s3_test_key=test_configs["s3key_sub_dir"])
