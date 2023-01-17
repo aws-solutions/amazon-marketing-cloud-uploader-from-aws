@@ -7,6 +7,10 @@ on:
       - development
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }} # cancels previous running workflow.
+  cancel-in-progress: true
+
 jobs:
   viperlight-scan:
     runs-on: ubuntu-latest
