@@ -7,9 +7,6 @@ on:
       - development
   workflow_dispatch:
 
-env:
-  TEST_DATA_UPLOAD_ACCOUNT_ID: "719420829223"
-
 jobs:
   viperlight-scan:
     runs-on: ubuntu-latest
@@ -177,7 +174,8 @@ jobs:
           echo $ROLE_NAME
           CURRENT_ASSUME_ROLE_POLICY1=$(aws iam get-role --role-name $ROLE_NAME --query "Role.AssumeRolePolicyDocument.Statement[0]")
           CURRENT_ASSUME_ROLE_POLICY2=$(aws iam get-role --role-name $ROLE_NAME --query "Role.AssumeRolePolicyDocument.Statement[1]")
-          TEST_USER_ARN="arn:aws:iam::$TEST_DATA_UPLOAD_ACCOUNT_ID:root"
+          TEST_ACCOUNT_ID=aws sts get-caller-identity --query Account
+          TEST_USER_ARN="arn:aws:iam::$TEST_ACCOUNT_ID:user/githubBuilderBot"
           echo "TEST_USER_ARN=$TEST_USER_ARN" >> $GITHUB_ENV
           TEST_USER_ASSUME_ROLE_POLICY='{"Effect":"Allow","Principal":{"AWS":"'"$TEST_USER_ARN"'"},"Action":"sts:AssumeRole"}'
           echo "TEST_USER_ASSUME_ROLE_POLICY=$TEST_USER_ASSUME_ROLE_POLICY" >> $GITHUB_ENV
@@ -193,7 +191,7 @@ jobs:
           echo "ARTIFACT_BUCKET=$ARTIFACT_BUCKET" >> $GITHUB_ENV
           echo "ROLE_NAME=$ROLE_NAME" >> $GITHUB_ENV
           export AMC_GLUE_JOB_NAME=$AMC_GLUE_JOB_ROLE_NAME
-          export AMC_API_ROLE_ARN="arn:aws:iam::$TEST_DATA_UPLOAD_ACCOUNT_ID:role/$ROLE_NAME"
+          export AMC_API_ROLE_ARN="arn:aws:iam::$TEST_ACCOUNT_ID:role/$ROLE_NAME"
           export TEST_S3_BUCKET_NAME=${{ secrets.DATA_BUCKET_NAME }}
           export AMC_ENDPOINT_URL=${{ secrets.AMC_API_ENDPOINT }}
           export TEST_S3_KEY_NAME='amc-data-integ-test-2kb.json'
