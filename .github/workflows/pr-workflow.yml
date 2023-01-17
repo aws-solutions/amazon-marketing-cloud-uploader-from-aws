@@ -65,7 +65,7 @@ jobs:
           REGION="us-east-1"
           VERSION="0.0.0"
           SOLUTION_NAME="amazon-marketing-cloud-uploader-from-aws"
-          SHORT_SHA="900d946"
+          SHORT_SHA=$(git rev-parse --short HEAD)
           DIST_OUTPUT_BUCKET=github-pr-workflow-$SHORT_SHA-dist
           TEMPLATE_OUTPUT_BUCKET=github-pr-workflow-$SHORT_SHA
           echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
@@ -125,16 +125,11 @@ jobs:
           echo "DATA_BUCKET_NAME=${{secrets.DATA_BUCKET_NAME}}" >> $GITHUB_ENV
           echo "AMC_API_ENDPOINT=${{secrets.AMC_API_ENDPOINT}}" >> $GITHUB_ENV
           echo "DATA_UPLOAD_ACCOUNT_ID=${{secrets.DATA_UPLOAD_ACCOUNT_ID}}" >> $GITHUB_ENV
-      # - name: Deploy
-      #   run: |
-      #     echo "Creating the stack"
-      #     aws cloudformation create-stack --stack-name $STACK_NAME --template-url $TEMPLATE --parameters ParameterKey=AdminEmail,ParameterValue=$EMAIL ParameterKey=DataBucketName,ParameterValue=$DATA_BUCKET_NAME ParameterKey=AmcEndpointUrl,ParameterValue=$AMC_API_ENDPOINT ParameterKey=DataUploadAccountId,ParameterValue=$DATA_UPLOAD_ACCOUNT_ID --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --disable-rollback
-      #     aws cloudformation wait stack-create-complete --stack-name $STACK_NAME
-      - name: Update Stack
+      - name: Deploy
         run: |
-          echo "updating the stack"
-          aws cloudformation update-stack --stack-name $STACK_NAME --template-url $TEMPLATE --parameters ParameterKey=AdminEmail,ParameterValue=$EMAIL ParameterKey=DataBucketName,ParameterValue=$DATA_BUCKET_NAME ParameterKey=AmcEndpointUrl,ParameterValue=$AMC_API_ENDPOINT ParameterKey=DataUploadAccountId,ParameterValue=$DATA_UPLOAD_ACCOUNT_ID --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --disable-rollback
-          aws cloudformation wait stack-update-complete --stack-name $STACK_NAME
+          echo "Creating the stack"
+          aws cloudformation create-stack --stack-name $STACK_NAME --template-url $TEMPLATE --parameters ParameterKey=AdminEmail,ParameterValue=$EMAIL ParameterKey=DataBucketName,ParameterValue=$DATA_BUCKET_NAME ParameterKey=AmcEndpointUrl,ParameterValue=$AMC_API_ENDPOINT ParameterKey=DataUploadAccountId,ParameterValue=$DATA_UPLOAD_ACCOUNT_ID --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --disable-rollback
+          aws cloudformation wait stack-create-complete --stack-name $STACK_NAME
 
   integration_test:
     needs:
@@ -183,7 +178,6 @@ jobs:
           TEST_USER_ASSUME_ROLE_POLICY='{"Effect":"Allow","Principal":{"AWS":"'"$TEST_USER_ARN"'"},"Action":"sts:AssumeRole"}'
           echo "$TEST_USER_ASSUME_ROLE_POLICY"
           TEST_IAM_USER_POLICY='{"Version":"2012-10-17","Statement":['$CURRENT_ASSUME_ROLE_POLICY1', '$CURRENT_ASSUME_ROLE_POLICY2', '$TEST_USER_ASSUME_ROLE_POLICY']}'
-          echo "$TEST_IAM_USER_POLICY"
           aws iam update-assume-role-policy --role-name $ROLE_NAME --policy-document "$TEST_IAM_USER_POLICY"
           AMC_GLUE_JOB_ROLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $NESTED_STACK_ID --logical-resource-id "AmcGlueJobRole" --query "StackResources[0].PhysicalResourceId")
           AMC_GLUE_JOB_ROLE_NAME=$(echo $AMC_GLUE_JOB_ROLE_NAME | tr -d '"')
@@ -210,28 +204,28 @@ jobs:
           pytest source/api/tests/test_api_integration.py -vv
           aws iam detach-role-policy --role-name $AMC_GLUE_JOB_ROLE_NAME --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess"
 
-#  cleanup:
-#     if: always()
-#     needs: 
-#       - deploy
-#       - build
-#     runs-on: ubuntu-latest
-#     steps:
-#       - name: Initialize AWS credentials
-#         uses: aws-actions/configure-aws-credentials@v1
-#         with:
-#           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-#           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-#           aws-region: ${{needs.build.outputs.REGION}}
-#       - name: Remove build artifacts
-#         if: needs.deploy.result == 'success' || needs.deploy.result == 'failure' 
-#         run: |
-#           aws s3 rb s3://${{needs.build.outputs.DIST_OUTPUT_BUCKET}}-${{needs.build.outputs.REGION}} --force
-#           aws s3 rb s3://${{needs.build.outputs.TEMPLATE_OUTPUT_BUCKET}} --force
-#       - name: Remove stack
-#         if: needs.deploy.result == 'success'
-#         run: |
-#           STACK_NAME=${{needs.deploy.outputs.STACK_NAME}}
-#           echo "Removing stack $STACK_NAME"
-#           aws cloudformation delete-stack --stack-name $STACK_NAME
-#           aws cloudformation wait stack-delete-complete --stack-name $STACK_NAME
+  cleanup:
+    if: always()
+    needs: 
+      - deploy
+      - build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Initialize AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{needs.build.outputs.REGION}}
+      - name: Remove build artifacts
+        if: needs.deploy.result == 'success' || needs.deploy.result == 'failure' 
+        run: |
+          aws s3 rb s3://${{needs.build.outputs.DIST_OUTPUT_BUCKET}}-${{needs.build.outputs.REGION}} --force
+          aws s3 rb s3://${{needs.build.outputs.TEMPLATE_OUTPUT_BUCKET}} --force
+      - name: Remove stack
+        if: needs.deploy.result == 'success'
+        run: |
+          STACK_NAME=${{needs.deploy.outputs.STACK_NAME}}
+          echo "Removing stack $STACK_NAME"
+          aws cloudformation delete-stack --stack-name $STACK_NAME
+          aws cloudformation wait stack-delete-complete --stack-name $STACK_NAME
