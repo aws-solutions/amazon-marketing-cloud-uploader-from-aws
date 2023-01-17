@@ -209,6 +209,7 @@ jobs:
     needs: 
       - deploy
       - build
+      - integration_test
     runs-on: ubuntu-latest
     steps:
       - name: Initialize AWS credentials
