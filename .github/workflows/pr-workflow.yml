@@ -158,8 +158,6 @@ jobs:
           STACK_NAME=${{needs.deploy.outputs.STACK_NAME}}
           SOLUTION_NAME=${{needs.build.outputs.SOLUTION_NAME}}
           VERSION=${{needs.build.outputs.VERSION}}
-          echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
-          echo "SOLUTION_NAME=$SOLUTION_NAME" >> $GITHUB_ENV
           RESOURCE_ID=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id GlueStack --query "StackResources[0].PhysicalResourceId")
           echo $RESOURCE_ID
           NESTED_STACK_ID=$(echo $RESOURCE_ID | cut -d "/" -f 2)
@@ -177,11 +175,7 @@ jobs:
           TEST_ACCOUNT_ID=$(aws sts get-caller-identity --query Account)
           TEST_ACCOUNT_ID=$(echo $TEST_ACCOUNT_ID | tr -d '"')
           TEST_USER_ARN="arn:aws:iam::$TEST_ACCOUNT_ID:user/githubBuilderBot"
-          echo "TEST_USER_ARN=$TEST_USER_ARN" >> $GITHUB_ENV
           TEST_USER_ASSUME_ROLE_POLICY='{"Effect":"Allow","Principal":{"AWS":"'"$TEST_USER_ARN"'"},"Action":"sts:AssumeRole"}'
-          echo "TEST_USER_ASSUME_ROLE_POLICY=$TEST_USER_ASSUME_ROLE_POLICY" >> $GITHUB_ENV
-          echo "CURRENT_ASSUME_ROLE_POLICY1=$CURRENT_ASSUME_ROLE_POLICY1" >> $GITHUB_ENV
-          echo "CURRENT_ASSUME_ROLE_POLICY2=$CURRENT_ASSUME_ROLE_POLICY2" >> $GITHUB_ENV
           echo "$TEST_USER_ASSUME_ROLE_POLICY"
           TEST_IAM_USER_POLICY='{"Version":"2012-10-17","Statement":['$CURRENT_ASSUME_ROLE_POLICY1', '$CURRENT_ASSUME_ROLE_POLICY2', '$TEST_USER_ASSUME_ROLE_POLICY']}'
           echo "$TEST_IAM_USER_POLICY"
@@ -207,7 +201,7 @@ jobs:
           python3.9 -m venv "$VENV"
           source "$VENV"/bin/activate
           ls -l
-          pip3 install -r source/api/requirements-test.txt
+          pip3 install -r source/api/tests/requirements-test.txt
           pytest source/api/tests/test_api_integration.py -vv
           aws iam detach-role-policy --role-name $AMC_GLUE_JOB_ROLE_NAME --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess"
 
