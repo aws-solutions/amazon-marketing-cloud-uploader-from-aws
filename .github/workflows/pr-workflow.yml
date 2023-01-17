@@ -174,7 +174,8 @@ jobs:
           echo $ROLE_NAME
           CURRENT_ASSUME_ROLE_POLICY1=$(aws iam get-role --role-name $ROLE_NAME --query "Role.AssumeRolePolicyDocument.Statement[0]")
           CURRENT_ASSUME_ROLE_POLICY2=$(aws iam get-role --role-name $ROLE_NAME --query "Role.AssumeRolePolicyDocument.Statement[1]")
-          TEST_ACCOUNT_ID=aws sts get-caller-identity --query Account
+          TEST_ACCOUNT_ID=$(aws sts get-caller-identity --query Account)
+          TEST_ACCOUNT_ID=$(echo $TEST_ACCOUNT_ID | tr -d '"')
           TEST_USER_ARN="arn:aws:iam::$TEST_ACCOUNT_ID:user/githubBuilderBot"
           echo "TEST_USER_ARN=$TEST_USER_ARN" >> $GITHUB_ENV
           TEST_USER_ASSUME_ROLE_POLICY='{"Effect":"Allow","Principal":{"AWS":"'"$TEST_USER_ARN"'"},"Action":"sts:AssumeRole"}'
