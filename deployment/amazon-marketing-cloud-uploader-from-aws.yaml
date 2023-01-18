@@ -594,6 +594,7 @@ Resources:
         ArtifactBucketName: !Ref ArtifactBucket
         DataBucketName: !Ref DataBucketName
         CustomerManagedKey: !Ref CustomerManagedKey
+        EnableAnonymousData: !FindInMap [AnonymousData,SendAnonymousData,Data]
         AnonymousDataLogger: !Ref AnonymousDataCustomResource
         SolutionId: !FindInMap [ "Application", "Solution", "Id" ]
         UUID: !GetAtt AnonymousDataUuid.UUID
@@ -755,7 +756,6 @@ Resources:
 
   # SendAnonymousData
   AnonymousDataUuid:
-    Condition: EnableAnonymousData
     Type: "Custom::UUID"
     Properties:
       ServiceToken: !GetAtt AnonymousDataCustomResource.Arn

@@ -219,7 +219,7 @@ state_substitutions = {
 # PARSE ARGS
 ###############################
 try:
-    args = getResolvedOptions(sys.argv, ['JOB_NAME', 'solution_id', 'uuid', 'anonymous_data_logger', 'source_bucket', 'source_key', 'output_bucket', 'pii_fields', 'deleted_fields', 'dataset_id', 'timestamp_column', 'period'])
+    args = getResolvedOptions(sys.argv, ['JOB_NAME', 'solution_id', 'uuid', 'enable_anonymous_data', 'anonymous_data_logger', 'source_bucket', 'source_key', 'output_bucket', 'pii_fields', 'deleted_fields', 'dataset_id', 'timestamp_column', 'period'])
 except GlueArgumentError as e:
     print(e)
     exit(1)
@@ -230,6 +230,7 @@ finally:
 # Get the parameters needed for recording performance metrics:
 job_name = args['JOB_NAME']
 job_run_id = args['JOB_RUN_ID']
+enable_anonymous_data = args['enable_anonymous_data']
 anonymous_data_logger = args['anonymous_data_logger']
 solution_id = args['solution_id']
 uuid = args['uuid']
@@ -555,23 +556,21 @@ else:
 # SAVE PERFORMANCE METRICS
 ###############################
 
-glue_client = boto3.client('glue')
-lambda_client = boto3.client('lambda')
-
-response = glue_client.get_job_run(
-    JobName=job_name,
-    RunId=job_run_id,
-    PredecessorsIncluded=True|False
-)
-started_on = response['JobRun']['StartedOn'].replace(tzinfo=None)
-glue_job_duration = (datetime.now() - started_on).total_seconds()
-
-metrics = {'RequestType': 'Workload', 'Metrics': {'SolutionId': solution_id, 'UUID': uuid, 'numBytes': num_bytes, 'numRows': num_rows, 'datasetType': dataset_type, 'glueJobDuration': glue_job_duration}}
-
-response = lambda_client.invoke(
-    FunctionName=anonymous_data_logger,
-    InvocationType='Event',
-    Payload=json.dumps(metrics).encode('utf-8')
-)
-print("Performance metrics:")
-print(metrics)
+if enable_anonymous_data == 'Yes':
+    glue_client = boto3.client('glue')
+    lambda_client = boto3.client('lambda')
+    response = glue_client.get_job_run(
+        JobName=job_name,
+        RunId=job_run_id,
+        PredecessorsIncluded=True|False
+    )
+    started_on = response['JobRun']['StartedOn'].replace(tzinfo=None)
+    glue_job_duration = (datetime.now() - started_on).total_seconds()
+    metrics = {'RequestType': 'Workload', 'Metrics': {'SolutionId': solution_id, 'UUID': uuid, 'numBytes': num_bytes, 'numRows': num_rows, 'datasetType': dataset_type, 'glueJobDuration': glue_job_duration}}
+    response = lambda_client.invoke(
+        FunctionName=anonymous_data_logger,
+        InvocationType='Event',
+        Payload=json.dumps(metrics).encode('utf-8')
+    )
+    print("Performance metrics:")
+    print(metrics)
