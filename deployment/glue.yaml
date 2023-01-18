@@ -8,6 +8,12 @@ Parameters:
     Type: String
   CustomerManagedKey:
     Type: String
+  AnonymousDataLogger:
+    Type: String
+  SolutionId:
+    Type: String
+  UUID:
+    Type: String
 
 Conditions:
   EnableCmkEncryptionCondition: !Not [!Equals [!Ref CustomerManagedKey, ""]]
@@ -251,6 +257,37 @@ Resources:
             Statement:
               - Effect: "Allow"
                 Action:
+                  - "lambda:InvokeFunction"
+                Resource:
+                  - !Join [
+                      "",
+                    [
+                        "arn:aws:lambda:",
+                        Ref: "AWS::Region",
+                        ":",
+                        Ref: "AWS::AccountId",
+                        ":function:",
+                        Ref: "AnonymousDataLogger"
+                    ],
+                  ]
+              - Effect: "Allow"
+                Action:
+                  - "glue:GetJobRun"
+                Resource:
+                  - !Join [
+                      "",
+                    [
+                        "arn:aws:glue:",
+                        Ref: "AWS::Region",
+                        ":",
+                        Ref: "AWS::AccountId",
+                        ":job:/",
+                        Ref: "AWS::StackName",
+                        "-amc-transformation-job",
+                    ],
+                  ]
+              - Effect: "Allow"
+                Action:
                   - "s3:GetObject"
                   - "s3:PutObject"
                 Resource:
@@ -375,6 +412,9 @@ Resources:
       DefaultArguments:
         "--job-bookmark-option": "job-bookmark-enable"
         "--job-language": "python"
+        "--anonymous_data_logger": !Ref AnonymousDataLogger
+        "--solution_id": !Ref SolutionId
+        "--uuid": !Ref UUID
         "--extra-py-files": !Join [
           "",
           [

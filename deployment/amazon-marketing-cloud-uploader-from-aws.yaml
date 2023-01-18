@@ -594,6 +594,9 @@ Resources:
         ArtifactBucketName: !Ref ArtifactBucket
         DataBucketName: !Ref DataBucketName
         CustomerManagedKey: !Ref CustomerManagedKey
+        AnonymousDataLogger: !Ref AnonymousDataCustomResource
+        SolutionId: !FindInMap [ "Application", "Solution", "Id" ]
+        UUID: !GetAtt AnonymousDataUuid.UUID
 
   # Web stack
   
