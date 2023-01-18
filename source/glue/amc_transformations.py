@@ -47,6 +47,7 @@ import hashlib
 import json
 import boto3
 import re
+from datetime import datetime
 
 # Hardcode country code for now.
 country_code = 'US'
@@ -218,16 +219,22 @@ state_substitutions = {
 # PARSE ARGS
 ###############################
 try:
-    args = getResolvedOptions(sys.argv, ['source_bucket', 'source_key', 'output_bucket', 'pii_fields', 'deleted_fields', 'dataset_id', 'timestamp_column', 'period'])
-    job_name = args['JOB_NAME']
-    job_run_id = args['JOB_RUN_ID']
+    args = getResolvedOptions(sys.argv, ['JOB_NAME', 'solution_id', 'uuid', 'anonymous_data_logger', 'source_bucket', 'source_key', 'output_bucket', 'pii_fields', 'deleted_fields', 'dataset_id', 'timestamp_column', 'period'])
 except GlueArgumentError as e:
     print(e)
     exit(1)
 finally:
-    print("Runtime args for job " + job_name + ":")
+    print("Runtime args:")
     print(args)
 
+# Get the parameters needed for recording performance metrics:
+job_name = args['JOB_NAME']
+job_run_id = args['JOB_RUN_ID']
+anonymous_data_logger = args['anonymous_data_logger']
+solution_id = args['solution_id']
+uuid = args['uuid']
+
+# Get the parameters needed for data transformation:
 if 'dataset_id' in args:
     dataset_id = args['dataset_id'].strip()
 else:
@@ -265,6 +272,9 @@ s3 = boto3.client('s3')
 response = s3.head_object(Bucket=source_bucket, Key=key)
 content_type = response['ContentType']
 print("CONTENT TYPE: " + content_type)
+num_bytes = response['ContentLength']
+print("FILE SIZE: " + str(num_bytes))
+num_rows = 0
 
 chunksize = 2000
 
@@ -443,6 +453,7 @@ amc_str = 'amc'
 datetime_format = '%Y-%m-%dT%H:%M:%SZ'
 
 if timestamp_column:
+    dataset_type = 'FACT'
     # Initialize a temporary variable to help us know when timestamps
     # map to a new string:
     timestamp_str_old = ''
@@ -489,6 +500,7 @@ if timestamp_column:
                 df_partition[timestamp_column] = df_partition[timestamp_full_precision].dt.strftime(datetime_format)
                 df_partition.drop(timestamp_full_precision, axis=1, inplace=True)
                 print(writing + str(len(df_partition)) + rows_to + output_file)
+                num_rows += len(df_partition)
                 if content_type == json_content_type:
                     wr.s3.to_json(df=df_partition, path=output_file, compression='gzip', lines=True, orient='records')
                 elif content_type == csv_content_type:
@@ -514,6 +526,7 @@ if timestamp_column:
         df_partition[timestamp_column] = df_partition[timestamp_full_precision].dt.strftime(datetime_format)
         df_partition.drop(timestamp_full_precision, axis=1, inplace=True)
         print(writing + str(len(df_partition)) + rows_to + output_file)
+        num_rows += len(df_partition)
         if content_type == json_content_type:
             wr.s3.to_json(df=df_partition, path=output_file, compression='gzip', lines=True, orient='records')
         elif content_type == csv_content_type:
@@ -525,8 +538,10 @@ if timestamp_column:
     }
     print(output)
 else:
+    dataset_type = 'DIMENSION'
     output_file = 's3://' + output_bucket + '/' + amc_str + '/' + dataset_id + '/dimension/' + filename + '.gz'
     print(writing + str(len(df)) + rows_to + output_file)
+    num_rows += len(df)
     if content_type == json_content_type:
         wr.s3.to_json(df=df, path=output_file, compression='gzip', lines=True, orient='records')
     elif content_type == csv_content_type:
@@ -535,3 +550,28 @@ else:
         'output files': output_file
     }
     print(output)
+
+###############################
+# SAVE PERFORMANCE METRICS
+###############################
+
+glue_client = boto3.client('glue')
+lambda_client = boto3.client('lambda')
+
+response = glue_client.get_job_run(
+    JobName=job_name,
+    RunId=job_run_id,
+    PredecessorsIncluded=True|False
+)
+started_on = response['JobRun']['StartedOn'].replace(tzinfo=None)
+glue_job_duration = (datetime.now() - started_on).total_seconds()
+
+metrics = {'RequestType': 'Workload', 'Metrics': {'SolutionId': solution_id, 'UUID': uuid, 'numBytes': num_bytes, 'numRows': num_rows, 'datasetType': dataset_type, 'glueJobDuration': glue_job_duration}}
+
+response = lambda_client.invoke(
+    FunctionName=anonymous_data_logger,
+    InvocationType='Event',
+    Payload=json.dumps(metrics).encode('utf-8')
+)
+print("Performance metrics:")
+print(metrics)
