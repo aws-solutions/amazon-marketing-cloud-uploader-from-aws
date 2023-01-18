@@ -79,7 +79,7 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "SOLUTION_NAME=$SOLUTION_NAME" >> $GITHUB_ENV
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "SOLUTION_NAME=$SOLUTION_NAME" >> $GITHUB_OUTPUT
       - name: Initialize AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -157,8 +157,11 @@ jobs:
       - name: api_integration_test
         run: |
           STACK_NAME=${{needs.deploy.outputs.STACK_NAME}}
+          echo "STACK_NAME=$STACK_NAME" >> $GITHUB_OUTPUT
           SOLUTION_NAME=${{needs.build.outputs.SOLUTION_NAME}}
+          echo "SOLUTION_NAME=$SOLUTION_NAME" >> $GITHUB_OUTPUT
           VERSION=${{needs.build.outputs.VERSION}}
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           RESOURCE_ID=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id GlueStack --query "StackResources[0].PhysicalResourceId")
           echo "RESOURCE_ID=$RESOURCE_ID" >> $GITHUB_OUTPUT
           NESTED_STACK_ID=$(echo $RESOURCE_ID | cut -d "/" -f 2)
