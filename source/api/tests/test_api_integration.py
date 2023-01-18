@@ -28,31 +28,6 @@
 #   pytest test_api_integration.py -vv
 ###############################################################################
 
-"""
-To run integ test
-python3 -m venv .venv &&
-source .venv/bin/activate &&
-cd tests &&
-pip install -r requirements-test.txt &&
-export AMC_API_ENDPOINT="" &&
-export AMC_API_ROLE_ARN="" &&
-export SOLUTION_NAME="" &&
-export VERSION="" &&
-export botoConfig="{}" &&
-export AWS_XRAY_CONTEXT_MISSING=LOG_ERROR &&
-export AMC_GLUE_JOB_NAME="" &&
-export CUSTOMER_MANAGED_KEY="" &&
-export AWS_DEFAULT_PROFILE="" &&
-export AWS_REGION="" &&
-export TEST_S3_BUCKET_NAME="" &&
-export TEST_OUTPUT_BUCKET="" &&
-pytest test_api_integration.py -vv
-"""
-
-
-
-
-
 import os
 import app
 import json
