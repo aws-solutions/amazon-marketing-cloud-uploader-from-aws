@@ -556,7 +556,7 @@ else:
 # SAVE PERFORMANCE METRICS
 ###############################
 
-if enable_anonymous_data == 'Yes':
+if enable_anonymous_data == 'true':
     glue_client = boto3.client('glue')
     lambda_client = boto3.client('lambda')
     response = glue_client.get_job_run(
