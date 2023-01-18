@@ -101,12 +101,14 @@ def generate_random_test_files_to_s3_bucket():
             _test_data[index]["timestamp"] = item["timestamp"]
             output += json.dumps(item) + "\n"
 
+        content_type="application/json"
         if file_format == "CSV":
+            content_type="text/csv"
             output = pd.read_json(json.dumps(_test_data)).to_csv(encoding='utf-8', index=False, header=True,)
 
         s3 = boto3.resource('s3')
         object = s3.Object(_test_configs["s3bucket"], s3_key)
-        object.put(Body=output)
+        object.put(Body=output, ContentType=content_type)
 
         payload_default = {
             "s3bucket": _test_configs["s3bucket"],
