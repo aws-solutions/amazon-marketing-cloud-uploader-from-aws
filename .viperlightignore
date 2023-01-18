@@ -10,7 +10,7 @@ source/helper/dist/*
 
 # Account Id is public and available through an AWS Lambda Managed layer for AWS Data Wrangler Lambda
 deployment/amazon-marketing-cloud-uploader-from-aws.yaml:331
-source/api/external_resources.json:221
+source/api/external_resources.json:222
 
 deployment/lambda_layer_factory/lambda_layer-python3.8.zip
 deployment/lambda_layer_factory/lambda_layer-python3.9.zip
