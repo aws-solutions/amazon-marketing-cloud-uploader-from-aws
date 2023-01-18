@@ -45,10 +45,7 @@ export CUSTOMER_MANAGED_KEY="" &&
 export AWS_DEFAULT_PROFILE="" &&
 export AWS_REGION="" &&
 export TEST_S3_BUCKET_NAME="" &&
-export TEST_S3_KEY_NAME="" &&
-export TEST_S3_KEY_NAME_CSV="" &&
 export TEST_OUTPUT_BUCKET="" &&
-export TEST_S3_KEY_NAME_SUB_DIR="" &&
 pytest test_api_integration.py -vv
 """
 
