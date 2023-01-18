@@ -4,7 +4,28 @@
 # ###############################################################################
 # PURPOSE:
 #   * Integration test for project api endpoints and workflow.
-#
+# 
+# USAGE:
+#   python3 -m venv .venv &&
+#   source .venv/bin/activate &&
+#   cd tests &&
+#   pip install -r requirements-test.txt &&
+#   export AMC_API_ENDPOINT="" &&
+#   export AMC_API_ROLE_ARN="" &&
+#   export SOLUTION_NAME="" &&
+#   export VERSION="" &&
+#   export botoConfig="{}" &&
+#   export AWS_XRAY_CONTEXT_MISSING=LOG_ERROR &&
+#   export AMC_GLUE_JOB_NAME="" &&
+#   export CUSTOMER_MANAGED_KEY="" &&
+#   export AWS_DEFAULT_PROFILE="" &&
+#   export AWS_REGION="" &&
+#   export TEST_S3_BUCKET_NAME="" &&
+#   export TEST_S3_KEY_NAME="" &&
+#   export TEST_S3_KEY_NAME_CSV="" &&
+#   export TEST_OUTPUT_BUCKET="" &&
+#   export TEST_S3_KEY_NAME_SUB_DIR="" &&
+#   pytest test_api_integration.py -vv
 ###############################################################################
 
 """
@@ -40,9 +61,12 @@ import app
 import json
 import time
 import logging
+import datetime
 import pytest
+import boto3
 from chalice.test import Client
 from chalicelib import sigv4
+import pandas as pd
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -50,11 +74,61 @@ logger.setLevel(logging.DEBUG)
 
 _test_configs = {
     "s3bucket": os.environ['TEST_S3_BUCKET_NAME'],
-    "s3key": os.environ['TEST_S3_KEY_NAME'],
-    "s3key_csv": os.environ['TEST_S3_KEY_NAME_CSV'],
-    "s3key_sub_dir": os.environ['TEST_S3_KEY_NAME_SUB_DIR'],
     "outputBucket": os.environ['TEST_OUTPUT_BUCKET'],
 }
+
+_test_data = [
+    {"first_name":"Caroline","last_name":"Crane","email":"funis@example.com","product_quantity":67,"product_name":"Product C"},
+    {"first_name":"David","last_name":"Picard","email":"thearound@example.com","product_quantity":60,"product_name":"Product E"},
+    {"first_name":"William","last_name":"Trout","email":"takefood@example.com","product_quantity":35,"product_name":"Product G"},
+    {"first_name":"Reed","last_name":"Hunt","email":"yourwrite@example.com","product_quantity":175,"product_name":"Product D"},
+    {"first_name":"Gordon","last_name":"Priolo","email":"thefrom@example.com","product_quantity":75,"product_name":"Product B"},
+    {"first_name":"Phillip","last_name":"Dale","email":"ofmoney@example.com","product_quantity":56,"product_name":"Product G"},
+    {"first_name":"Brenda","last_name":"Correll","email":"ohwe@example.com","product_quantity":81,"product_name":"Product B"},
+    {"first_name":"Mollie","last_name":"Gaines","email":"gmollie@example.com","product_quantity":101,"product_name":"Product J"},
+    {"first_name":"Mary","last_name":"Chancellor","email":"ion@example.com","product_quantity":24,"product_name":"Product A"},
+    {"first_name":"Rhonda","last_name":"Kelly","email":"themthat@example.com","product_quantity":105,"product_name":"Product B"}
+]
+    
+@pytest.fixture
+def generate_random_test_files_to_s3_bucket():
+    def _method(s3_key):
+        file_format = s3_key.split('.')[-1].upper()
+        output = ""
+        for index, item in enumerate(_test_data):
+            current_time_index_mins_ago = datetime.datetime.now() - datetime.timedelta(minutes=index)
+            item["timestamp"] = str(current_time_index_mins_ago)
+            _test_data[index]["timestamp"] = item["timestamp"]
+            output += json.dumps(item) + "\n"
+
+        if file_format == "CSV":
+            output = pd.read_json(json.dumps(_test_data)).to_csv(encoding='utf-8', index=False, header=True,)
+
+        s3 = boto3.resource('s3')
+        object = s3.Object(_test_configs["s3bucket"], s3_key)
+        object.put(Body=output)
+
+        payload_default = {
+            "s3bucket": _test_configs["s3bucket"],
+            "s3key": s3_key,
+        }
+        with Client(app.app) as client:
+            response = client.http.post(
+                '/get_data_columns',
+                headers={'Content-Type': 'application/json'},
+                body=json.dumps(
+                {
+                    **payload_default,
+                    "file_format": file_format
+                })
+            )
+            breakpoint()
+            assert response.status_code == 200
+            assert response.json_body["columns"] is not None
+            for expected_key in list (_test_data[0].keys()):
+                assert expected_key in response.json_body["columns"]
+    return _method
+
 
 @pytest.fixture
 def test_configs():
@@ -81,40 +155,6 @@ def test_list_bucket(test_configs):
         assert response.status_code == 200
         assert len(response.json_body) > 0
 
-
-def test_get_data_columns(test_configs):
-
-    payload_default = {
-        "s3bucket": test_configs["s3bucket"],
-        "s3key": test_configs["s3key"],
-    }
-    with Client(app.app) as client:
-
-        # JSON
-        response = client.http.post(
-            '/get_data_columns',
-            headers={'Content-Type': 'application/json'},
-            body=json.dumps(
-            {
-                **payload_default,
-                "file_format": 'JSON'
-            })
-        )
-        assert response.json_body == {'columns': ['first_name', 'last_name', 'email', 'timestamp', 'product_quantity', 'product_name']}
-
-        # CSV
-        response = client.http.post(
-            '/get_data_columns',
-            headers={'Content-Type': 'application/json'},
-            body=json.dumps(
-            {
-                **payload_default,
-                "file_format": 'CSV'
-            })
-        )
-        assert response.json_body == {'columns': ['{"first_name":"Caroline"', 'last_name:"Crane"', 'email:"funis@example.com"', 'timestamp:"2020-04-01 21:07:30-0400"', 'product_quantity:67', 'product_name:"Product C"}']}
-        
-
 @pytest.fixture
 def get_etl_data_by_job_id():
     def _method(job_id):
@@ -132,32 +172,33 @@ def get_etl_data_by_job_id():
 
 @pytest.fixture
 def test_data_set_type():
-    def _method(data_set_type, file_format, test_configs, get_etl_data_by_job_id, override_s3_test_key=None):
-
+    def _method(data_set_type, file_format, test_configs, get_etl_data_by_job_id, generate_random_test_files_to_s3_bucket, s3_key_sub_dir=""):
+        is_data_set_created = False
         try:
-            with Client(app.app) as client:
-                data_set_id = f"amc_integ_test_{int(time.time())}_{data_set_type}_{file_format}"
-                logger.info(f"DATA_SET_TYPE: {data_set_type}")
-                logger.info(f"TEST_CONFIGS: {test_configs}")
-                logger.info(f"FILE_FORMAT: {file_format}")
-                logger.info(f"DATA_SET_ID: {data_set_id}")
+            data_set_id = f"amc_integ_test_{int(time.time())}_{data_set_type}_{file_format}"
+            logger.info(f"DATA_SET_TYPE: {data_set_type}")
+            logger.info(f"TEST_CONFIGS: {test_configs}")
+            logger.info(f"FILE_FORMAT: {file_format}")
+            logger.info(f"DATA_SET_ID: {data_set_id}")
 
-                test_source_key = override_s3_test_key or test_configs["s3key"] # JSON
-                if file_format == "CSV":
-                    test_source_key = test_configs["s3key_csv"]
-                logger.info(f"TEST_SOURCE_KEY: {test_source_key}")
+            test_source_key = f"{s3_key_sub_dir}{data_set_id}.json" # JSON
+            if file_format == "CSV":
+                test_source_key = f"{data_set_id}-csv.csv"
+            logger.info(f"TEST_SOURCE_KEY: {test_source_key}")
+            breakpoint()
+            generate_random_test_files_to_s3_bucket(s3_key=test_source_key)
 
+            time_stamp_data_set_type = {
+                "dataType": "STRING",
+                "columnType": "DIMENSION"
+            } # DIMENSION
+            if data_set_type == "FACT":
                 time_stamp_data_set_type = {
-                    "dataType": "STRING",
-                    "columnType": "DIMENSION"
-                } # DIMENSION
-                if data_set_type == "FACT":
-                    time_stamp_data_set_type = {
-                        "dataType": "TIMESTAMP",
-                        "isMainEventTime": True
-                    }
-                logger.info(f"TIME_STAMP_DATA_SET_TYPE: {time_stamp_data_set_type}")
-
+                    "dataType": "TIMESTAMP",
+                    "isMainEventTime": True
+                }
+            logger.info(f"TIME_STAMP_DATA_SET_TYPE: {time_stamp_data_set_type}")
+            with Client(app.app) as client:
                 # create_dataset
                 response = client.http.post(
                     '/create_dataset',
@@ -245,6 +286,7 @@ def test_data_set_type():
                 # check if it exists in AMC
                 amc_data_set_resp = sigv4.get(f"/dataSets/{data_set_id}")
                 assert amc_data_set_resp.status_code == 200
+                is_data_set_created = True
                 assert amc_data_set_resp.json()["dataSetId"] == data_set_id
                 assert amc_data_set_resp.json()["dataSetType"] == data_set_type
                 assert amc_data_set_resp.json()["fileFormat"] == file_format
@@ -325,35 +367,42 @@ def test_data_set_type():
             logger.error(e)
             raise
         finally:
-            logger.debug(f"Cleaning up {data_set_id}.")
+            logger.debug(f"Cleaning up s3 {test_source_key}.")
+
+            s3 = boto3.resource('s3')
+            s3.Object(_test_configs["s3bucket"], test_source_key).delete()
+
+            logger.debug(f"Cleaning up dataset {data_set_id}.")
 
             # # delete_dataset
-            response = client.http.post(
-                '/delete_dataset',
-                headers={'Content-Type': 'application/json'},
-                body=json.dumps(
-                    {
-                        "dataSetId": data_set_id,
-                    })
-            )
-            assert response.status_code == 200
-            assert response.json_body == {}
+            if is_data_set_created:
+                with Client(app.app) as client:
+                    response = client.http.post(
+                        '/delete_dataset',
+                        headers={'Content-Type': 'application/json'},
+                        body=json.dumps(
+                            {
+                                "dataSetId": data_set_id,
+                            })
+                    )
+                    assert response.status_code == 200
+                    assert response.json_body == {}
     return _method
 
-def test_create_upload_delete_dataset_DIMENSION_JSON(test_configs, test_data_set_type, get_etl_data_by_job_id):
-   test_data_set_type("DIMENSION", "JSON", test_configs, get_etl_data_by_job_id)
+def test_create_upload_delete_dataset_DIMENSION_JSON(test_configs, test_data_set_type, get_etl_data_by_job_id, generate_random_test_files_to_s3_bucket):
+   test_data_set_type("DIMENSION", "JSON", test_configs, get_etl_data_by_job_id, generate_random_test_files_to_s3_bucket)
 
-def test_create_upload_delete_dataset_DIMENSION_CSV(test_configs, test_data_set_type, get_etl_data_by_job_id):
-   test_data_set_type("DIMENSION", "CSV", test_configs, get_etl_data_by_job_id)
+def test_create_upload_delete_dataset_DIMENSION_CSV(test_configs, test_data_set_type, get_etl_data_by_job_id, generate_random_test_files_to_s3_bucket):
+   test_data_set_type("DIMENSION", "CSV", test_configs, get_etl_data_by_job_id, generate_random_test_files_to_s3_bucket)
 
-def test_create_upload_delete_dataset_FACT_JSON(test_configs, test_data_set_type, get_etl_data_by_job_id):
-   test_data_set_type("FACT", "JSON", test_configs, get_etl_data_by_job_id)
+def test_create_upload_delete_dataset_FACT_JSON(test_configs, test_data_set_type, get_etl_data_by_job_id, generate_random_test_files_to_s3_bucket):
+   test_data_set_type("FACT", "JSON", test_configs, get_etl_data_by_job_id, generate_random_test_files_to_s3_bucket)
 
-def test_create_upload_delete_dataset_FACT_CSV(test_configs, test_data_set_type, get_etl_data_by_job_id):
-   test_data_set_type("FACT", "CSV", test_configs, get_etl_data_by_job_id)
+def test_create_upload_delete_dataset_FACT_CSV(test_configs, test_data_set_type, get_etl_data_by_job_id, generate_random_test_files_to_s3_bucket):
+   test_data_set_type("FACT", "CSV", test_configs, get_etl_data_by_job_id, generate_random_test_files_to_s3_bucket)
 
-def test_create_upload_delete_dataset_DIMENSION_JSON_SUB_DIRECTORY(test_configs, test_data_set_type, get_etl_data_by_job_id):
-   test_data_set_type("DIMENSION", "JSON", test_configs, get_etl_data_by_job_id, override_s3_test_key=test_configs["s3key_sub_dir"])
+def test_create_upload_delete_dataset_DIMENSION_JSON_SUB_DIRECTORY(test_configs, test_data_set_type, get_etl_data_by_job_id, generate_random_test_files_to_s3_bucket):
+   test_data_set_type("DIMENSION", "JSON", test_configs, get_etl_data_by_job_id, generate_random_test_files_to_s3_bucket, s3_key_sub_dir="integ_test_data/")
 
-def test_create_upload_delete_dataset_FACT_JSON_SUB_DIRECTORY(test_configs, test_data_set_type, get_etl_data_by_job_id):
-   test_data_set_type("FACT", "JSON", test_configs, get_etl_data_by_job_id, override_s3_test_key=test_configs["s3key_sub_dir"])
+def test_create_upload_delete_dataset_FACT_JSON_SUB_DIRECTORY(test_configs, test_data_set_type, get_etl_data_by_job_id, generate_random_test_files_to_s3_bucket):
+   test_data_set_type("FACT", "JSON", test_configs, get_etl_data_by_job_id, generate_random_test_files_to_s3_bucket, s3_key_sub_dir="integ_test_data/")
