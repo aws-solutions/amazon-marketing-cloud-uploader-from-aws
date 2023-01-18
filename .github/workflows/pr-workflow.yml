@@ -137,6 +137,8 @@ jobs:
       - build
       - deploy
     runs-on: ubuntu-latest
+    outputs:
+      AMC_GLUE_JOB_ROLE_NAME: ${{ steps.api_test.outputs.AMC_GLUE_JOB_ROLE_NAME }}
     steps:
       - name: Set up Python 3.9
         uses: actions/setup-python@v4
@@ -153,6 +155,7 @@ jobs:
         with:
           ref: ${{ github.sha }}
       - name: Run API Tests
+        id: api_test
         run: |
           STACK_NAME=${{needs.deploy.outputs.STACK_NAME}}
           echo "STACK_NAME=$STACK_NAME" >> $GITHUB_OUTPUT
@@ -183,6 +186,8 @@ jobs:
           aws iam update-assume-role-policy --role-name $ROLE_NAME --policy-document "$TEST_IAM_USER_POLICY"
           AMC_GLUE_JOB_ROLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $NESTED_STACK_ID --logical-resource-id "AmcGlueJobRole" --query "StackResources[0].PhysicalResourceId")
           AMC_GLUE_JOB_ROLE_NAME=$(echo $AMC_GLUE_JOB_ROLE_NAME | tr -d '"')
+          echo "AMC_GLUE_JOB_ROLE_NAME=$AMC_GLUE_JOB_ROLE_NAME" >> $GITHUB_ENV
+          echo "AMC_GLUE_JOB_ROLE_NAME=$AMC_GLUE_JOB_ROLE_NAME" >> $GITHUB_OUTPUT
           export AMC_GLUE_JOB_NAME=$AMC_GLUE_JOB_NAME
           export AMC_API_ROLE_ARN="arn:aws:iam::$TEST_ACCOUNT_ID:role/$ROLE_NAME"
           export TEST_S3_BUCKET_NAME=${{ secrets.DATA_BUCKET_NAME }}
@@ -201,7 +206,6 @@ jobs:
           ls -l
           pip3 install -r source/api/tests/requirements-test.txt
           pytest source/api/tests/test_api_integration.py -vv
-          aws iam detach-role-policy --role-name $AMC_GLUE_JOB_ROLE_NAME --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess"
 
   cleanup:
     if: always()
@@ -222,6 +226,10 @@ jobs:
         run: |
           aws s3 rb s3://${{needs.build.outputs.DIST_OUTPUT_BUCKET}}-${{needs.build.outputs.REGION}} --force
           aws s3 rb s3://${{needs.build.outputs.TEMPLATE_OUTPUT_BUCKET}} --force
+      - name: Detach s3 role
+        if: needs.integration_test.result == 'success' || needs.integration_test.result == 'failure' 
+        run: |
+          aws iam detach-role-policy --role-name ${{needs.integration_test.outputs.AMC_GLUE_JOB_ROLE_NAME}} --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess"
       - name: Remove stack
         if: needs.deploy.result == 'success'
         run: |
