@@ -31,18 +31,20 @@ def handler(event, context):
     # Each resource returns a promise with a json object to return cloudformation.
     try:
         request_type = event['RequestType']
-        resource = event['ResourceProperties']['Resource']
-        config = event['ResourceProperties']
-        # Remove ServiceToken (lambda arn) to avoid sending AccountId
-        config.pop("ServiceToken", None)
-        config.pop("Resource", None)
-        # Add some useful fields related to stack change
-        config["CFTemplate"] = (
-                request_type + "d"
-        )  # Created, Updated, or Deleted
-        response_data = {}
-        print('Request::{} Resource::{}'.format(request_type, resource))
         if request_type == 'Create' or request_type == 'Update':
+            # Here we handle the CloudFormation CREATE and UPDATE events
+            # sent by the AnonymousMetric custom resource.
+            resource = event['ResourceProperties']['Resource']
+            config = event['ResourceProperties']
+            # Remove ServiceToken (lambda arn) to avoid sending AccountId
+            config.pop("ServiceToken", None)
+            config.pop("Resource", None)
+            # Add some useful fields related to stack change
+            config["CFTemplate"] = (
+                    request_type + "d"
+            )  # Created, Updated, or Deleted
+            response_data = {}
+            print('Request::{} Resource::{}'.format(request_type, resource))
             if resource == 'UUID':
                 response_data = {'UUID':str(uuid.uuid4())}
                 response_uuid = response_data['UUID']
@@ -55,9 +57,19 @@ def handler(event, context):
                 print('Create failed, {} not defined in the Custom Resource'.format(resource))
                 cfn.send(event, context, 'FAILED', {}, context.log_stream_name)
         elif request_type == 'Delete':
+            # Here we handle the CloudFormation DELETE event
+            # sent by the AnonymousMetric custom resource.
+            resource = event['ResourceProperties']['Resource']
             print('RESPONSE:: {}: Not required to report data for delete request.'.format(resource))
             cfn.send(event, context, 'SUCCESS', {})
+        elif request_type == 'Workload':
+            # Here we handle the performance metrics reported by the Glue ETL job.
+            metrics = event['Metrics']
+            print('Workload metrics:')
+            print(metrics)
+            Metrics.send_metrics(metrics)
         else:
+            # If we get any other type of event, we handle that here.
             print('RESPONSE:: {} Not supported'.format(request_type))
     except Exception as e:
         print('Exception: {}'.format(e))
