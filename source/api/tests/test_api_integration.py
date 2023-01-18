@@ -122,7 +122,6 @@ def generate_random_test_files_to_s3_bucket():
                     "file_format": file_format
                 })
             )
-            breakpoint()
             assert response.status_code == 200
             assert response.json_body["columns"] is not None
             for expected_key in list (_test_data[0].keys()):
@@ -185,7 +184,6 @@ def test_data_set_type():
             if file_format == "CSV":
                 test_source_key = f"{data_set_id}-csv.csv"
             logger.info(f"TEST_SOURCE_KEY: {test_source_key}")
-            breakpoint()
             generate_random_test_files_to_s3_bucket(s3_key=test_source_key)
 
             time_stamp_data_set_type = {
