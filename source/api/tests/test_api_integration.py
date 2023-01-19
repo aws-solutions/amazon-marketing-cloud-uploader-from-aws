@@ -147,6 +147,7 @@ def test_data_set_type():
         is_data_set_created = False
         try:
             data_set_id = f"amc_integ_test_{int(time.time())}_{data_set_type}_{file_format}"
+            period = "autodetect"
             logger.info(f"DATA_SET_TYPE: {data_set_type}")
             logger.info(f"TEST_CONFIGS: {test_configs}")
             logger.info(f"FILE_FORMAT: {file_format}")
@@ -273,7 +274,8 @@ def test_data_set_type():
                             "piiFields": "[{\"column_name\":\"first_name\",\"pii_type\":\"FIRST_NAME\"},{\"column_name\":\"last_name\",\"pii_type\":\"LAST_NAME\"},{\"column_name\":\"email\",\"pii_type\":\"EMAIL\"}]",
                             "deletedFields": "[]",
                             "timestampColumn": "timestamp",
-                            "datasetId": data_set_id
+                            "datasetId": data_set_id,
+                            "period": period
                         }
                     )
                 )

@@ -79,6 +79,10 @@ def create_dataset():
     log_request_parameters()
     try:
         body = app.current_request.json_body['body']
+        if body['period'] == 'autodetect':
+            # Initialize the dataset period to P1D. This will be updated later
+            # when the AWS Glue job measures the actual dataset period.
+            body['period'] = 'P1D'
         # If customer provided a CMK, then use the key to encrypt this dataset in AMC.
         if CUSTOMER_MANAGED_KEY != '':
             body['customerEncryptionKeyArn'] = CUSTOMER_MANAGED_KEY
@@ -111,6 +115,7 @@ def start_amc_transformation():
         deleted_fields = app.current_request.json_body['deletedFields']
         timestamp_column = app.current_request.json_body['timestampColumn']
         dataset_id = app.current_request.json_body['datasetId']
+        period = app.current_request.json_body['period']
         session = boto3.session.Session(region_name=os.environ['AWS_REGION'])
         client = session.client('glue', config=config)
         args = {
@@ -120,7 +125,8 @@ def start_amc_transformation():
             "--pii_fields": pii_fields,
             "--deleted_fields": deleted_fields,
             "--timestamp_column": timestamp_column,
-            "--dataset_id": dataset_id
+            "--dataset_id": dataset_id,
+            "--period": period
         }
         logger.info('Starting Glue job:')
         logger.info('Equivalent AWS CLI command: ')
