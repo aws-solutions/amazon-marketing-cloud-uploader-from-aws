@@ -126,6 +126,7 @@ SPDX-License-Identifier: Apache-2.0
                     </b-link>
                   </slot>
                   <b-form-radio-group
+                    id="dataset_type_options"
                     v-model="dataset_type"
                     :options="dataset_type_options"
                     :aria-describedby="ariaDescribedby"
@@ -143,6 +144,7 @@ SPDX-License-Identifier: Apache-2.0
                     </b-link>
                   </slot>
                   <b-form-radio-group
+                    id="time_period_options"
                     v-model="time_period"
                     :options="time_period_options"
                     :aria-describedby="ariaDescribedby"
