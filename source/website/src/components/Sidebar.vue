@@ -8,7 +8,8 @@ SPDX-License-Identifier: Apache-2.0
     <b-row class="my-1">
       <b-col>
         Step 1
-        <b-link 
+        <b-link
+          id="step1"
           to="/step1"
           :active="isStep1Active"
         >
@@ -18,6 +19,7 @@ SPDX-License-Identifier: Apache-2.0
         <hr>
         Step 2
         <b-link
+          id="step2"
           to="/step2"
           :active="isStep2Active"
         >
@@ -27,6 +29,7 @@ SPDX-License-Identifier: Apache-2.0
         <hr>
         Step 3
         <b-link
+          id="step3"
           to="/step3"
           :class="{ active: isStep3Active }"
         >
@@ -36,6 +39,7 @@ SPDX-License-Identifier: Apache-2.0
         <hr>
         Step 4
         <b-link
+          id="step4"
           to="/step4"
           :class="{ active: isStep4Active }"
         >
@@ -45,6 +49,7 @@ SPDX-License-Identifier: Apache-2.0
         <hr>
         Step5
         <b-link
+          id="step5"
           to="/step5"
           :class="{ active: isStep5Active }"
         >
@@ -65,9 +70,3 @@ export default {
 }
 
 </script>
-
-<style>
-a.active {
-  color: black;
-}
-</style>
