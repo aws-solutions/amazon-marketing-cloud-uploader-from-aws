@@ -68,7 +68,7 @@ SPDX-License-Identifier: Apache-2.0
             </b-alert>
             <b-row>
               <b-col>
-                Fill in the table to define properties for each field in {{ s3key }}.
+                Fill in the table to define properties for each field in the input data.
               </b-col>
               <b-col sm="3" align="right" class="row align-items-end">
                 <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push('Step2')">
@@ -265,7 +265,7 @@ SPDX-License-Identifier: Apache-2.0
         this.showMissingDataAlert = true
       }
       else if (!this.step3_form_input.length) {
-        this.send_request('POST', 'get_data_columns', {'s3bucket': this.DATA_BUCKET_NAME, 's3key':this.s3key, 'file_format':this.dataset_definition.fileFormat})
+        this.send_request('POST', 'get_data_columns', {'s3bucket': this.DATA_BUCKET_NAME, 's3key':this.s3key})
       } else {
         this.items = this.step3_form_input
       }
@@ -279,7 +279,7 @@ SPDX-License-Identifier: Apache-2.0
       },
       onReset() {
         this.$store.commit('updateDeletedColumns', [])
-        this.send_request('POST', 'get_data_columns', {'s3bucket': this.DATA_BUCKET_NAME, 's3key':this.s3key, 'file_format':this.dataset_definition.fileFormat})
+        this.send_request('POST', 'get_data_columns', {'s3bucket': this.DATA_BUCKET_NAME, 's3key':this.s3key})
         this.column_type_options.forEach(x => x.disabled = false)
         this.pii_type_options.forEach(x => x.disabled = false)
       },

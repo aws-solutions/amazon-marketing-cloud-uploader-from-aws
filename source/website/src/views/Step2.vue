@@ -15,17 +15,6 @@ SPDX-License-Identifier: Apache-2.0
         >
           Invalid dataset definition. {{ formErrorMessage }} 
         </b-alert>
-        <b-modal id="modal-file-format" title="File Format Requirements">
-          <p><strong>CSV</strong> files must include a header, be UTF-8 encoded, and comma delimited.</p>
-          <p><strong>JSON</strong> files must contain one object per row of data. Each row must be a top-level object. No parent object or array may be present in the JSON file. An example of the accepted JSON format is shown below:</p>
-          <pre>
-{"name": "Product A", "sku": 11352987, "quantity": 2, "pur_time": "2021-06-23T19:53:58Z"} 
-{"name": "Product B", "sku": 18467234, "quantity": 2, "pur_time": "2021-06-24T19:53:58Z"} 
-{"name": "Product C", "sku": 27264393, "quantity": 2, "pur_time": "2021-06-25T19:53:58Z"} 
-{"name": "Product A", "sku": 48572094, "quantity": 2, "pur_time": "2021-06-25T19:53:58Z"} 
-{"name": "Product B", "sku": 18278476, "quantity": 1, "pur_time": "2021-06-26T13:33:58Z"}
-            </pre>
-        </b-modal>
         <b-modal id="modal-dataset-type" title="Dataset Types">
           <p><strong>Fact</strong> datasets represent time-series data and must include a timestamp column.</p>
           <p><strong>Dimension</strong> datasets represent any information which is not time-bound, such as CRM audience lists, campaign metadata, mapping tables, and product metadata (e.g. a table mapping ASINs to external product names).</p>
@@ -61,7 +50,7 @@ SPDX-License-Identifier: Apache-2.0
                 label-cols-lg="1"
                 label-align-lg="left"
                 content-cols-lg="5"
-                label="S3 Key:"
+                label="S3 Keys:"
                 label-for="s3key"
               >
                 <b-form-input id="s3key" v-model="new_s3key" @change="updateS3key"></b-form-input>
@@ -90,23 +79,6 @@ SPDX-License-Identifier: Apache-2.0
               </b-form-group>
             </div>
             <b-row>
-              <b-col sm="3">
-                <b-form-group v-slot="{ ariaDescribedby }">
-                  <slot name="label">
-                    File format:
-                    <b-link v-b-modal.modal-file-format>
-                      <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
-                    </b-link>
-                  </slot>
-                  <b-form-radio-group
-                    v-model="file_format"
-                    :options="file_format_options"
-                    :aria-describedby="ariaDescribedby"
-                    name="file-format-radios"
-                    stacked
-                  ></b-form-radio-group>
-                </b-form-group>
-              </b-col>
               <b-col sm="3">
                 <b-form-group v-slot="{ ariaDescribedby }">
                   <slot name="label">
@@ -170,11 +142,9 @@ SPDX-License-Identifier: Apache-2.0
         dataset_id: '',
         description: '',
         dataset_type: '',
-        file_format: '',
         // time_period is autodetected in Glue ETL and updated in amc_uploader.py 
         time_period: 'P1D',
         isStep2Active: true,
-        file_format_options: ["CSV","JSON"],
         dataset_type_options: ["FACT","DIMENSION"],
         showFormError: false,
         formErrorMessage: ''
@@ -200,16 +170,6 @@ SPDX-License-Identifier: Apache-2.0
       this.new_dataset_definition = this.dataset_definition
       this.dataset_id = this.new_dataset_definition['dataSetId']
       this.description = this.new_dataset_definition['description']
-      this.file_format = Object.keys(this.new_dataset_definition).includes('fileFormat')?this.new_dataset_definition['fileFormat']:this.file_format
-      // set default value for file format
-      if (this.file_format === '') {
-        if (this.s3key.split('.').pop().toLowerCase() === "csv") {
-          this.file_format = "CSV" 
-        }
-        else if (this.s3key.split('.').pop().toLowerCase() === "json") {
-          this.file_format = "JSON" 
-        }
-      }
       // this.time_period = this.new_dataset_definition['period']
       this.dataset_type = this.new_dataset_definition['dataSetType']
     },
@@ -223,7 +183,6 @@ SPDX-License-Identifier: Apache-2.0
         this.showFormError = false;
         this.new_dataset_definition['dataSetId'] = this.dataset_id
         this.new_dataset_definition['description'] = this.description
-        this.new_dataset_definition['fileFormat'] = this.file_format
         this.new_dataset_definition['period'] = this.time_period
         this.new_dataset_definition['dataSetType'] = this.dataset_type
         this.new_dataset_definition['compressionFormat'] = 'GZIP'
@@ -249,10 +208,6 @@ SPDX-License-Identifier: Apache-2.0
         }
         if (/^[a-zA-Z0-9_-]+$/.test(this.dataset_id) === false) {
           this.formErrorMessage = "Dataset name must match regex ^[a-zA-Z0-9_-]+$"
-          return false
-        }
-        if (!this.new_dataset_definition['fileFormat'] || this.new_dataset_definition['fileFormat'].length === 0) {
-          this.formErrorMessage = "Missing file format."
           return false
         }
         if (!this.new_dataset_definition['dataSetType']  || this.new_dataset_definition['dataSetType'].length === 0) {

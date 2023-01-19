@@ -308,7 +308,6 @@ def get_data_columns():
         {
             "s3bucket": string,
             "s3key": string
-            "file_format": ['CSV', 'JSON']
         }
 
 
@@ -342,25 +341,32 @@ def get_data_columns():
         # get first columns to compare against to ensure all files have same schema        
         base_key = keys_to_validate[0]
 
+        json_content_type = "application/json"
+        csv_content_type = "text/csv"
         for key in keys_to_validate:
-            file_format = json.loads(app.current_request.raw_body.decode())['file_format']
-            if file_format != 'CSV' and file_format != 'JSON':
-                raise TypeError('File format must be CSV or JSON')
+            s3 = boto3.client('s3', config=config)
+            response = s3.head_object(Bucket=bucket, Key=key)
+            content_type = response['ContentType']
             # Read first row
             logger.info("Reading " + 's3://'+bucket+'/'+key)
-            if file_format == 'JSON':
+            if content_type == json_content_type:
                 dfs = wr.s3.read_json(path=['s3://'+bucket+'/'+key], chunksize=1, lines=True)
-            elif file_format == 'CSV':
+            elif content_type == csv_content_type:
                 dfs = wr.s3.read_csv(path=['s3://'+bucket+'/'+key], chunksize=1)
+            else:
+                raise TypeError('File format must be CSV or JSON')
             chunk = next(dfs)
             columns = list(chunk.columns.values)
 
-            if(key == base_key):
+            if key == base_key:
                 base_columns = columns
                 result = json.dumps({'columns': base_columns})
 
             if set(columns) != set(base_columns):
-                return Response(body={"Error": "Schemas must match for multi-upload. File " + key + " schema does not match file " + base_key},
+                error_text = "Schemas must match for each file. The schemas in " + \
+                             key + " and " + base_key + " do not match."
+                logger.error(error_text)
+                return Response(body={"Error": error_text},
                                 status_code=400,
                                 headers={'Content-Type': 'text/plain'})
 
