@@ -310,7 +310,7 @@ Resources:
             Resource: '*'
           - Effect: Allow
             Principal:
-              Service: "logs.us-east-1.amazonaws.com"
+              Service: !Sub "logs.${AWS::Region}.amazonaws.com"
             Action:
               - "kms:Encrypt*"
               - "kms:Decrypt*"
