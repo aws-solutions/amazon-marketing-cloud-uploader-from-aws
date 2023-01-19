@@ -15,7 +15,7 @@ SPDX-License-Identifier: Apache-2.0
         >
           Invalid dataset definition. {{ formErrorMessage }} 
         </b-alert>
-        <b-modal id="modal-file-format" title="File Format Requirements">
+        <b-modal id="modal-file-format" title="File Format Requirements" ok-only>
           <p><strong>CSV</strong> files must include a header, be UTF-8 encoded, and comma delimited.</p>
           <p><strong>JSON</strong> files must contain one object per row of data. Each row must be a top-level object. No parent object or array may be present in the JSON file. An example of the accepted JSON format is shown below:</p>
           <pre>
@@ -26,25 +26,25 @@ SPDX-License-Identifier: Apache-2.0
 {"name": "Product B", "sku": 18278476, "quantity": 1, "pur_time": "2021-06-26T13:33:58Z"}
             </pre>
         </b-modal>
-        <b-modal id="modal-dataset-type" title="Dataset Types">
+        <b-modal id="modal-dataset-type" title="Dataset Types" ok-only>
           <p><strong>Fact</strong> datasets represent time-series data and must include a timestamp column.</p>
           <p><strong>Dimension</strong> datasets represent any information which is not time-bound, such as CRM audience lists, campaign metadata, mapping tables, and product metadata (e.g. a table mapping ASINs to external product names).</p>
         </b-modal>
-        <b-modal id="modal-encryption-mode" title="Encryption Mode">
+        <b-modal id="modal-encryption-mode" title="Encryption Mode" ok-only>
           This value is derived from an AWS CloudFormation parameter and can only be changed by updating the deployed stack. Possible values:
           <br><br>
           <p><strong>default:</strong> AWS Glue and AMC will perform default encryption on your behalf.</p>
           <p><strong>aws-kms:</strong> AWS Glue and AMC will encrypt data using the key specified in the `CustomerManagedKey` parameter of the base AWS CloudFormation template. The benefit to using a customer generated encryption key is the ability to revoke AMC’s access to uploaded data at any point. In addition, customers can monitor encryption key access via AWS CloudTrail event logs. See the AMC data upload documentation for more information.</p>
         </b-modal>
-        <b-modal id="modal-dataset-period" title="File Partitioning">
-          <p>When uploading time series data, each file uploaded must correspond to a specific unit of time. This unit of time is defined on the dataset and is referred to as the dataset period. Uploaded files must be partitioned according to the atomic units of the dataset period. The available period options are:</p>
+        <b-modal id="modal-dataset-period" title="File Partitioning" ok-only>
+          <p>When uploading time series data, each file must be partitioned according to a specific unit of time. This unit of time is referred to as the <b>dataset period</b>. The available periods are:</p>
           <ul>
             <li>PT1M (minute)</li>
             <li>PT1H (hour)</li>
             <li>P1D (day)</li>
             <li>P7D (7 days)</li>
           </ul>
-          <p>By default, this tool will automatically detect the dataset period and partition input files accordingly. However, if you have already partitioned your files and you are uploading the individual file partitions with this tool, then you can bypass the automatic file partitioning by specifying a dataset period of PT1M, PT1H, P1D, or P7D.</p>
+          <p>By default, this tool will automatically use the shortest possible period which is appropriate for your data and partition input files accordingly. However, you can override the auto-detected period by explicitly setting it in the dataset definition.</p>
         </b-modal>
         <b-row style="text-align: left">
           <b-col cols="2">
