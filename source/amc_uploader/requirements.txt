@@ -1,2 +1,3 @@
 requests
 aws-xray-sdk
+requests

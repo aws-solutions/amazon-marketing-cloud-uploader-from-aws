@@ -282,7 +282,7 @@ Resources:
                   - !Join [
                     "",
                     [
-                      "arn:aws:execute-api:us-east-1:*:",
+                      "arn:aws:execute-api:*:*:",
                       "Fn::Select": [
                         0,
                         "Fn::Split": [
