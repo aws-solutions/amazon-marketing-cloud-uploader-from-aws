@@ -25,9 +25,23 @@
 import uuid
 import lib.cfnresponse as cfn
 import lib.metrics as Metrics
+import logging
+
+# format log messages like this:
+formatter = logging.Formatter('{%(pathname)s:%(lineno)d} %(levelname)s - %(message)s')
+handler = logging.StreamHandler()
+handler.setFormatter(formatter)
+
+# Remove the default logger in order to avoid duplicate log messages
+# after we attach our custom logging handler.
+logging.getLogger().handlers.clear()
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+logger.addHandler(handler)
+
 
 def handler(event, context):
-    print("We got this event:\n", event)
+    logger.info("We got this event:\n", event)
     # Each resource returns a promise with a json object to return cloudformation.
     try:
         request_type = event['RequestType']
@@ -44,7 +58,7 @@ def handler(event, context):
                     request_type + "d"
             )  # Created, Updated, or Deleted
             response_data = {}
-            print('Request::{} Resource::{}'.format(request_type, resource))
+            logger.info('Request::{} Resource::{}'.format(request_type, resource))
             if resource == 'UUID':
                 response_data = {'UUID':str(uuid.uuid4())}
                 response_uuid = response_data['UUID']
@@ -54,24 +68,23 @@ def handler(event, context):
                 response_uuid = 'Metrics Sent'
                 cfn.send(event, context, 'SUCCESS', response_data, response_uuid)
             else:
-                print('Create failed, {} not defined in the Custom Resource'.format(resource))
+                logger.error('Create failed, {} not defined in the Custom Resource'.format(resource))
                 cfn.send(event, context, 'FAILED', {}, context.log_stream_name)
         elif request_type == 'Delete':
             # Here we handle the CloudFormation DELETE event
             # sent by the AnonymousMetric custom resource.
             resource = event['ResourceProperties']['Resource']
-            print('RESPONSE:: {}: Not required to report data for delete request.'.format(resource))
+            logger.info('RESPONSE:: {}: Not required to report data for delete request.'.format(resource))
             cfn.send(event, context, 'SUCCESS', {})
         elif request_type == 'Workload':
             # Here we handle the performance metrics reported by the Glue ETL job.
             metrics = event['Metrics']
-            print('Workload metrics:')
-            print(metrics)
+            logger.info('Workload metrics:')
+            logger.info(metrics)
             Metrics.send_metrics(metrics)
         else:
             # If we get any other type of event, we handle that here.
-            print('RESPONSE:: {} Not supported'.format(request_type))
+            logger.error('RESPONSE:: {} Not supported'.format(request_type))
     except Exception as e:
-        print('Exception: {}'.format(e))
         cfn.send(event, context, 'FAILED', {}, context.log_stream_name)
-        print(e)
+        logger.error(e)
