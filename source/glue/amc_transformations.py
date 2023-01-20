@@ -218,24 +218,22 @@ state_substitutions = {
 ###############################
 # PARSE ARGS
 ###############################
+
+# Read required parameters
 try:
-    args = getResolvedOptions(sys.argv, ['JOB_NAME', 'solution_id', 'uuid', 'enable_anonymous_data', 'anonymous_data_logger', 'source_bucket', 'source_key', 'output_bucket', 'pii_fields', 'deleted_fields', 'dataset_id', 'timestamp_column', 'period'])
+    args = getResolvedOptions(sys.argv, ['JOB_NAME', 'solution_id', 'uuid', 'enable_anonymous_data', 'anonymous_data_logger', 'source_bucket', 'source_key', 'output_bucket', 'pii_fields', 'deleted_fields', 'dataset_id', 'period'])
 except GlueArgumentError as e:
     print(e)
     exit(1)
 finally:
     print("Runtime args:")
     print(args)
-
-# Get the parameters needed for recording performance metrics:
 job_name = args['JOB_NAME']
 job_run_id = args['JOB_RUN_ID']
 enable_anonymous_data = args['enable_anonymous_data']
 anonymous_data_logger = args['anonymous_data_logger']
 solution_id = args['solution_id']
 uuid = args['uuid']
-
-# Get the parameters needed for data transformation:
 if 'dataset_id' in args:
     dataset_id = args['dataset_id'].strip()
 else:
@@ -247,10 +245,6 @@ if 'pii_fields' in args:
 deleted_fields = []
 if 'deleted_fields' in args:
     deleted_fields = json.loads(args['deleted_fields'])
-if 'timestamp_column' in args:
-    timestamp_column = args['timestamp_column'].strip()
-else:
-    timestamp_column = None
 if 'period' in args:
     user_defined_partition_size = args['period'].strip()
     if user_defined_partition_size not in ("autodetect", "PT1M", "PT1H", "P1D", "P7D"):
@@ -259,6 +253,12 @@ if 'period' in args:
         exit(1)
 else:
     user_defined_partition_size = 'autodetect'
+
+# Read optional parameters
+try:
+    timestamp_column = getResolvedOptions(sys.argv, ['timestamp_column'])['timestamp_column'].strip()
+except GlueArgumentError as e:
+    timestamp_column = None
 
 ###############################
 # LOAD INPUT DATA
