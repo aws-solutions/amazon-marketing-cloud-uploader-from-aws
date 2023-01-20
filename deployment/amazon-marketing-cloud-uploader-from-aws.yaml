@@ -456,6 +456,7 @@ Resources:
 
       Handler: index.handler
       Runtime: python3.9
+      Timeout: 900
       Role: !GetAtt HelperFunctionRole.Arn
       Tags:
         - Key: "Environment"
@@ -594,6 +595,10 @@ Resources:
         ArtifactBucketName: !Ref ArtifactBucket
         DataBucketName: !Ref DataBucketName
         CustomerManagedKey: !Ref CustomerManagedKey
+        EnableAnonymousData: !FindInMap [AnonymousData,SendAnonymousData,Data]
+        AnonymousDataLogger: !Ref AnonymousDataCustomResource
+        SolutionId: !FindInMap [ "Application", "Solution", "Id" ]
+        UUID: !GetAtt AnonymousDataUuid.UUID
 
   # Web stack
   
@@ -752,7 +757,6 @@ Resources:
 
   # SendAnonymousData
   AnonymousDataUuid:
-    Condition: EnableAnonymousData
     Type: "Custom::UUID"
     Properties:
       ServiceToken: !GetAtt AnonymousDataCustomResource.Arn

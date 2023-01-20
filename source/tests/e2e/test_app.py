@@ -11,16 +11,15 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 
+
 @pytest.fixture
 def browser():
     chrome_options = Options()
-    ####### TESTING - remove headless to see browser actions
     # Make sure the window is large enough in headless mode so that all
     # the elements on the page are visible
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--window-size=1920,1080")
     chrome_options.add_argument("--start-maximized")
-    ####### TESTING - remove headless to see browser actions
     from selenium import webdriver
 
     browser = webdriver.Chrome(ChromeDriverManager().install(), chrome_options=chrome_options)
@@ -31,7 +30,7 @@ def test_everything(browser, test_environment, stack_resources):
     browser.implicitly_wait(5)
     browser.get(stack_resources['UserInterface'])
     wait = WebDriverWait(browser, 30)
-    ####### Login
+    # Login
     username_field = browser.find_element("xpath", "/html/body/div/div/div/div/div[2]/div[1]/div/input")
     username_field.send_keys(test_environment['EMAIL'])
     password_field = browser.find_element("xpath", "/html/body/div/div/div/div/div[2]/div[2]/input")
@@ -44,7 +43,7 @@ def test_everything(browser, test_environment, stack_resources):
     assert navbar_brand == "Amazon Marketing Cloud uploader from AWS"
 
     # open Step 1
-    browser.find_element("xpath", "/html/body/div/div/div/div[2]/div/div[1]/div/div/div/a[1]").click()
+    browser.find_element(By.ID, "step1").click()
     # validate the value shown for s3 bucket
     element_id = "bucket-input"
     wait.until(EC.presence_of_element_located((By.ID, element_id)))
@@ -86,6 +85,18 @@ def test_everything(browser, test_environment, stack_resources):
     s3_key_text = s3_key_field.get_attribute("value")
 
     assert s3_key_text == keys
+
+    # open Step 2
+    browser.find_element(By.ID, "step2").click()
+    wait.until(EC.presence_of_element_located((By.ID, "dataset_type_options")))
+    # Time period options should not be visible until we click FACT
+    assert not len(browser.find_elements(By.ID, "time_period_options"))
+    # select FACT dataset type
+    browser.find_element(By.XPATH, '//*[@id="dataset_type_options"]/div[1]/label/span').click()
+    # Time period options should now be visible
+    # and the first option should be selected by default
+    assert len(browser.find_elements(By.ID, "time_period_options"))
+    assert browser.find_element(By.XPATH, '//*[@id="time_period_options_BV_option_0"]').is_selected()
 
     # Sign out
     browser.find_element("xpath", "/html/body/div/div/div/div[1]/nav/div/ul/li/a").click()
