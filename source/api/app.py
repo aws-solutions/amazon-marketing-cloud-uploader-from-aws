@@ -334,7 +334,7 @@ def get_data_columns():
 
         # for concurrent glue jobs, can only run a max of 200 per account
         if(len(keys_to_validate) > 200):
-            return Response(body={"Error": "Number of files selected cannot exceed 200"},
+            return Response(body={"message": "Number of files selected cannot exceed 200"},
                             status_code=400,
                             headers={'Content-Type': 'text/plain'})
         
@@ -366,14 +366,14 @@ def get_data_columns():
                 error_text = "Schemas must match for each file. The schemas in " + \
                              key + " and " + base_key + " do not match."
                 logger.error(error_text)
-                return Response(body={"Error": error_text},
+                return Response(body={"message": error_text},
                                 status_code=400,
                                 headers={'Content-Type': 'text/plain'})
 
         return result
     except Exception as e:
         logger.error(e)
-        return {"Status": "Error", "Message": json.dumps(e)}
+        return {"Status": "Error", "Message": e}
 
 
 def log_request_parameters():

@@ -22,6 +22,13 @@ SPDX-License-Identifier: Apache-2.0
         >
           Missing s3key. Go back and select a file. 
         </b-alert>
+        <b-alert 
+          v-model="showSchemaError"
+          variant="danger"
+          dismissible
+        >
+          Schemas must match for each file when multi-uploading.
+        </b-alert>
         <b-alert
           v-model="showUserIdWarning"
           variant="danger"
@@ -175,6 +182,7 @@ SPDX-License-Identifier: Apache-2.0
         new_dataset_definition: {},
         isBusy: false,
         showServerError: false,
+        showSchemaError: false,
         showMissingDataAlert: false,
         showIncompleteFieldsError: false,
         showIncompleteTimeFieldError: false,
@@ -458,9 +466,11 @@ SPDX-License-Identifier: Apache-2.0
           console.log(JSON.stringify(this.items))
         }
         catch (e) {
+          if(e.response.status === 400) this.showSchemaError = true;
+          else this.showServerError = true;
+
           console.log("ERROR: " + e.response.data.message)
           this.isBusy = false;
-          this.showServerError = true;
           this.results = e.response.data.message
         }
         this.isBusy = false;

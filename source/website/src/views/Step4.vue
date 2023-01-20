@@ -38,7 +38,7 @@ SPDX-License-Identifier: Apache-2.0
             </b-row>
             <b-row>
               <b-col cols="7">
-                <h5>Input files from {{"s3://" + DATA_BUCKET_NAME}}:</h5>
+                <h5>Input files from {{ "s3://" + DATA_BUCKET_NAME }}:</h5>
                 {{ s3key }}
                 <br>
                 <br>
