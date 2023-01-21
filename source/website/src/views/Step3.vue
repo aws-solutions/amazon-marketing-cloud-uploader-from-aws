@@ -191,6 +191,7 @@ SPDX-License-Identifier: Apache-2.0
         userIdWarningMessage: "Do not include user_id and user_type columns in data files containing hashed identifiers. These columns are used by AMC when a match is found in a hashed record.",
         items: [],
         columns: [],
+        content_type: "",
         fields: [
           { key: 'name', sortable: true },
           { key: 'description', sortable: false },
@@ -385,6 +386,14 @@ SPDX-License-Identifier: Apache-2.0
           }
           )
         this.new_dataset_definition['columns'] = this.columns
+        if (this.content_type === "application/json") 
+          this.new_dataset_definition['fileFormat'] = 'JSON'
+        else if (this.content_type === "text/csv")
+          this.new_dataset_definition['fileFormat'] = 'CSV'
+        else
+          console.log("ERROR: unrecognized content_type, " + this.content_type)
+          this.showServerError = true;
+          
         this.$store.commit('updateDatasetDefinition', this.new_dataset_definition)
         this.$router.push('Step4')
       },
@@ -451,6 +460,7 @@ SPDX-License-Identifier: Apache-2.0
             "column_type": "", 
             "pii_type": ""}
           }).filter(x => !this.deleted_columns.includes(x.name) )
+          
           // warn if table contains hashed identifiers and user_id or user_type columns
           const idx = this.items.findIndex((x => x.name === "user_id"))
           if (idx >= 0) {
@@ -462,7 +472,7 @@ SPDX-License-Identifier: Apache-2.0
             this.items[idx2]._rowVariant = 'danger'
             this.showUserIdWarning = true;
           }
-
+          this.content_type = response.content_type
           console.log(JSON.stringify(this.items))
         }
         catch (e) {

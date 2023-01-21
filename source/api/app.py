@@ -305,7 +305,7 @@ def list_bucket():
 
 @app.route('/get_data_columns', cors=True, methods=['POST'], content_types=[application_json], authorizer=authorizer)
 def get_data_columns():
-    """ Get the column names of a user-specified JSON or CSV file
+    """ Get the column names and file format of a user-specified JSON or CSV file
 
     Body:
 
@@ -320,12 +320,13 @@ def get_data_columns():
     Returns:
         List of column names and data types found in the first row of
         the user-specified data file.
+        Also returns the content_type, "application/json" or  "text/csv", of the data file.
 
         .. code-block:: python
 
             {
-                "object": {
-                }
+                "columns": [string, string, ...],
+                "content_type": string
             }
 
     Raises:
@@ -349,10 +350,16 @@ def get_data_columns():
 
         json_content_type = "application/json"
         csv_content_type = "text/csv"
+        content_type = ""
         for key in keys_to_validate:
             s3 = boto3.client('s3', config=config)
             response = s3.head_object(Bucket=bucket, Key=key)
-            content_type = response['ContentType']
+            # Return an error if user selected a combination 
+            # of CSV and JSON files.
+            if content_type == "":
+                content_type = response['ContentType']
+            elif content_type != response['ContentType']:
+                raise TypeError('Files must all have the same format (CSV or JSON).')
             # Read first row
             logger.info("Reading " + 's3://'+bucket+'/'+key)
             if content_type == json_content_type:
@@ -366,7 +373,7 @@ def get_data_columns():
 
             if key == base_key:
                 base_columns = columns
-                result = json.dumps({'columns': base_columns})
+                result = json.dumps({'columns': base_columns ,'content_type': content_type})
 
             if set(columns) != set(base_columns):
                 error_text = "Schemas must match for each file. The schemas in " + \
