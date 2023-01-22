@@ -40,6 +40,7 @@ import sys
 import phonenumbers
 from normalizers.address_normalizer import AddressNormalizer
 from normalizers.email_normalizer import EmailNormalizer
+from normalizers.state_normalizer import StateNormalizer
 from awsglue.utils import getResolvedOptions, GlueArgumentError
 import pandas as pd
 import awswrangler as wr
@@ -62,159 +63,7 @@ rows_to = " rows to "
 ###############################
 
 addressNormalizer = AddressNormalizer(country_code)
-
-state_substitutions = {
-    "alberta": "ab",
-    "british columbia": "bc",
-    "manitoba": "mb",
-    "new brunswick": "nb",
-    "newfoundland and labrador": "nl",
-    "northwest territories": "nt",
-    "nova scotia": "ns",
-    "nunavut": "nu",
-    "ontario": "on",
-    "prince edward island": "pe",
-    "quebec": "qc",
-    "saskatchewan": "sk",
-    "yukon": "yt",
-    "alabama": "al",
-    "alaska": "ak",
-    "american samoa": "as",
-    "arizona": "az",
-    "arkansas": "ar",
-    "california": "ca",
-    "colorado": "co",
-    "connecticut": "ct",
-    "delaware": "de",
-    "district of columbia": "dc",
-    "federated states of micronesia": "fm",
-    "florida": "fl",
-    "georgia": "ga",
-    "guam": "gu",
-    "hawaii": "hi",
-    "idaho": "id",
-    "illinois": "il",
-    "indiana": "in",
-    "iowa": "ia",
-    "kansas": "ks",
-    "kentucky": "ky",
-    "louisiana ": "la",
-    "maine ": "me",
-    "marshall islands": "mh",
-    "maryland": "md",
-    "massachusetts ": "ma",
-    "michigan": "mi",
-    "minnesota": "mn",
-    "mississippi": "ms",
-    "missouri": "mo",
-    "montana": "mt",
-    "nebraska": "ne",
-    "nevada": "nv",
-    "new hampshire ": "nh",
-    "new jersey": "nj",
-    "new mexico": "nm",
-    "new york": "ny",
-    "north carolina": "nc",
-    "north dakota": "nd",
-    "northern mariana islands": "mp",
-    "ohio": "oh",
-    "oklahoma": "ok",
-    "oregon": "or",
-    "palau": "pw",
-    "pennsylvania": "pa",
-    "puerto rico": "pr",
-    "rhode island": "ri",
-    "south carolina": "sc",
-    "south dakota": "sd",
-    "tennessee": "tn",
-    "texas": "tx",
-    "utah": "ut",
-    "vermont": "vt",
-    "virgin islands": "vi",
-    "virginia": "va",
-    "washington": "wa",
-    "west virginia ": "wv",
-    "wisconsin ": "wi",
-    "wyoming ": "wy",
-    "baden-württemberg ": "bw",
-    "bavaria ": "by",
-    "berlin": "be",
-    "brandenburg ": "bb",
-    "bremen": "hb",
-    "hamburg ": "hh",
-    "hesse ": "he",
-    "lower saxony": "ni",
-    "mecklenburg-vorpommern": "mv",
-    "north rhine-westphalia": "nw",
-    "rhineland-palatinate": "rp",
-    "saarland": "sl",
-    "saxony": "sn",
-    "saxony-anhalt ": "st",
-    "schleswig-holstein": "sh",
-    "thuringia ": "th",
-    "auvergne-rhône-alpes": "ara",
-    "bourgogne-franche-comté": "bfc",
-    "brittany": "bre",
-    "centre": "cvl",
-    "corsica": "cor",
-    "grand est": "ges",
-    "hauts-de-france": "hdf",
-    "île-de-france": "idf",
-    "normandy": "nor",
-    "nouvelle-aquitaine": "naq",
-    "occitanie": "occ",
-    "pays de la loire": "pdl",
-    "provence-alpes-côte d'azur": "pac",
-    "álava": "pv",
-    "albacete": "cm",
-    "alicante": "vc",
-    "almería": "an",
-    "asturias": "as",
-    "ávila": "cl",
-    "badajoz": "ex",
-    "barcelona": "ct",
-    "bizkaia": "pv",
-    "burgos": "cl",
-    "cáceres": "ex",
-    "cádiz": "an",
-    "cantabria": "cb",
-    "castellón": "vc",
-    "ciudad": "cm",
-    "córdoba": "an",
-    "cuenca": "cm",
-    "gipuzkoa": "pv",
-    "girona": "ct",
-    "granada": "an",
-    "guadalajara": "cm",
-    "huelva": "an",
-    "huesca": "ar",
-    "illes balears": "ib",
-    "jaén": "an",
-    "la rioja": "ri",
-    "las palmas": "cn",
-    "león": "cl",
-    "lleida": "ct",
-    "lugo": "ga",
-    "madrid": "md",
-    "málaga": "an",
-    "murcia": "mc",
-    "navarra": "nc",
-    "ourense": "ga",
-    "palencia": "cl",
-    "pontevedra": "ga",
-    "salamanca": "cl",
-    "santa cruz de tenerife": "cn",
-    "segovia": "cl",
-    "sevilla": "an",
-    "soria": "cl",
-    "tarragona": "ct",
-    "teruel": "ar",
-    "toledo": "cm",
-    "valència": "vc",
-    "valladolid": "cl",
-    "zamora": "cl",
-    "zaragoza": "ar",
-}
+stateNormalizer = StateNormalizer(country_code)
 
 ###############################
 # PARSE ARGS
@@ -338,11 +187,8 @@ def address_transformations(text):
     text = addressNormalizer.normalize(text).normalizedAddress
     return text
 
-
 def state_transformations(text):
-    state_regex_pattern = {re.compile(k): v for k, v in state_substitutions.items()}
-    for pattern, replacement in state_regex_pattern.items():
-        text = pattern.sub(replacement, text)
+    text = stateNormalizer.normalize(text).normalizedState.lower()
     return text
 
 def normalize_email(text):
@@ -362,7 +208,7 @@ for field in pii_fields:
             lambda x: x if re.match(sha256_pattern, x) else address_transformations(x))
     elif field['pii_type'] == "STATE":
         df2[column_name] = df2[column_name].copy().apply(
-            lambda x: x if re.match(sha256_pattern, x) else state_transformations(x.lower()))
+            lambda x: x if re.match(sha256_pattern, x) else state_transformations(x))
     elif field['pii_type'] == "ZIP":
         # remove 4-digit delivery route extension for US zip codes
         df2[column_name] = df2[column_name].copy().apply(
