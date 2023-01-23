@@ -43,7 +43,6 @@ jobs:
 
   unit-test:
     needs: 
-      - viperlight-scan
       - cfn-scan
     runs-on: ubuntu-latest
     steps:
