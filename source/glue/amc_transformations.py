@@ -39,6 +39,7 @@
 import sys
 import phonenumbers
 from normalizers.address_normalizer import AddressNormalizer
+from normalizers.email_normalizer import EmailNormalizer
 from awsglue.utils import getResolvedOptions, GlueArgumentError
 import pandas as pd
 import awswrangler as wr
@@ -346,6 +347,10 @@ def state_transformations(text):
         text = pattern.sub(replacement, text)
     return text
 
+def normalize_email(text):
+    email_normalize = EmailNormalizer(text)
+    return email_normalize.normalize()
+
 
 # This regex expression matches a sha256 hash value.
 # Sha256 hash codes are 64 consecutive hexadecimal digits, a-f and 0-9.
@@ -371,6 +376,7 @@ for field in pii_fields:
     elif field['pii_type'] == "EMAIL":
         df2[column_name] = df2[column_name].copy().apply(lambda x: x.lower())
         df2[column_name].replace("[^\w.@-]", "", inplace=True, regex=True)
+        df2[column_name] = df2[column_name].copy().apply(lambda x: normalize_email(x))
     else:
         df2[column_name] = df2[column_name].copy().apply(lambda x: x.lower())
         # convert characters ß, ä, ö, ü, ø, æ 
