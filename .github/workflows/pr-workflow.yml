@@ -62,7 +62,7 @@ jobs:
           source "$VENV"/bin/activate
           ls -l
           cd source
-          pip install requirements-dev.txt
+          pip install -r requirements-dev.txt
           cd tests
           pytest amc_transformation/test_amc_transformation.py -vv
           pytest amc_uploader/test_amc_uploader.py -vv
