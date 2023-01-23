@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automate integration tests [#42]
 - Automate front-end tests [#32]
 - Automate build and deploy tests [#34]  
+- Invalid email addresses should normalize to empty string [#63]
 
 ### Changed
 
