@@ -251,8 +251,6 @@ if 'period' in args:
         print("ERROR: Invalid user-defined value for dataset period:")
         print(user_defined_partition_size)
         exit(1)
-else:
-    user_defined_partition_size = 'autodetect'
 
 # Read optional parameters
 try:
