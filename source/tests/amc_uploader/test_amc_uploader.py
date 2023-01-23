@@ -10,6 +10,7 @@ def mock_env_variables():
     os.environ["AMC_API_ROLE_ARN"] = "AmcApiRoleArn"
     os.environ["botoConfig"] = '{"region_name": "us-east-1"}'
     os.environ["SOLUTION_VERSION"] = '0.01'
+    os.environ["SOLUTION_NAME"] = 'amc_test'
 
 
 def test_is_dataset(mock_env_variables):
