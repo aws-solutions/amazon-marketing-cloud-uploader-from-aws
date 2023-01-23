@@ -305,7 +305,7 @@ def list_bucket():
 
 @app.route('/get_data_columns', cors=True, methods=['POST'], content_types=[application_json], authorizer=authorizer)
 def get_data_columns():
-    """ Get the column names of a user-specified JSON or CSV file
+    """ Get the column names and file format of a user-specified JSON or CSV file
 
     Body:
 
@@ -314,19 +314,19 @@ def get_data_columns():
         {
             "s3bucket": string,
             "s3key": string
-            "file_format": ['CSV', 'JSON']
         }
 
 
     Returns:
         List of column names and data types found in the first row of
         the user-specified data file.
+        Also returns the content_type, "application/json" or  "text/csv", of the data file.
 
         .. code-block:: python
 
             {
-                "object": {
-                }
+                "columns": [string, string, ...],
+                "content_type": string
             }
 
     Raises:
@@ -336,19 +336,53 @@ def get_data_columns():
     log_request_parameters()
     try:
         bucket = json.loads(app.current_request.raw_body.decode())['s3bucket']
-        key = json.loads(app.current_request.raw_body.decode())['s3key']
-        file_format = json.loads(app.current_request.raw_body.decode())['file_format']
-        if file_format != 'CSV' and file_format != 'JSON':
-            raise TypeError('File format must be CSV or JSON')
-        # Read first row
-        logger.info("Reading " + 's3://'+bucket+'/'+key)
-        if file_format == 'JSON':
-            dfs = wr.s3.read_json(path=['s3://'+bucket+'/'+key], chunksize=1, lines=True)
-        elif file_format == 'CSV':
-            dfs = wr.s3.read_csv(path=['s3://'+bucket+'/'+key], chunksize=1)
-        chunk = next(dfs)
-        columns = list(chunk.columns.values)
-        result = json.dumps({'columns': columns})
+        keys = json.loads(app.current_request.raw_body.decode())['s3key']
+        keys_to_validate = [x.strip() for x in keys.split(',')]
+
+        # for concurrent glue jobs, can only run a max of 200 per account
+        if(len(keys_to_validate) > 200):
+            return Response(body={"message": "Number of files selected cannot exceed 200"},
+                            status_code=400,
+                            headers={'Content-Type': 'text/plain'})
+        
+        # get first columns to compare against to ensure all files have same schema        
+        base_key = keys_to_validate[0]
+
+        json_content_type = "application/json"
+        csv_content_type = "text/csv"
+        content_type = ""
+        for key in keys_to_validate:
+            s3 = boto3.client('s3', config=config)
+            response = s3.head_object(Bucket=bucket, Key=key)
+            # Return an error if user selected a combination 
+            # of CSV and JSON files.
+            if content_type == "":
+                content_type = response['ContentType']
+            elif content_type != response['ContentType']:
+                raise TypeError('Files must all have the same format (CSV or JSON).')
+            # Read first row
+            logger.info("Reading " + 's3://'+bucket+'/'+key)
+            if content_type == json_content_type:
+                dfs = wr.s3.read_json(path=['s3://'+bucket+'/'+key], chunksize=1, lines=True)
+            elif content_type == csv_content_type:
+                dfs = wr.s3.read_csv(path=['s3://'+bucket+'/'+key], chunksize=1)
+            else:
+                raise TypeError('File format must be CSV or JSON')
+            chunk = next(dfs)
+            columns = list(chunk.columns.values)
+
+            if key == base_key:
+                base_columns = columns
+                result = json.dumps({'columns': base_columns ,'content_type': content_type})
+
+            if set(columns) != set(base_columns):
+                error_text = "Schemas must match for each file. The schemas in " + \
+                             key + " and " + base_key + " do not match."
+                logger.error(error_text)
+                return Response(body={"message": error_text},
+                                status_code=400,
+                                headers={'Content-Type': 'text/plain'})
+
         return result
     except Exception as e:
         logger.error(e)

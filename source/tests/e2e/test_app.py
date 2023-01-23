@@ -56,6 +56,36 @@ def test_everything(browser, test_environment, stack_resources):
     rows = browser.find_elements("xpath", xpath)
     assert len(rows) > 0
 
+    # validate key selection when clicking top table row
+    browser.find_element("xpath", "/html/body/div/div/div/div[2]/div/div[2]/div[2]/div/table/tbody/tr[1]/td[1]").click()
+    
+    key_input_field = browser.find_element("xpath", "/html/body/div/div/div/div[2]/div/div[2]/div[1]/div/div[1]/div[2]/div/input")
+    key_input_text = key_input_field.get_attribute("value")
+
+    key_table_field1 = browser.find_element("xpath", "/html/body/div/div/div/div[2]/div/div[2]/div[2]/div/table/tbody/tr[1]/td[2]")
+    key_table_text1 = key_table_field1.text
+    assert key_input_text == key_table_text1
+
+    # validate multiple key selection, click second row
+    browser.find_element("xpath", "/html/body/div/div/div/div[2]/div/div[2]/div[2]/div/table/tbody/tr[2]/td[1]").click()
+    
+    multiple_key_text = key_input_field.get_attribute("value")
+
+    key_table_field2 = browser.find_element("xpath", "/html/body/div/div/div/div[2]/div/div[2]/div[2]/div/table/tbody/tr[2]/td[2]")
+    key_table_text2 = key_table_field2.text
+
+    keys = key_table_text1 + ", " + key_table_text2
+    assert multiple_key_text == keys
+
+    # open Step 2
+    browser.find_element("xpath", "/html/body/div/div/div/div[2]/div/div[2]/div[1]/div/div[2]/button").click()
+
+    # validate if keys stored, s3 key field matches in step 2 from step 1
+    s3_key_field = browser.find_element("xpath", "/html/body/div/div/div/div[2]/div/div[2]/div[1]/div[2]/div/input")
+    s3_key_text = s3_key_field.get_attribute("value")
+
+    assert s3_key_text == keys
+
     # open Step 2
     browser.find_element(By.ID, "step2").click()
     wait.until(EC.presence_of_element_located((By.ID, "dataset_type_options")))

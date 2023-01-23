@@ -22,6 +22,13 @@ SPDX-License-Identifier: Apache-2.0
         >
           Missing s3key. Go back and select a file. 
         </b-alert>
+        <b-alert 
+          v-model="showSchemaError"
+          variant="danger"
+          dismissible
+        >
+          Schemas must match for each file when multi-uploading.
+        </b-alert>
         <b-alert
           v-model="showUserIdWarning"
           variant="danger"
@@ -68,7 +75,7 @@ SPDX-License-Identifier: Apache-2.0
             </b-alert>
             <b-row>
               <b-col>
-                Fill in the table to define properties for each field in {{ s3key }}.
+                Fill in the table to define properties for each field in the input data.
               </b-col>
               <b-col sm="3" align="right" class="row align-items-end">
                 <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push('Step2')">
@@ -175,6 +182,7 @@ SPDX-License-Identifier: Apache-2.0
         new_dataset_definition: {},
         isBusy: false,
         showServerError: false,
+        showSchemaError: false,
         showMissingDataAlert: false,
         showIncompleteFieldsError: false,
         showIncompleteTimeFieldError: false,
@@ -183,6 +191,7 @@ SPDX-License-Identifier: Apache-2.0
         userIdWarningMessage: "Do not include user_id and user_type columns in data files containing hashed identifiers. These columns are used by AMC when a match is found in a hashed record.",
         items: [],
         columns: [],
+        content_type: "",
         fields: [
           { key: 'name', sortable: true },
           { key: 'description', sortable: false },
@@ -265,7 +274,7 @@ SPDX-License-Identifier: Apache-2.0
         this.showMissingDataAlert = true
       }
       else if (!this.step3_form_input.length) {
-        this.send_request('POST', 'get_data_columns', {'s3bucket': this.DATA_BUCKET_NAME, 's3key':this.s3key, 'file_format':this.dataset_definition.fileFormat})
+        this.send_request('POST', 'get_data_columns', {'s3bucket': this.DATA_BUCKET_NAME, 's3key':this.s3key})
       } else {
         this.items = this.step3_form_input
       }
@@ -279,7 +288,7 @@ SPDX-License-Identifier: Apache-2.0
       },
       onReset() {
         this.$store.commit('updateDeletedColumns', [])
-        this.send_request('POST', 'get_data_columns', {'s3bucket': this.DATA_BUCKET_NAME, 's3key':this.s3key, 'file_format':this.dataset_definition.fileFormat})
+        this.send_request('POST', 'get_data_columns', {'s3bucket': this.DATA_BUCKET_NAME, 's3key':this.s3key})
         this.column_type_options.forEach(x => x.disabled = false)
         this.pii_type_options.forEach(x => x.disabled = false)
       },
@@ -377,6 +386,14 @@ SPDX-License-Identifier: Apache-2.0
           }
           )
         this.new_dataset_definition['columns'] = this.columns
+        if (this.content_type === "application/json") 
+          this.new_dataset_definition['fileFormat'] = 'JSON'
+        else if (this.content_type === "text/csv")
+          this.new_dataset_definition['fileFormat'] = 'CSV'
+        else
+          console.log("ERROR: unrecognized content_type, " + this.content_type)
+          this.showServerError = true;
+          
         this.$store.commit('updateDatasetDefinition', this.new_dataset_definition)
         this.$router.push('Step4')
       },
@@ -443,6 +460,7 @@ SPDX-License-Identifier: Apache-2.0
             "column_type": "", 
             "pii_type": ""}
           }).filter(x => !this.deleted_columns.includes(x.name) )
+          
           // warn if table contains hashed identifiers and user_id or user_type columns
           const idx = this.items.findIndex((x => x.name === "user_id"))
           if (idx >= 0) {
@@ -454,13 +472,15 @@ SPDX-License-Identifier: Apache-2.0
             this.items[idx2]._rowVariant = 'danger'
             this.showUserIdWarning = true;
           }
-
+          this.content_type = response.content_type
           console.log(JSON.stringify(this.items))
         }
         catch (e) {
+          if(e.response.status === 400) this.showSchemaError = true;
+          else this.showServerError = true;
+
           console.log("ERROR: " + e.response.data.message)
           this.isBusy = false;
-          this.showServerError = true;
           this.results = e.response.data.message
         }
         this.isBusy = false;
