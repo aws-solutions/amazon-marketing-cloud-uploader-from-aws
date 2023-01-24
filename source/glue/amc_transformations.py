@@ -153,12 +153,6 @@ for chunk in dfs:
 for column_name in deleted_fields:
     df.drop(column_name, axis=1, inplace=True)
 
-for field in pii_fields:
-    if field['pii_type'] == "ZIP":
-        column_name = field['column_name']
-        # remove 4-digit delivery route extension for US zip codes
-        df[column_name] = df[column_name].astype(str).str[:5]
-
 # Define the column name to hold the timestamp in its full precision
 timestamp_full_precision = 'timestamp_full_precision'
 
