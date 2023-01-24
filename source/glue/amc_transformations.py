@@ -37,11 +37,11 @@
 ###############################################################################
 
 import sys
-import phonenumbers
 from normalizers.address_normalizer import AddressNormalizer
 from normalizers.email_normalizer import EmailNormalizer
 from normalizers.state_normalizer import StateNormalizer
 from normalizers.zip_normalizer import ZipNormalizer
+from normalizers.phone_normalizer import PhoneNormalizer
 from awsglue.utils import getResolvedOptions, GlueArgumentError
 import pandas as pd
 import awswrangler as wr
@@ -66,6 +66,7 @@ rows_to = " rows to "
 addressNormalizer = AddressNormalizer(country_code)
 stateNormalizer = StateNormalizer(country_code)
 zipNormalizer = ZipNormalizer(country_code)
+phoneNormalizer = PhoneNormalizer(country_code)
 
 ###############################
 # PARSE ARGS
@@ -195,6 +196,10 @@ def zip_transformations(text):
     text = zipNormalizer.normalize(text).normalizedZip
     return text
 
+def phone_transformations(text):
+    text = phoneNormalizer.normalize(text).normalizedPhone
+    return text
+
 
 # This regex expression matches a sha256 hash value.
 # Sha256 hash codes are 64 consecutive hexadecimal digits, a-f and 0-9.
@@ -214,8 +219,7 @@ for field in pii_fields:
             lambda x: x if re.match(sha256_pattern, x) else zip_transformations(x))
     elif field['pii_type'] == "PHONE":
         df2[column_name] = df2[column_name].copy().apply(
-            lambda x: x if re.match(sha256_pattern, x) else phonenumbers.format_number(
-                phonenumbers.parse(x, country_code), phonenumbers.PhoneNumberFormat.E164).replace('+', ""))
+            lambda x: x if re.match(sha256_pattern, x) else phone_transformations(x))
     elif field['pii_type'] == "EMAIL":
         df2[column_name] = df2[column_name].copy().apply(lambda x: x.lower())
         df2[column_name].replace("[^\w.@-]", "", inplace=True, regex=True)
