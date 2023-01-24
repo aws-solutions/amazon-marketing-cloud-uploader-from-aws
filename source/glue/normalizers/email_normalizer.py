@@ -7,11 +7,17 @@ def isValidEmailAddress(email):
     except Exception:
         return False
 
+def normalizeEmail(email):
+    if email:
+        return re.sub("[^\w.@-]+", "", email.lower())
+    return None
+
 class EmailNormalizer():
     def __init__(self, email):
         self.email = email
 
     def normalize(self):
-        if isValidEmailAddress(self.email):
-            return self.email
+        email = normalizeEmail(self.email)
+        if isValidEmailAddress(email):
+            return email
         return ""

@@ -25,3 +25,12 @@ def test_email_normalizer():
 
     email_normalizer = EmailNormalizer("this is an invalid email")
     assert email_normalizer.normalize() == ""
+
+    email_normalizer = EmailNormalizer("not.an_e-mail")
+    assert email_normalizer.normalize() == ""
+
+    email_normalizer = EmailNormalizer("te$s-t@te^st.c()om")
+    assert email_normalizer.normalize() == "tes-t@test.com"
+
+    email_normalizer = EmailNormalizer("te-st@tEsT.CoM")
+    assert email_normalizer.normalize() == "te-st@test.com"
