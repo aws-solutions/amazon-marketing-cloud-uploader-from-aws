@@ -6,12 +6,12 @@ class ZipNormalizer():
         if countryCode == "CA":
             self.normalizeRegex = r'[^0-9A-Za-z]'
             self.zipLength = 6
-            self.regex = re.compile(r'^([A-Za-z][0-9]){3}')
-        # UK Zip, A11AA A111AA AA11AA AA111AA A1A1AA AA1A1AA
+            self.regex = re.compile(r'^([A-Za-z][0-9]){3}$')
+        # UK Zip, A11AA A111AA AA11AA AA111AA | A1A1AA AA1A1AA
         elif countryCode == "UK":
             self.normalizeRegex = r'[^0-9A-Za-z]'
             self.zipLength = 7
-            self.regex = re.compile(r'^(([A-Za-z]{1,2}[0-9]{2,3})|([A-Za-z]{1,2}[0-9][A-Za-z][0-9]))[A-Za-z]{2}')
+            self.regex = re.compile(r'^(([A-Za-z]{1,2}[0-9]{2,3})|([A-Za-z]{1,2}[0-9][A-Za-z][0-9]))[A-Za-z]{2}$')
         # IN ZIP, 6 digits
         elif countryCode == "IN":
             self.normalizeRegex = r'[^0-9]'
@@ -25,8 +25,8 @@ class ZipNormalizer():
         # ZIP, 5 digits
         else:
             self.normalizeRegex = r'[^0-9]'
-            self.zipLength = 7
-            self.regex = re.compile(r'[0-9]{7}')
+            self.zipLength = 5
+            self.regex = re.compile(r'[0-9]{5}')
     
     def normalize(self, record):
         self.normalizedZip = re.sub(self.normalizeRegex, '', record)
