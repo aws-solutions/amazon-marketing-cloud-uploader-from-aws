@@ -14,5 +14,7 @@ source/api/external_resources.json:222
 
 deployment/lambda_layer_factory/lambda_layer-python3.8.zip
 deployment/lambda_layer_factory/lambda_layer-python3.9.zip
+source/tests/*
+source/api/tests/*
 
 
