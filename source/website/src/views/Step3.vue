@@ -86,7 +86,7 @@ SPDX-License-Identifier: Apache-2.0
                 </button>
               </b-col>
             </b-row>
-            <b-table 
+            <b-table
               :items="items"
               :fields="fields" 
               :busy="isBusy"
@@ -155,16 +155,16 @@ SPDX-License-Identifier: Apache-2.0
             <b-row>
               <b-col></b-col>
               <b-col sm="4" align="right" class="row align-items-end">
-                <b-button type="submit" variant="outline-secondary" title="Export column schema" @click="onExport">
+                <b-button v-b-tooltip.hover type="submit" title="Export column schema" variant="outline-secondary" @click="onExport">
                   Export
                 </b-button> &nbsp;
-                <label >
+                <b-button v-b-tooltip.hover type="submit" title="Import column schema" variant="outline-secondary" @click="onBrowseImports">
                   Import
-                  <input ref="file" accept="application/json" type="file" hidden @change="onImport" />
-                </label>&nbsp;
+                </b-button>&nbsp;
                 <b-button type="submit" variant="outline-secondary" @click="onReset">
                   Reset
                 </b-button>
+                <b-form-file id="importFile" ref="file" accept="application/json" type="file" style="visibility: hidden" @change="onImport" />
               </b-col>
             </b-row>
           </b-col>
@@ -308,31 +308,56 @@ SPDX-License-Identifier: Apache-2.0
         a.click();
         console.log("Schema Exported")
       },
-      onImport(e){
+      onBrowseImports(){
         if (confirm("WARNING: This will reset the columns!")) {
+          document.getElementById('importFile').click()
+        }
+      },
+      onImport(e){
           let files = e.target.files || e.dataTransfer.files;
           if (!files.length) return;
-          let file = files[0];
           let reader = new FileReader();
           reader.onload = e => {
             console.log(e.target.result);
             let importJson = JSON.parse(e.target.result);
+            if (!importJson.length){
+              alert("Invalid Schema: Json file is empty.")
+              return
+            }
+            if (!("column" in importJson)){
+              alert("Invalid Schema: Column is required in imported schema.")
+              return
+            }
+            if (!importJson.column.length){
+              alert("Invalid Schema: Column is empty.")
+              return
+            }
+
+            valid_keys = ["name", "description", "data_type", "column_type", "pii_type", "nullable"]
+            for (var key in importJson.column){
+              if (!valid_keys.includes(key)){
+                alert("Invalid Schema: Only these valid keys {1} are required.".format(valid_keys))
+                return
+              } 
+            }
+
+            this.isBusy = true;
             console.log(importJson)
             this.column_type_options.forEach(x => x.disabled = false)
             this.pii_type_options.forEach(x => x.disabled = false)
             this.items = importJson.columns.map(x => {return {
-                "name": x.name, 
-                "description": x.description.charAt(0).toUpperCase() + x.description.replace(/[^a-zA-Z0-9]/g, ' ').slice(1), 
-                "data_type": x.data_type, 
-                "column_type": x.column_type, 
+                "name": x.name,
+                "description": x.description.charAt(0).toUpperCase() + x.description.replace(/[^a-zA-Z0-9]/g, ' ').slice(1),
+                "data_type": x.data_type,
+                "column_type": x.column_type,
                 "pii_type": x.pii_type,
                 "nullable": x.nullable
               }
             })
             this.$store.commit('saveStep3FormInput', this.items)
+            this.isBusy = false;
           };
-          reader.readAsText(file);
-        }
+          reader.readAsText(files[0]);
       },
       validateForm() {
         // All fields must have values.
