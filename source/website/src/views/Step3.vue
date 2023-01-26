@@ -154,7 +154,14 @@ SPDX-License-Identifier: Apache-2.0
             </b-table>
             <b-row>
               <b-col></b-col>
-              <b-col sm="2" align="right" class="row align-items-end">
+              <b-col sm="4" align="right" class="row align-items-end">
+                <b-button type="submit" variant="outline-secondary" title="Export column schema" @click="onExport">
+                  Export
+                </b-button> &nbsp;
+                <label >
+                  Import
+                  <input ref="file" accept="application/json" type="file" hidden @change="onImport" />
+                </label>&nbsp;
                 <b-button type="submit" variant="outline-secondary" @click="onReset">
                   Reset
                 </b-button>
@@ -291,6 +298,41 @@ SPDX-License-Identifier: Apache-2.0
         this.send_request('POST', 'get_data_columns', {'s3bucket': this.DATA_BUCKET_NAME, 's3key':this.s3key})
         this.column_type_options.forEach(x => x.disabled = false)
         this.pii_type_options.forEach(x => x.disabled = false)
+      },
+      onExport() {
+        if (!this.validateForm()) return
+        const a = document.createElement("a");
+        const file = new Blob([JSON.stringify({"columns": this.items })], { type:  "application/json"});
+        a.href = URL.createObjectURL(file);
+        a.download = "amcufa_exported_schema_" + Date.now() + ".json";
+        a.click();
+        console.log("Schema Exported")
+      },
+      onImport(e){
+        if (confirm("WARNING: This will reset the columns!")) {
+          let files = e.target.files || e.dataTransfer.files;
+          if (!files.length) return;
+          let file = files[0];
+          let reader = new FileReader();
+          reader.onload = e => {
+            console.log(e.target.result);
+            let importJson = JSON.parse(e.target.result);
+            console.log(importJson)
+            this.column_type_options.forEach(x => x.disabled = false)
+            this.pii_type_options.forEach(x => x.disabled = false)
+            this.items = importJson.columns.map(x => {return {
+                "name": x.name, 
+                "description": x.description.charAt(0).toUpperCase() + x.description.replace(/[^a-zA-Z0-9]/g, ' ').slice(1), 
+                "data_type": x.data_type, 
+                "column_type": x.column_type, 
+                "pii_type": x.pii_type,
+                "nullable": x.nullable
+              }
+            })
+            this.$store.commit('saveStep3FormInput', this.items)
+          };
+          reader.readAsText(file);
+        }
       },
       validateForm() {
         // All fields must have values.
