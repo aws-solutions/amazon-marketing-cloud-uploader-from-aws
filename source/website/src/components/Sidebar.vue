@@ -57,6 +57,16 @@ SPDX-License-Identifier: Apache-2.0
           Monitor upload
         </b-link>
         <hr>
+        Settings
+        <b-link
+            id="settings"
+            to="/settings"
+            :class="{ active: isSettingsActive }"
+        >
+          <br>
+          AMC Instances
+        </b-link>
+        <hr>
       </b-col>
     </b-row>
   </div>
@@ -66,7 +76,7 @@ SPDX-License-Identifier: Apache-2.0
 
 export default {
   name: 'Sidebar',
-  props: ['isStep1Active','isStep2Active','isStep3Active','isStep4Active', 'isStep5Active', 'isTestActive'],
+  props: ['isStep1Active','isStep2Active','isStep3Active','isStep4Active', 'isStep5Active', 'isTestActive', 'isSettingsActive'],
 }
 
 </script>
