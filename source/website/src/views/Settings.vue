@@ -120,7 +120,7 @@ SPDX-License-Identifier: Apache-2.0
         dismissSecs: 5,
         showSuccessCountDown: 0,
         isBusy: false,
-        amcInstances: [],
+        amcInstances: [{"endpoint":"","data_upload_account_id":""}],
         fields: [
           {key: 'endpoint', label: 'AMC Endpoint', sortable: true},
           {key: 'data_upload_account_id', label: 'Data Upload Account Id', sortable: true}
@@ -140,6 +140,7 @@ SPDX-License-Identifier: Apache-2.0
       // this.send_request('POST', 'save_settings', {'amcInstances': this.amcInstances})
     },
     mounted: function() {
+      this.read_system_configuration('GET', 'system/configuration')
     },
     methods: {
       isValidEndpoint(x) {
@@ -169,12 +170,11 @@ SPDX-License-Identifier: Apache-2.0
         }
       },
       delete_row(index) {
-        if (this.amcInstances.length === 0){
+        this.amcInstances.splice(index, 1)
+        // Prevent the table from being empty if a user delete a row when there is only one row.
+        if (this.amcInstances.length === 0) {
           this.amcInstances = [{"endpoint":"","data_upload_account_id":""}]
-        } else {
-          this.amcInstances.splice(index, 1)
         }
-        
       },
       onImport() {
         this.importFilename = null
@@ -221,21 +221,19 @@ SPDX-License-Identifier: Apache-2.0
         a.dispatchEvent(e);
       },
       onReset() {
-        this.amcInstances = []
+        this.read_system_configuration('GET', 'system/configuration')
       },
       onSubmit() {
-        this.send_request('POST', '/system/configuration', {"Name": "AmcInstances", "Value": this.amcInstances})
+        this.save_system_configuration('POST', 'system/configuration', {"Name": "AmcInstances", "Value": this.amcInstances})
       },
-      async send_request(method, resource, data) {
+      async save_system_configuration(method, resource, data) {
         this.results = []
         console.log("sending " + method + " " + resource + " " + JSON.stringify(data))
         const apiName = 'amcufa-api'
         let response = ""
-
+        this.isBusy = true;
         try {
-          if (method === "GET") {
-            response = await this.$Amplify.API.get(apiName, resource);
-          } else if (method === "POST") {
+          if (method === "POST") {
             let requestOpts = {
               headers: {'Content-Type': 'application/json'},
               body: data
@@ -248,6 +246,25 @@ SPDX-License-Identifier: Apache-2.0
           console.log("ERROR: " + e.response.data.message)
           this.isBusy = false;
           this.results = e.response.data.message
+        }
+        this.isBusy = false;
+      },
+      async read_system_configuration(method, resource) {
+        this.results = []
+        console.log("sending " + method + " " + resource)
+        const apiName = 'amcufa-api'
+        let response = ""
+        this.isBusy = true;
+        try {
+          if (method === "GET") {
+            response = await this.$Amplify.API.get(apiName, resource);
+          }
+          this.amcInstances = response[0]["Value"]
+          console.log(response[0]["Value"])
+        }
+        catch (e) {
+          console.log("ERROR: " + e)
+          this.isBusy = false;
         }
         this.isBusy = false;
       }

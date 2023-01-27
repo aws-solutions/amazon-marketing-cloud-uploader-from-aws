@@ -425,9 +425,13 @@ def save_settings():
         system_parameter = json.loads(app.current_request.raw_body.decode())
         logger.info(json.loads(app.current_request.raw_body.decode()))
         system_table = DYNAMO_RESOURCE.Table(SYSTEM_TABLE_NAME)
-        # Validate input configuration
+        # Validate the AmcInstances parameter
+        if "Name" not in system_parameter:
+            raise BadRequestError("Missing system parameter Name")
+        if system_parameter["Name"] != "AmcInstances":
+            raise BadRequestError("Unrecognized system parameter, " + system_parameter["Name"])
         if system_parameter["Name"] == "AmcInstances":
-            value = json.loads(system_parameter["Value"])
+            value = system_parameter["Value"]
             if not isinstance(value, list):
                 raise BadRequestError("AmcInstances value must be of type list")
             for i in range(len(value)):
