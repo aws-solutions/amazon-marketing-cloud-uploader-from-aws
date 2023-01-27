@@ -320,6 +320,7 @@ SPDX-License-Identifier: Apache-2.0
           reader.onload = e => {
             console.log(e.target.result);
             let importJson = JSON.parse(e.target.result);
+            this.$refs['file'].reset()
             if(importJson.constructor != Object){
               alert("Invalid Schema: Expecting a dictionary.")
               return
