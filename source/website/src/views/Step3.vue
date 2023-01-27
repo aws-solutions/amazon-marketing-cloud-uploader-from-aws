@@ -306,7 +306,7 @@ SPDX-License-Identifier: Apache-2.0
         a.href = URL.createObjectURL(file);
         a.download = "amcufa_exported_schema_" + Date.now() + ".json";
         a.click();
-        console.log("Schema Exported")
+        console.log("Schema Exported: ".concat(JSON.stringify({"columns": this.items })))
       },
       onBrowseImports(){
         if (confirm("WARNING: This will reset the columns!")) {
@@ -318,7 +318,7 @@ SPDX-License-Identifier: Apache-2.0
           if (!files.length) return;
           let reader = new FileReader();
           reader.onload = e => {
-            console.log(e.target.result);
+            console.log("Imported schema: ".concat(e.target.result))
             let importJson = JSON.parse(e.target.result);
             this.$refs['file'].reset()
             if(importJson.constructor != Object){
@@ -330,7 +330,11 @@ SPDX-License-Identifier: Apache-2.0
               return
             }
             if (!("columns" in importJson)){
-              alert("Invalid Schema: Column is required in imported schema.")
+              alert("Invalid Schema: columns key is required in imported schema.")
+              return
+            }
+            if (importJson.columns.constructor.name != "Array"){
+              alert("Invalid Schema: Expecting an array type for columns key.")
               return
             }
             if (!importJson.columns.length){
@@ -351,7 +355,6 @@ SPDX-License-Identifier: Apache-2.0
            
 
             this.isBusy = true;
-            console.log(importJson)
             this.column_type_options.forEach(x => x.disabled = false)
             this.pii_type_options.forEach(x => x.disabled = false)
             this.items = importJson.columns.map(x => {return {
@@ -365,6 +368,7 @@ SPDX-License-Identifier: Apache-2.0
             })
             this.$store.commit('saveStep3FormInput', this.items)
             this.isBusy = false;
+            console.log("Schema Imported.")
           };
           reader.readAsText(files[0]);
       },
