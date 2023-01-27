@@ -203,6 +203,24 @@ echo "mkdir -p $regional_dist_dir/website/"
 mkdir -p "$regional_dist_dir"/website/
 
 echo "------------------------------------------------------------------------------"
+echo "Building Lambda Layers"
+echo "------------------------------------------------------------------------------"
+cd "$build_dir"/lambda_layer_factory/ || exit 1
+echo "Running build-lambda-layer.sh"
+rm -rf lambda_layer-python-* lambda_layer-python*.zip
+if `./build-lambda-layer.sh requirements.txt > /dev/null`; then
+  rm -rf lambda_layer_python-3.9/
+  echo "Lambda layer build script completed.";
+else
+  echo "ERROR: Lambda layer build script failed."
+  exit 1 
+fi
+mv lambda_layer_python3.9.zip "$regional_dist_dir"
+echo "Lambda layer file:"
+ls $regional_dist_dir/lambda_layer_python3.9.zip
+cd "$build_dir" || exit 1
+
+echo "------------------------------------------------------------------------------"
 echo "CloudFormation Templates"
 echo "------------------------------------------------------------------------------"
 echo ""
@@ -274,9 +292,9 @@ echo "Building Glue ETL script"
 cd "$source_dir/glue" || exit 1
 echo "cp amc_transformations.py $regional_dist_dir/"
 cp amc_transformations.py "$regional_dist_dir"
-zip -q address_normalizer.zip normalizers/*
-cp address_normalizer.zip "$regional_dist_dir"
-rm -f address_normalizer.zip
+zip -q normalizers.zip normalizers/*
+cp normalizers.zip "$regional_dist_dir"
+rm -f normalizers.zip
 
 echo "------------------------------------------------------------------------------"
 echo "Build vue website"

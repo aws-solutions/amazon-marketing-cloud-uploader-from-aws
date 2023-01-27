@@ -41,10 +41,38 @@ jobs:
         with:
           input_path: deployment
 
+  unit-test:
+    needs: 
+      - cfn-scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out pr branch
+        uses: actions/checkout@v2.3.4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Run Unit Test
+        run: |
+          VENV=$(mktemp -d) && echo "$VENV"
+          python3.9 -m venv "$VENV"
+          source "$VENV"/bin/activate
+          ls -l
+          cd source
+          pip install -r requirements-dev.txt
+          cd tests
+          pytest amc_transformation/test_amc_transformation.py -vv
+          pytest amc_uploader/test_amc_uploader.py -vv
+          
+
   build:
     needs: 
       - viperlight-scan
       - cfn-scan
+      - unit-test
     runs-on: ubuntu-latest
     outputs:
       REGION: ${{ steps.init.outputs.REGION }}

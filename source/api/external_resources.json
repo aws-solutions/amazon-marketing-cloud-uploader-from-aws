@@ -45,6 +45,10 @@
     "CustomerManagedKey": {
       "Type": "String",
       "Description": "(Optional) ARN of a customer managed KMS encryption key (CMK) to use for encryption and decryption of original data files during the ETL pipeline and query computation in AMC."
+    },
+    "LambdaLayer": {
+      "Type": "String",
+      "Description": "Arn of the custom Lambda layer"
     }
   },
   "Conditions": {
@@ -218,6 +222,9 @@
           }
         },
         "Layers": [
+          {
+            "Ref": "LambdaLayer"
+          },
           {
             "Fn::Sub": "arn:aws:lambda:${AWS::Region}:336392948345:layer:AWSSDKPandas-Python39:3"
           }

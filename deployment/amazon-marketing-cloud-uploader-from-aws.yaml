@@ -300,6 +300,39 @@ Resources:
                     ]
                   ]
 
+  LambdaLayer:
+    Type: "AWS::Lambda::LayerVersion"
+    Properties:
+      CompatibleRuntimes:
+        - python3.9
+      Content:
+        S3Bucket: !Join ["-", [!FindInMap ["Application", "SourceCode", "RegionalS3Bucket"], Ref: "AWS::Region"]]
+        S3Key:
+          !Join [
+            "/",
+            [
+              !FindInMap ["Application", "SourceCode", "CodeKeyPrefix"],
+              "lambda_layer_python3.9.zip",
+            ],
+          ]
+      Description: 
+        !Join [
+          "",
+          [
+            "Python 3.9 packages for ",
+            !FindInMap ["Application", "Solution", "Name"]
+          ]
+        ]
+      LayerName:
+        !Join [
+          "",
+          [
+            !FindInMap [ "Application", "Solution", "Name" ],
+            "-python39"
+          ]
+        ]
+      LicenseInfo: Apache-2.0
+
   AmcUploadLambdaFunction:
     Type: AWS::Lambda::Function
     Metadata:
@@ -327,6 +360,8 @@ Resources:
       Runtime: python3.9
       MemorySize: 256
       Timeout: 60
+      Layers:
+        - !Ref "LambdaLayer"
       Environment:
         Variables:
           AMC_API_ROLE_ARN: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-AmcApiAccessRole'
@@ -689,6 +724,7 @@ Resources:
         AmcGlueJobName: !GetAtt GlueStack.Outputs.AmcGlueJobName
         TracingConfigMode: "Active"
         CustomerManagedKey: !Ref CustomerManagedKey
+        LambdaLayer: !Ref LambdaLayer
 
   # Resources for sending anonymous operational metrics to AWS 
   AnonymousDataCustomResourceRole:
