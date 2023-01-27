@@ -57,7 +57,10 @@ _test_data = [
     {"first_name":"Brenda","last_name":"Correll","email":"ohwe@example.com","product_quantity":81,"product_name":"Product B"},
     {"first_name":"Mollie","last_name":"Gaines","email":"gmollie@example.com","product_quantity":101,"product_name":"Product J"},
     {"first_name":"Mary","last_name":"Chancellor","email":"ion@example.com","product_quantity":24,"product_name":"Product A"},
-    {"first_name":"Rhonda","last_name":"Kelly","email":"themthat@example.com","product_quantity":105,"product_name":"Product B"}
+    {"first_name":"Rhonda","last_name":"Kelly","email":"themthat@example.com","product_quantity":105,"product_name":"Product B"},
+    {"first_name":"Rhonda","last_name":"Kelly","email":"This is an invalid email.","product_quantity":105,"product_name":"Product B"}, # test invalid email
+    {"first_name":"Rhonda","last_name":"Kelly","email":"te$s-t@te^st.c()om","product_quantity":105,"product_name":"Product B"}, # test invalid email
+    {"first_name":"Rhonda","last_name":"Kelly","email":"te-st@tEsT.CoM","product_quantity":105,"product_name":"Product B"} # test invalid email
 ]
     
 @pytest.fixture

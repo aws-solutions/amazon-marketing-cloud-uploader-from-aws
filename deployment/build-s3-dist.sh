@@ -292,9 +292,9 @@ echo "Building Glue ETL script"
 cd "$source_dir/glue" || exit 1
 echo "cp amc_transformations.py $regional_dist_dir/"
 cp amc_transformations.py "$regional_dist_dir"
-zip -q address_normalizer.zip normalizers/*
-cp address_normalizer.zip "$regional_dist_dir"
-rm -f address_normalizer.zip
+zip -q normalizers.zip normalizers/*
+cp normalizers.zip "$regional_dist_dir"
+rm -f normalizers.zip
 
 echo "------------------------------------------------------------------------------"
 echo "Build vue website"
