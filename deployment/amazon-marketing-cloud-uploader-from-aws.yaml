@@ -244,7 +244,6 @@ Resources:
       KeySchema:
         - AttributeName: Name
           KeyType: HASH
-      TableName: !Join ["", [Ref: "AWS::StackName", "System"]]
       Tags:
         - Key: "Environment"
           Value: "amcufa"
