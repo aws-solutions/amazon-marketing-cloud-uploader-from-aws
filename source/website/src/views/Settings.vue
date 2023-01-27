@@ -224,7 +224,7 @@ SPDX-License-Identifier: Apache-2.0
         this.amcInstances = []
       },
       onSubmit() {
-        this.send_request('POST', 'save_settings', {'body': this.amcInstances})
+        this.send_request('POST', '/system/configuration', {"Name": "AmcInstances", "Value": this.amcInstances})
       },
       async send_request(method, resource, data) {
         this.results = []

@@ -8,13 +8,14 @@ This solution enables users to upload first party datasets from Amazon S3 into t
 
 The architecture diagram for this solution is shown above. The process flow is described below:
 
-1.	The user uploads first-party data to a designated S3 bucket.
-2.	The user logs into the provided web application.
-3.	Within the web application, the user selects a CSV or JSON file to upload and defines how the columns in that file should map to an AMC compatible schema.
-4.	When the user submits their upload request, a dataset definition will be created in AMC and the ETL process will begin in AWS Glue.
-5.	The user-specified file is loaded into an AWS Glue job, where PII data is normalized and hashed, and timeseries records partitioned according to the data specifications provided by AMC.
-6.	The AWS Glue job outputs results in an AMC compatible format to Amazon S3. This event automatically triggers a request to AMC to begin uploading those results.
-7.	AMC asynchronously uploads the transformed data from Amazon S3.
+1. The user uploads first-party data to a designated S3 bucket.
+2. The user logs into the provided web application.
+3. Within the web application, the user selects a CSV or JSON file to upload and defines how the columns in that file should map to an AMC compatible schema.
+4. Within the web application, the user can send dataset operations to one or more AMC Instances. This list of AMC Instances is saved in a system configuration table and can also be updated from the web application.
+5. When the user submits their upload request, a dataset definition will be created in AMC and the ETL process will begin in AWS Glue.
+6. The user-specified file is loaded into an AWS Glue job, where PII data is normalized and hashed, and timeseries records partitioned according to the data specifications provided by AMC.
+7. The AWS Glue job outputs results in an AMC compatible format to Amazon S3. This event automatically triggers a request to AMC to begin uploading those results.
+8. AMC asynchronously uploads the transformed data from Amazon S3.
 
 If first-party data files have been encrypted using KMS, then users must specify which KMS key can be used to decrypt them. The CloudFormation parameter called "CustomerManagedKey" is provided for this purpose (see [below](#input)). 
 
