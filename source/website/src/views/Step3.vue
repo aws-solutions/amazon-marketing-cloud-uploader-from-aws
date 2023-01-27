@@ -338,7 +338,7 @@ SPDX-License-Identifier: Apache-2.0
               return
             }
             if (!importJson.columns.length){
-              alert("Invalid Schema: Column is empty.")
+              alert("Invalid Schema: columns key is empty.")
               return
             }
 
