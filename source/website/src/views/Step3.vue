@@ -320,26 +320,34 @@ SPDX-License-Identifier: Apache-2.0
           reader.onload = e => {
             console.log(e.target.result);
             let importJson = JSON.parse(e.target.result);
-            if (!importJson.length){
+            if(importJson.constructor != Object){
+              alert("Invalid Schema: Expecting a dictionary.")
+              return
+            }
+            if (!Object.keys(importJson).length){
               alert("Invalid Schema: Json file is empty.")
               return
             }
-            if (!("column" in importJson)){
+            if (!("columns" in importJson)){
               alert("Invalid Schema: Column is required in imported schema.")
               return
             }
-            if (!importJson.column.length){
+            if (!importJson.columns.length){
               alert("Invalid Schema: Column is empty.")
               return
             }
 
-            valid_keys = ["name", "description", "data_type", "column_type", "pii_type", "nullable"]
-            for (var key in importJson.column){
-              if (!valid_keys.includes(key)){
-                alert("Invalid Schema: Only these valid keys {1} are required.".format(valid_keys))
-                return
-              } 
+            let valid_keys = ["name", "description", "data_type", "column_type", "pii_type", "nullable"]
+            for (var column_index in importJson.columns){
+                let column = importJson.columns[column_index]
+                for (var key in column){
+                if (!valid_keys.includes(key)){
+                  alert("Invalid Schema: Only these valid column keys ".concat(valid_keys).concat(" are required."))
+                  return
+                } 
+              }
             }
+           
 
             this.isBusy = true;
             console.log(importJson)
