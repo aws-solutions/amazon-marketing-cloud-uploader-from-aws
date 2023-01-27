@@ -38,6 +38,10 @@
       "Type": "String",
       "Description": "Glue ETL Job name for AMC"
     },
+    "SystemTableName": {
+      "Type": "String",
+      "Description": "Table used for storing global settings"
+    },
     "TracingConfigMode": {
       "Type": "String",
       "Description": "Sets tracing mode for AWS X-Ray. Allowed values: Active, PassThrough"
@@ -45,6 +49,10 @@
     "CustomerManagedKey": {
       "Type": "String",
       "Description": "(Optional) ARN of a customer managed KMS encryption key (CMK) to use for encryption and decryption of original data files during the ETL pipeline and query computation in AMC."
+    },
+    "SystemKmsKeyId": {
+      "Type": "String",
+      "Description": "ID of the stack KMS Key"
     },
     "LambdaLayer": {
       "Type": "String",
@@ -130,6 +138,18 @@
                   }
                 },
                 {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:GetItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:Query",
+                    "dynamodb:Scan"
+                  ],
+                  "Resource": {"Fn::Sub": "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${SystemTableName}"}
+                },
+                {
                   "Action": [
                     "logs:CreateLogGroup",
                     "logs:CreateLogStream",
@@ -171,7 +191,16 @@
                   },
                   {"Ref": "AWS::NoValue"}
                   ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "kms:Decrypt",
+                    "kms:GenerateDataKey"
+                  ],
+                  "Resource": {"Fn::Sub": "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/${SystemKmsKeyId}"}
                 }
+
               ]
             },
             "PolicyName": "ApiHandlerRolePolicy"
@@ -215,6 +244,9 @@
             },
             "AMC_GLUE_JOB_NAME": {
               "Ref": "AmcGlueJobName"
+            },
+            "SYSTEM_TABLE_NAME": {
+              "Ref":"SystemTableName"
             },
             "CUSTOMER_MANAGED_KEY": {
               "Ref": "CustomerManagedKey"

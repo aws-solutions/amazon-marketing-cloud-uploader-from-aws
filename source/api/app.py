@@ -1,7 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-from chalice import Chalice, IAMAuthorizer, Response
+from chalice import Chalice, IAMAuthorizer, Response, BadRequestError, ChaliceViewError
 from chalicelib import sigv4
 import boto3
 from botocore import config
@@ -13,6 +13,12 @@ import logging
 
 solution_config = json.loads(os.environ['botoConfig'])
 config = config.Config(**solution_config)
+
+S3_CLIENT = boto3.client("s3", config=config)
+S3_RESOURCE = boto3.resource('s3', config=config)
+GLUE_CLIENT = boto3.client("glue", config=config)
+DYNAMO_CLIENT = boto3.client("dynamodb", config=config)
+DYNAMO_RESOURCE = boto3.resource("dynamodb", config=config)
 
 # format log messages like this:
 formatter = logging.Formatter('{%(pathname)s:%(lineno)d} %(levelname)s - %(message)s')
@@ -38,6 +44,7 @@ authorizer = IAMAuthorizer()
 VERSION = os.environ['VERSION']
 AMC_GLUE_JOB_NAME = os.environ['AMC_GLUE_JOB_NAME']
 CUSTOMER_MANAGED_KEY = os.environ['CUSTOMER_MANAGED_KEY']
+SYSTEM_TABLE_NAME = os.environ["SYSTEM_TABLE_NAME"]
 
 # Resolve sonarqube code smells
 application_json = 'application/json'
@@ -117,7 +124,6 @@ def start_amc_transformation():
         dataset_id = app.current_request.json_body['datasetId']
         period = app.current_request.json_body['period']
         session = boto3.session.Session(region_name=os.environ['AWS_REGION'])
-        client = session.client('glue', config=config)
         args = {
             "--source_bucket": source_bucket,
             "--output_bucket": output_bucket,
@@ -133,7 +139,7 @@ def start_amc_transformation():
         # We've intentionally omitted a value for --profile in the
         # following command so the CLI reminds users to specify it.
         logger.info('aws glue start-job-run --region ' + os.environ['AWS_REGION'] + ' --job-name ' + AMC_GLUE_JOB_NAME + ' --arguments \'' + json.dumps(args) + '\' --profile ')
-        response = client.start_job_run(JobName=AMC_GLUE_JOB_NAME, Arguments=args)
+        response = GLUE_CLIENT.start_job_run(JobName=AMC_GLUE_JOB_NAME, Arguments=args)
         return {'JobRunId': response['JobRunId']}
     except Exception as e:
         logger.error(e)
@@ -153,8 +159,7 @@ def get_etl_jobs():
     """
     log_request_parameters()
     try:
-        client = boto3.client('glue', config=config)
-        response = client.get_job_runs(JobName=AMC_GLUE_JOB_NAME)
+        response = GLUE_CLIENT.get_job_runs(JobName=AMC_GLUE_JOB_NAME)
         for i in range(len(response['JobRuns'])):
             if 'Arguments' in response['JobRuns'][i]:
                 if response['JobRuns'][i]['Arguments'].get('--dataset_id'):
@@ -293,10 +298,9 @@ def list_bucket():
     """
     log_request_parameters()
     try:
-        s3 = boto3.resource('s3', config=config)
         bucket = json.loads(app.current_request.raw_body.decode())['s3bucket']
         results = []
-        for s3object in s3.Bucket(bucket).objects.all():
+        for s3object in S3_RESOURCE.Bucket(bucket).objects.all():
             results.append({"key": s3object.key, "last_modified": s3object.last_modified.isoformat(), "size": s3object.size})
         return json.dumps(results)
     except Exception as e:
@@ -352,8 +356,7 @@ def get_data_columns():
         csv_content_type = "text/csv"
         content_type = ""
         for key in keys_to_validate:
-            s3 = boto3.client('s3', config=config)
-            response = s3.head_object(Bucket=bucket, Key=key)
+            response = S3_CLIENT.head_object(Bucket=bucket, Key=key)
             # Return an error if user selected a combination 
             # of CSV and JSON files.
             if content_type == "":
@@ -387,6 +390,89 @@ def get_data_columns():
     except Exception as e:
         logger.error(e)
         return {"Status": "Error", "Message": e}
+
+
+@app.route('/system/configuration', cors=True, methods=['POST'], authorizer=authorizer)
+def save_settings():
+    """ Add a new system configuration parameter
+
+    - Updates the system configuration with a new parameter or changes the value of
+      existing parameters
+
+    Body:
+
+    .. code-block:: python
+
+        {
+            "Name": "ParameterName",
+            "Value": "ParameterValue"
+        }
+
+    Supported parameters:
+
+        AmcInstances
+
+            Saves a list of AMC instances and their associated attributes to be used for dataset functions.
+
+    Returns:
+        None
+
+    Raises:
+        500: ChaliceViewError - internal server error
+    """
+    log_request_parameters()
+    try:
+        system_parameter = json.loads(app.current_request.raw_body.decode())
+        logger.info(json.loads(app.current_request.raw_body.decode()))
+        system_table = DYNAMO_RESOURCE.Table(SYSTEM_TABLE_NAME)
+        # Validate input configuration
+        if system_parameter["Name"] == "AmcInstances":
+            value = json.loads(system_parameter["Value"])
+            if not isinstance(value, list):
+                raise BadRequestError("AmcInstances value must be of type list")
+            for i in range(len(value)):
+                if not isinstance(value[i], dict):
+                    raise BadRequestError("AmcInstance value must be of type dict")
+                if 'endpoint' not in value[i]:
+                    raise BadRequestError("AmcInstance value must contain key, 'endpoint'")
+                if 'data_upload_account_id' not in value[i]:
+                    raise BadRequestError("AmcInstance value must contain key, 'data_upload_account_id'")
+            system_table.put_item(Item=system_parameter)
+    except Exception as e:
+        logger.error("Exception {}".format(e))
+        raise ChaliceViewError("Exception '%s'" % e)
+    return {}
+
+
+@app.route('/system/configuration', cors=True, methods=['GET'], authorizer=authorizer)
+def get_system_configuration_api():
+    """ Get the current system configuration
+
+    - Gets the current system configuration parameter settings
+
+    Returns:
+        A list of dict containing the current system configuration key-value pairs.
+
+        .. code-block:: python
+
+            [
+                {
+                "Name": "Value"
+                },
+            ...]
+
+    Raises:
+        200: The system configuration was returned successfully.
+        500: ChaliceViewError - internal server error
+    """
+    try:
+        system_table = DYNAMO_RESOURCE.Table(SYSTEM_TABLE_NAME)
+        # Check if any configuration has been added yet
+        response = system_table.scan(ConsistentRead=True)
+    except Exception as e:
+        logger.error("Exception {}".format(e))
+        raise ChaliceViewError("Exception '%s'" % e)
+    return response["Items"]
 
 
 def log_request_parameters():

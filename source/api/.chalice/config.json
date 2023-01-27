@@ -8,7 +8,8 @@
     "AMC_ENDPOINT_URL": "",
     "AMC_API_ROLE_ARN": "",
     "AMC_GLUE_JOB_NAME": "",
-    "CUSTOMER_MANAGED_KEY": ""
+    "CUSTOMER_MANAGED_KEY": "",
+    "SYSTEM_TABLE_NAME": ""
   },
   "stages": {
     "dev": {
