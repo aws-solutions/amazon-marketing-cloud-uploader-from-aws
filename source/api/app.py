@@ -43,8 +43,9 @@ authorizer = IAMAuthorizer()
 # Environment variables
 VERSION = os.environ['VERSION']
 AMC_GLUE_JOB_NAME = os.environ['AMC_GLUE_JOB_NAME']
-CUSTOMER_MANAGED_KEY = os.environ['CUSTOMER_MANAGED_KEY']
+ARTIFACT_BUCKET = os.environ["ARTIFACT_BUCKET"]
 SYSTEM_TABLE_NAME = os.environ["SYSTEM_TABLE_NAME"]
+CUSTOMER_MANAGED_KEY = os.environ['CUSTOMER_MANAGED_KEY']
 
 # Resolve sonarqube code smells
 application_json = 'application/json'
@@ -434,6 +435,9 @@ def save_settings():
             value = system_parameter["Value"]
             if not isinstance(value, list):
                 raise BadRequestError("AmcInstances value must be of type list")
+            # Normalized S3 Bucket policy must not exceed 20480 bytes
+            if len(value) > 50:
+                raise BadRequestError("AmcInstance list must be shorter than 51")
             for i in range(len(value)):
                 if not isinstance(value[i], dict):
                     raise BadRequestError("AmcInstance value must be of type dict")
@@ -441,10 +445,57 @@ def save_settings():
                     raise BadRequestError("AmcInstance value must contain key, 'endpoint'")
                 if 'data_upload_account_id' not in value[i]:
                     raise BadRequestError("AmcInstance value must contain key, 'data_upload_account_id'")
-            system_table.put_item(Item=system_parameter)
     except Exception as e:
         logger.error("Exception {}".format(e))
         raise ChaliceViewError("Exception '%s'" % e)
+        return {"Status": "Error", "Message": e}
+    system_table.put_item(Item=system_parameter)
+    try:
+        logger.info('reading bucket policy')
+        # Get the bucket policy for the ArtifactBucket.
+        result = S3_CLIENT.get_bucket_policy(Bucket=ARTIFACT_BUCKET)
+        policy = json.loads(result['Policy'])
+        logger.info('old bucket policy:')
+        logger.info(policy)
+        # Get the AMC instances system configuration
+        response = system_table.get_item(Key={'Name': 'AmcInstances'}, ConsistentRead=True)
+        # If there is at least one AMC instance...
+        if "Item" in response and len(response["Item"]["Value"]) > 0:
+            amc_instances = response["Item"]["Value"]
+            # Get the list of data upload account ids associated with each AMC instance.
+            # Use set type to avoid duplicates
+            data_upload_account_ids = set()
+            for item in amc_instances:
+                data_upload_account_ids.add(item["data_upload_account_id"])
+            data_upload_account_ids = list(data_upload_account_ids)
+            # Construct a bucket policy statement with a principal that includes
+            # each data upload account id.
+            data_upload_statement = \
+                '{"Sid": "AllowDataUploadFromAmc", ' + \
+                '"Effect": "Allow", ' + \
+                '"Principal": {"AWS": ['
+            for i in range(len(data_upload_account_ids)-1):
+                data_upload_statement += '"arn:aws:iam::' + data_upload_account_ids[i] + ':root", '
+            data_upload_statement += '"arn:aws:iam::' + data_upload_account_ids[-1] + ':root"]'
+            data_upload_statement += \
+                '}, ' + \
+                '"Action": ["s3:GetObject", "s3:GetObjectVersion", "s3:ListBucket"], ' + \
+                '"Resource": ["arn:aws:s3:::' + ARTIFACT_BUCKET + '/*", ' + \
+                '"arn:aws:s3:::' + ARTIFACT_BUCKET + '"]}'
+            # Remove the old "AllowDataUploadFromAmc" statement from the bucket policy.
+            other_statements = [x for x in policy["Statement"] if not ("Sid" in x and x["Sid"] == "AllowDataUploadFromAmc")]
+            # Add the new "AllowDataUploadFromAmc" statement to the bucket policy
+            policy["Statement"] = [json.loads(data_upload_statement)] + other_statements
+            # Save the new bucket policy
+            logger.info('new bucket policy:')
+            logger.info(json.dumps(policy))
+            logger.info('saving bucket policy')
+            result = S3_CLIENT.put_bucket_policy(Bucket=ARTIFACT_BUCKET, Policy=json.dumps(policy))
+            logger.info(json.dumps(result))
+    except Exception as e:
+        logger.error("Exception {}".format(e))
+        raise ChaliceViewError("Exception '%s'" % e)
+        return {"Status": "Error", "Message": e}
     return {}
 
 
