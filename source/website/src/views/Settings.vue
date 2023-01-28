@@ -14,6 +14,13 @@ SPDX-License-Identifier: Apache-2.0
           </b-col>
           <b-col cols="10">
             <b-alert
+                v-model="showServerError"
+                variant="danger"
+                dismissible
+            >
+              Server error. See Cloudwatch logs for API resource, /system/configuration.
+            </b-alert>
+            <b-alert
                 :show="showSuccessCountDown"
                 dismissible
                 fade
@@ -89,7 +96,7 @@ SPDX-License-Identifier: Apache-2.0
                   <b-button id="reset_button" type="reset" variant="outline-secondary" class="mb-2" @click="onReset">
                     Reset
                   </b-button> &nbsp;
-                  <b-button id="save_button" type="submit" class="mb-2" @click="onSubmit" :disabled="amcInstances.length == 0">
+                  <b-button id="save_button" type="submit" variant="primary" class="mb-2" @click="onSubmit" :disabled="!isValidForm">
                     Save
                   </b-button>
                 </b-col>
@@ -116,6 +123,7 @@ SPDX-License-Identifier: Apache-2.0
       return {
         importFilename: null,
         showImportSuccess: false,
+        showServerError: false,
         showImportError: false,
         dismissSecs: 5,
         showSuccessCountDown: 0,
@@ -141,6 +149,11 @@ SPDX-License-Identifier: Apache-2.0
     },
     mounted: function() {
       this.read_system_configuration('GET', 'system/configuration')
+    },
+    computed: {
+      isValidForm() {
+        return this.amcInstances.length > 0 && this.amcInstances.every(x => this.isValidEndpoint(x.endpoint) !== false && this.isValidAccountId(x.data_upload_account_id) !== false)
+      }
     },
     methods: {
       isValidEndpoint(x) {
@@ -227,6 +240,7 @@ SPDX-License-Identifier: Apache-2.0
         this.save_system_configuration('POST', 'system/configuration', {"Name": "AmcInstances", "Value": this.amcInstances})
       },
       async save_system_configuration(method, resource, data) {
+        this.showServerError = false
         this.results = []
         console.log("sending " + method + " " + resource + " " + JSON.stringify(data))
         const apiName = 'amcufa-api'
@@ -243,13 +257,14 @@ SPDX-License-Identifier: Apache-2.0
           this.results = response
         }
         catch (e) {
-          console.log("ERROR: " + e.response.data.message)
+          this.showServerError = true;
+          console.log(e)
+        } finally {
           this.isBusy = false;
-          this.results = e.response.data.message
         }
-        this.isBusy = false;
       },
       async read_system_configuration(method, resource) {
+        this.showServerError = false
         this.results = []
         console.log("sending " + method + " " + resource)
         const apiName = 'amcufa-api'
@@ -259,14 +274,17 @@ SPDX-License-Identifier: Apache-2.0
           if (method === "GET") {
             response = await this.$Amplify.API.get(apiName, resource);
           }
-          this.amcInstances = response[0]["Value"]
-          console.log(response[0]["Value"])
+          if (response.length > 0 && "Value" in response[0]) {
+            this.amcInstances = response[0]["Value"]
+            console.log(response[0]["Value"])
+          }
         }
         catch (e) {
-          console.log("ERROR: " + e)
+          console.log(e)
+          this.showServerError = true
+        } finally {
           this.isBusy = false;
         }
-        this.isBusy = false;
       }
     }
   }

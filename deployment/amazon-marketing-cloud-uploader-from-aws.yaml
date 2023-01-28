@@ -794,6 +794,7 @@ Resources:
               - SourceCode
               - CodeKeyPrefix
             - "api.zip"
+        ArtifactBucket: !Ref ArtifactBucket
         DataBucketName: !Ref DataBucketName
         AmcEndpointUrl: !Ref AmcEndpointUrl
         AmcApiRoleArn: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-AmcApiAccessRole'

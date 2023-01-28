@@ -22,6 +22,10 @@
       "Type": "String",
       "Description": "S3 Key of the deployment package for Lambda API handlers"
     },
+    "ArtifactBucket": {
+      "Type": "String",
+      "Description": "S3 bucket containing normalized and hashed data objects ready for ingest"
+    },
     "DataBucketName": {
       "Type": "String",
       "Description": "S3 bucket containing first-party data object for ingest"
@@ -125,6 +129,16 @@
                   ],
                   "Resource": {
                     "Fn::Sub": "arn:aws:s3:::${DataBucketName}"
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetBucketPolicy",
+                    "s3:PutBucketPolicy"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:aws:s3:::${ArtifactBucket}"
                   }
                 },
                 {
@@ -244,6 +258,9 @@
             },
             "AMC_GLUE_JOB_NAME": {
               "Ref": "AmcGlueJobName"
+            },
+            "ARTIFACT_BUCKET": {
+              "Ref":"ArtifactBucket"
             },
             "SYSTEM_TABLE_NAME": {
               "Ref":"SystemTableName"
