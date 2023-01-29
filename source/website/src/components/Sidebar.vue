@@ -80,3 +80,9 @@ export default {
 }
 
 </script>
+
+<style>
+a.router-link-active {
+  color: black;
+}
+</style>
