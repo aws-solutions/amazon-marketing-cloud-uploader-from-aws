@@ -53,6 +53,7 @@ SPDX-License-Identifier: Apache-2.0
                 :busy="isBusy"
                 responsive="sm"
                 small
+                fixed
                 selectable
                 select-mode="single"
                 bordered
@@ -64,12 +65,22 @@ SPDX-License-Identifier: Apache-2.0
                   </div>
                 </template>
                 <template #cell(endpoint)="row">
-                  <b-form-input placeholder="click to enter" v-model="row.item.endpoint" :state="isValidEndpoint(row.item.endpoint)" class="custom-text-field " />
+                  <b-form-input placeholder="(Click to edit)" v-model="row.item.endpoint" :state="isValidEndpoint(row.item.endpoint)" class="custom-text-field " />
                 </template>
                 <template #cell(data_upload_account_id)="row">
+                  <b-form-input placeholder="(Click to edit)" v-model="row.item.data_upload_account_id" :state="isValidAccountId(row.item.data_upload_account_id)" class="custom-text-field " />
+                </template>
+                <template #cell(tags)="row">
                   <b-row no-gutters>
-                    <b-col cols="11">
-                      <b-form-input placeholder="click to enter" v-model="row.item.data_upload_account_id" :state="isValidAccountId(row.item.data_upload_account_id)" class="custom-text-field" />
+                    <b-col cols="10">
+                      <voerro-tags-input element-id="tags"
+                        v-model="row.item.tags"
+                        :add-tags-on-space="true"
+                        :add-tags-on-comma="true"
+                        :add-tags-on-blur="true"
+                        :typeahead="false"
+                        placeholder="(Click to edit)">
+                      </voerro-tags-input>
                     </b-col>
                     <b-col align="right">
                         <b-button v-b-tooltip.hover.right size="sm" style="display: flex;" variant="link" title="Remove row" @click="delete_row(row.index)">
@@ -112,12 +123,13 @@ SPDX-License-Identifier: Apache-2.0
 <script>
   import Header from '@/components/Header.vue'
   import Sidebar from '@/components/Sidebar.vue'
-  import { mapState } from 'vuex'
-  
+  import VoerroTagsInput from '@/components/VoerroTagsInput.vue';
+  import '@/components/VoerroTagsInput.css'
+
   export default {
     name: "Settings",
     components: {
-      Header, Sidebar
+      Header, Sidebar, VoerroTagsInput
     },
     data() {
       return {
@@ -128,10 +140,11 @@ SPDX-License-Identifier: Apache-2.0
         dismissSecs: 5,
         showSuccessCountDown: 0,
         isBusy: false,
-        amcInstances: [{"endpoint":"","data_upload_account_id":""}],
+        amcInstances: [{"endpoint": "","data_upload_account_id": "", "tags": []}],
         fields: [
-          {key: 'endpoint', label: 'AMC Endpoint', sortable: true},
-          {key: 'data_upload_account_id', label: 'Data Upload Account Id', sortable: true}
+          {key: 'endpoint', label: 'AMC Endpoint', sortable: true, thStyle: { width: '50%'}},
+          {key: 'data_upload_account_id', label: 'Data Upload Account Id', sortable: true},
+          {key: 'tags', label: 'Tags', sortable: true}
         ],
         isSettingsActive: true,
         results: [],
@@ -147,13 +160,13 @@ SPDX-License-Identifier: Apache-2.0
       console.log('created')
       // this.send_request('POST', 'save_settings', {'amcInstances': this.amcInstances})
     },
-    mounted: function() {
-      this.read_system_configuration('GET', 'system/configuration')
-    },
     computed: {
       isValidForm() {
         return this.amcInstances.length > 0 && this.amcInstances.every(x => this.isValidEndpoint(x.endpoint) !== false && this.isValidAccountId(x.data_upload_account_id) !== false)
       }
+    },
+    mounted: function() {
+      this.read_system_configuration('GET', 'system/configuration')
     },
     methods: {
       isValidEndpoint(x) {
@@ -161,7 +174,7 @@ SPDX-License-Identifier: Apache-2.0
         // If valid we return null instead of true because we don't want to
         // show the green check mark icon.
         if (!x) return false
-        if (x.match('https://.+\.execute-api\..+\.amazonaws\.com/prod') != null) return null
+        if (x.match('https://.+.execute-api..+.amazonaws.com/prod') != null) return null
         else return false
       },
       isValidAccountId(x) {
@@ -186,7 +199,7 @@ SPDX-License-Identifier: Apache-2.0
         this.amcInstances.splice(index, 1)
         // Prevent the table from being empty if a user delete a row when there is only one row.
         if (this.amcInstances.length === 0) {
-          this.amcInstances = [{"endpoint":"","data_upload_account_id":""}]
+          this.amcInstances = [{"endpoint": "","data_upload_account_id": "", "tags": []}]
         }
       },
       onImport() {
@@ -207,7 +220,7 @@ SPDX-License-Identifier: Apache-2.0
           try {
             const contents = JSON.parse(e.target.result);
             // validate contents
-            if (Array.isArray(contents) && contents.length > 0 && Object.keys(contents[0]).toString() === "endpoint,data_upload_account_id") {
+            if (Array.isArray(contents) && contents.length > 0 && Object.keys(contents[0]).includes("endpoint") && Object.keys(contents[0]).includes("data_upload_account_id")) {
               vm.amcInstances = contents
               vm.dismissCountDown = vm.dismissSecs
             } else {
@@ -242,6 +255,7 @@ SPDX-License-Identifier: Apache-2.0
       async save_system_configuration(method, resource, data) {
         this.showServerError = false
         this.results = []
+        data["Value"][0].tags_array = Object.values(data["Value"][0].tags).map(x => x.value)
         console.log("sending " + method + " " + resource + " " + JSON.stringify(data))
         const apiName = 'amcufa-api'
         let response = ""
@@ -276,7 +290,7 @@ SPDX-License-Identifier: Apache-2.0
           }
           if (response.length > 0 && "Value" in response[0]) {
             this.amcInstances = response[0]["Value"]
-            console.log(response[0]["Value"])
+            console.log(JSON.stringify(this.amcInstances))
           }
         }
         catch (e) {
@@ -298,5 +312,11 @@ SPDX-License-Identifier: Apache-2.0
     padding-right: 0px !important;
     margin-top: 0px !important;
     margin-bottom: 0px !important;
+  }
+  .tags-input-wrapper-default {
+    border: 0
+  }
+  .tags-input-wrapper-default {
+    padding: 0em 0em;
   }
 </style>
