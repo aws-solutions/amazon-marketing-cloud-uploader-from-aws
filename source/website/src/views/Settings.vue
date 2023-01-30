@@ -144,7 +144,7 @@ SPDX-License-Identifier: Apache-2.0
         fields: [
           {key: 'endpoint', label: 'AMC Endpoint', sortable: true, thStyle: { width: '50%'}},
           {key: 'data_upload_account_id', label: 'Data Upload Account Id', sortable: true},
-          {key: 'tags', label: 'Tags', sortable: true}
+          {key: 'tags', label: 'Tags', sortable: false}
         ],
         isSettingsActive: true,
         results: [],
@@ -158,7 +158,6 @@ SPDX-License-Identifier: Apache-2.0
     },
     created: function () {
       console.log('created')
-      // this.send_request('POST', 'save_settings', {'amcInstances': this.amcInstances})
     },
     computed: {
       isValidForm() {
@@ -255,7 +254,12 @@ SPDX-License-Identifier: Apache-2.0
       async save_system_configuration(method, resource, data) {
         this.showServerError = false
         this.results = []
-        data["Value"][0].tags_array = Object.values(data["Value"][0].tags).map(x => x.value)
+        const amc_instances = data["Value"]
+        for (let amc_instance of amc_instances) {
+          if (tags in amc_instance && amc_instance.tags.length > 0) {
+            amc_instance.tag_list = Object.values(amc_instance.tags).map(x => x.value).toString().replace(',', ', ')
+          }
+        }
         console.log("sending " + method + " " + resource + " " + JSON.stringify(data))
         const apiName = 'amcufa-api'
         let response = ""

@@ -44,7 +44,7 @@ SPDX-License-Identifier: Apache-2.0
           :class="{ active: isStep4Active }"
         >
           <br>
-          Confirm details
+          Select destinations
         </b-link>
         <hr>
         Step5
@@ -52,6 +52,16 @@ SPDX-License-Identifier: Apache-2.0
           id="step5"
           to="/step5"
           :class="{ active: isStep5Active }"
+        >
+          <br>
+          Confirm details
+        </b-link>
+        <hr>
+        Step6
+        <b-link
+          id="step6"
+          to="/step6"
+          :class="{ active: isStep6Active }"
         >
           <br>
           Monitor upload
@@ -76,7 +86,7 @@ SPDX-License-Identifier: Apache-2.0
 
 export default {
   name: 'Sidebar',
-  props: ['isStep1Active','isStep2Active','isStep3Active','isStep4Active', 'isStep5Active', 'isTestActive', 'isSettingsActive'],
+  props: ['isStep1Active','isStep2Active','isStep3Active','isStep4Active', 'isStep5Active', 'isStep6Active', 'isTestActive', 'isSettingsActive'],
 }
 
 </script>
