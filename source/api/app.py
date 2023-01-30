@@ -411,9 +411,10 @@ def save_settings():
 
     Supported parameters:
 
-        AmcInstances
+        "Name": "AmcInstances",
+        "Value": {"endpoint": string, "data_upload_account_id": string, ...}
 
-            Saves a list of AMC instances and their associated attributes to be used for dataset functions.
+            Saves a list of AMC instances and their associated attributes.
 
     Returns:
         None
@@ -432,18 +433,19 @@ def save_settings():
         if system_parameter["Name"] != "AmcInstances":
             raise BadRequestError("Unrecognized system parameter, " + system_parameter["Name"])
         if system_parameter["Name"] == "AmcInstances":
-            value = system_parameter["Value"]
-            if not isinstance(value, list):
+            amc_instances = system_parameter["Value"]
+            if not isinstance(amc_instances, list):
                 raise BadRequestError("AmcInstances value must be of type list")
-            # Normalized S3 Bucket policy must not exceed 20480 bytes
-            if len(value) > 50:
-                raise BadRequestError("AmcInstance list must be shorter than 51")
-            for i in range(len(value)):
-                if not isinstance(value[i], dict):
+            if len(amc_instances) > 500:
+                # We limit the number of registered AMC instances to 500 so that
+                # the normalized S3 Bucket policy does not exceed maximum allowed length (20480 bytes)
+                raise BadRequestError("AmcInstance list must be shorter than 500")
+            for i in range(len(amc_instances)):
+                if not isinstance(amc_instances[i], dict):
                     raise BadRequestError("AmcInstance value must be of type dict")
-                if 'endpoint' not in value[i]:
+                if 'endpoint' not in amc_instances[i]:
                     raise BadRequestError("AmcInstance value must contain key, 'endpoint'")
-                if 'data_upload_account_id' not in value[i]:
+                if 'data_upload_account_id' not in amc_instances[i]:
                     raise BadRequestError("AmcInstance value must contain key, 'data_upload_account_id'")
     except Exception as e:
         logger.error("Exception {}".format(e))
