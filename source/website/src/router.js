@@ -9,6 +9,7 @@ import Step2 from '@/views/Step2.vue'
 import Step3 from '@/views/Step3.vue'
 import Step4 from '@/views/Step4.vue'
 import Step5 from '@/views/Step5.vue'
+import Step6 from '@/views/Step6.vue'
 import Settings from '@/views/Settings.vue'
 
 Vue.use(VueRouter);
@@ -46,6 +47,13 @@ const router = new VueRouter({
       alias: '/',
       name: 'Step5',
       component: Step5,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/step6',
+      alias: '/',
+      name: 'Step6',
+      component: Step6,
       meta: { requiresAuth: true }
     },
     {

@@ -7,75 +7,124 @@ SPDX-License-Identifier: Apache-2.0
   <div>
     <div class="headerTextBackground">
       <Header />
-      <b-modal
-        v-model="showModal"
-        :title="modal_title"
-        ok-only
-        @ok="hideModal"
-      >
-        {{ response }}
-      </b-modal>
       <b-container fluid>
         <b-row style="text-align: left">
           <b-col cols="2">
             <Sidebar :is-step4-active="true" />
           </b-col>
           <b-col cols="10">
-            <h3>Confirm Details</h3>
-            <b-row>
-              <b-col sm="7">
-                Click Submit to record this dataset in AMC.
-              </b-col>
-              <b-col sm="3" align="right">
+            <b-alert
+                v-model="showServerError"
+                variant="danger"
+                dismissible
+            >
+              Server error. See Cloudwatch logs for API resource, /system/configuration.
+            </b-alert>
+            <b-alert
+                v-model="showFormError"
+                variant="danger"
+                dismissible
+            >
+              You must select at least one AMC Instance.
+            </b-alert>
+            <h3>Select destinations</h3>
+            <div v-if="isBusy === false">
+              <b-row>
+                <b-col>
+              <p v-if="selected_amc_instances.length === 0" class="text-secondary">Click table rows to select AMC Instances for upload.</p>
+              <p v-else-if="selected_amc_instances.length === 1">{{selected_amc_instances.length}} AMC instance selected.</p>
+              <p v-else="selected_amc_instances.length > 1">{{selected_amc_instances.length}} AMC instances selected.</p>
+                </b-col>
+              <b-col sm="3" align="right" class="row align-items-end">
                 <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push('Step3')">
                   Previous
                 </button> &nbsp;
                 <button type="submit" class="btn btn-primary mb-2" @click="onSubmit">
-                  Submit
-                  <b-spinner v-if="isBusy" style="vertical-align: sub" small label="Spinning"></b-spinner>
+                  Next
                 </button>
               </b-col>
-            </b-row>
-            <b-row>
-              <b-col cols="7">
-                <h5>Input files from {{ "s3://" + DATA_BUCKET_NAME }}:</h5>
-                {{ s3key }}
-                <br>
-                <br>
-                <h5>Dataset Attributes:</h5>
-                <b-table
-                  small
-                  outlined
-                  :items="dataset.other_attributes"
-                  thead-class="hidden_header"
-                  show-empty
-                >
-                </b-table>
-                <template #empty="scope">
-                  {{ scope.emptyText }}
+              </b-row>
+              <br>
+              <!-- User Interface controls -->
+              <b-row>
+                <b-col lg="6" class="my-1">
+                  <b-form-group
+                      label="Filter"
+                      label-for="filter-input"
+                      label-cols-sm="3"
+                      label-align-sm="right"
+                      label-size="sm"
+                      class="mb-0"
+                  >
+                    <b-input-group size="sm">
+                      <b-form-input
+                          id="filter-input"
+                          v-model="filter"
+                          type="search"
+                          placeholder="Type to Search"
+                      ></b-form-input>
+
+                      <b-input-group-append>
+                        <b-button :disabled="!filter" @click="filter = ''">Clear</b-button>
+                      </b-input-group-append>
+                    </b-input-group>
+                  </b-form-group>
+                </b-col>
+
+                <b-col lg="5" class="my-1">
+                  <b-form-group
+                      label="Filter On"
+                      description="Leave all unchecked to filter on all data"
+                      label-cols-sm="3"
+                      label-align-sm="right"
+                      label-size="sm"
+                      class="mb-0"
+                      v-slot="{ ariaDescribedby }"
+                  >
+                    <b-form-checkbox-group
+                        v-model="filterOn"
+                        :aria-describedby="ariaDescribedby"
+                        class="mt-1"
+                    >
+                      <b-form-checkbox value="name">Endpoint</b-form-checkbox>
+                      <b-form-checkbox value="age">Account Id</b-form-checkbox>
+                      <b-form-checkbox value="tag_list">Tags</b-form-checkbox>
+                    </b-form-checkbox-group>
+                  </b-form-group>
+                </b-col>
+              </b-row>
+            </div>
+            <!-- Main table element -->
+            <b-table
+                :items="available_amc_instances"
+                :fields="fields"
+                :filter="filter"
+                :filter-included-fields="filterOn"
+                :busy="isBusy"
+                stacked="md"
+                show-empty
+                small
+                selectable
+                select-mode="multi"
+                @row-selected="onRowSelected"
+            >
+              <template #table-busy>
+                <div class="text-center my-2">
+                  <b-spinner class="align-middle"></b-spinner>
+                  <strong>&nbsp;&nbsp;Loading...</strong>
+                </div>
+              </template>
+              <template #cell(selected)="{ rowSelected }">
+                <template v-if="rowSelected">
+                  <span aria-hidden="true">&check;</span>
+                  <span class="sr-only">Selected</span>
                 </template>
-              </b-col>
-            </b-row>
-            <b-row>
-              <b-col cols="10">
-                <h5>Columns:</h5>
-                <b-table 
-                  v-if="dataset.columns && dataset.columns.length > 0"
-                  small
-                  outlined
-                  :fields="column_fields"
-                  :items="dataset.columns"
-                >
-                </b-table>
-                <b-table
-                  v-else
-                  small
-                  outlined
-                  :items="dataset.columns"
-                  show-empty
-                ></b-table>
-              </b-col>
-            </b-row>
+                <template v-else>
+                  <span aria-hidden="true">&nbsp;</span>
+                  <span class="sr-only">Not selected</span>
+                </template>
+              </template>
+            </b-table>
           </b-col>
         </b-row>
       </b-container>
@@ -95,42 +144,26 @@ SPDX-License-Identifier: Apache-2.0
     },
     data() {
       return {
-        column_fields: ['name', 'description', 'dataType', 'columnType', 'nullable', 'isMainUserId', 'isMainUserIdType', 'isMainUserId', 'externalUserIdType.identifierType','isMainEventTime'],
-        dataset_fields: [{key: '0', label: 'Name'}, {key: '1', label: 'Value'}],
         isBusy: false,
-        showModal: false,
-        modal_title: '',
         isStep4Active: true,
-        response: ''
+        available_amc_instances: [{"endpoint": "","data_upload_account_id": "", "tags": []}],
+        fields: [
+          {key: 'selected'},
+          {key: 'endpoint', label: 'AMC Endpoint', sortable: true, thStyle: { width: '50%'}},
+          {key: 'data_upload_account_id', label: 'Data Upload Account Id', sortable: true},
+          {key: 'tag_list', label: 'Tags', sortable: false}
+        ],
+        totalRows: 1,
+        filter: null,
+        filterOn: [],
+        showServerError: false,
+        showFormError: false,
+        response: '',
+        selected_amc_instances: []
       }
     },
     computed: {
-      ...mapState(['deleted_columns', 'dataset_definition', 's3key']),
-      encryption_key() {
-        if (this.CUSTOMER_MANAGED_KEY === "") {
-          return "default"
-        } else {
-          return this.CUSTOMER_MANAGED_KEY
-        }
-      },
-      pii_fields() {
-         return (this.dataset.columns.filter(x => x.externalUserIdType).map(x => (new Object( {'column_name':x.name, 'pii_type': x.externalUserIdType.identifierType}))))
-      },
-      timestamp_column_name() {
-        const timestamp_column = this.dataset.columns.filter(x => x.isMainEventTime).map(x => x.name)
-        // The Glue ETL job requires timestamp_column_name to be an empty string 
-        // for all DIMENSION datasets.
-        const dataset_type = this.dataset_definition['dataSetType']
-        if (dataset_type == 'FACT' && timestamp_column && timestamp_column.length > 0)
-          return timestamp_column[0]
-        else
-          return ''
-      },
-      dataset() {
-        let {columns, ...other_attributes} = this.dataset_definition
-        other_attributes['encryption_mode'] = this.ENCRYPTION_MODE
-        return {"columns": columns, "other_attributes": Object.entries(other_attributes)}
-      }
+      ...mapState(['destinations']),
     },
     deactivated: function () {
       console.log('deactivated');
@@ -141,60 +174,53 @@ SPDX-License-Identifier: Apache-2.0
     created: function () {
       console.log('created')
     },
+    mounted: function() {
+      this.read_system_configuration('GET', 'system/configuration')
+      this.selected_amc_instances = this.destinations
+    },
     methods: {
-      hideModal() {
-        this.showModal = false
-      },
       onSubmit() {
-        this.send_request('POST', 'create_dataset', {'body': this.dataset_definition})
+        this.showServerError = false
+        this.showFormError = false
+        if (this.validateForm()) {
+          this.$store.commit('updateDestinations', this.selected_amc_instances)
+          this.$router.push('Step5')
+        }
       },
-      async send_request(method, resource, data) {
-        console.log("sending " + method + " " + resource + " " + JSON.stringify(data))
+      validateForm() {
+        if (this.selected_amc_instances.length === 0) {
+          this.showFormError = true;
+          return false
+        }
+        return true
+      },
+      onRowSelected(items) {
+        let selected_amc_instances = [];
+        for(let item of items) selected_amc_instances.push(item.endpoint)
+        this.selected_amc_instances = selected_amc_instances
+      },
+      async read_system_configuration(method, resource) {
+        this.showServerError = false
+        this.results = []
+        console.log("sending " + method + " " + resource)
         const apiName = 'amcufa-api'
         let response = ""
         this.isBusy = true;
         try {
           if (method === "GET") {
             response = await this.$Amplify.API.get(apiName, resource);
-          } else if (method === "POST") {
-            let requestOpts = {
-              headers: {'Content-Type': 'application/json'},
-              body: data
-            };
-            response = await this.$Amplify.API.post(apiName, resource, requestOpts);
           }
-          console.log(JSON.stringify(response))
-          console.log("Dataset defined successfully")
-          
-          // Start Glue ETL job now that the dataset has been accepted by AMC
-          let s3keysList = this.s3key.split(',').map((item) => item.trim())
-
-          for (let key of s3keysList) {
-            console.log("Starting Glue ETL job for s3://" + this.DATA_BUCKET_NAME + "/" + key)
-            resource = 'start_amc_transformation'
-            data = {'sourceBucket': this.DATA_BUCKET_NAME, 'sourceKey': key, 'outputBucket': this.ARTIFACT_BUCKET_NAME, 'piiFields': JSON.stringify(this.pii_fields),'deletedFields': JSON.stringify(this.deleted_columns), 'timestampColumn': this.timestamp_column_name, 'datasetId': this.dataset_definition.dataSetId, 'period': this.dataset_definition.period}
-            let requestOpts = {
-              headers: {'Content-Type': 'application/json'},
-              body: data
-            };
-            console.log("POST " + resource + " " + JSON.stringify(requestOpts))
-            response = await this.$Amplify.API.post(apiName, resource, requestOpts);
-            console.log(response)
-            console.log(JSON.stringify(response))
-            console.log("Started Glue ETL job")
+          if (response.length > 0 && "Value" in response[0]) {
+            this.available_amc_instances = response[0]["Value"]
+            console.log(JSON.stringify(this.available_amc_instances))
           }
-          
-          // Navigate to next step
-          this.$router.push('Step5')
         }
         catch (e) {
-          this.modal_title = e.response.status + " " + e.response.statusText
-          console.log("ERROR: " + this.modal_title)
+          console.log(e)
+          this.showServerError = true
+        } finally {
           this.isBusy = false;
-          this.response = JSON.stringify(e.response.data)  
-          this.showModal = true
         }
-        this.isBusy = false;
       }
     }
   }
