@@ -155,10 +155,10 @@ SPDX-License-Identifier: Apache-2.0
             <b-row>
               <b-col></b-col>
               <b-col sm="4" align="right" class="row align-items-end">
-                <b-button v-b-tooltip.hover type="submit" title="Export column schema" variant="outline-secondary" @click="onExport">
+                <b-button v-b-tooltip.hover type="submit" title="Export column schema" variant="outline-primary" @click="onExport">
                   Export
                 </b-button> &nbsp;
-                <b-button v-b-tooltip.hover type="submit" title="Import column schema" variant="outline-secondary" @click="onBrowseImports">
+                <b-button v-b-tooltip.hover type="submit" title="Import column schema" variant="outline-primary" @click="onBrowseImports">
                   Import
                 </b-button>&nbsp;
                 <b-button type="submit" variant="outline-secondary" @click="onReset">
@@ -319,8 +319,17 @@ SPDX-License-Identifier: Apache-2.0
           let reader = new FileReader();
           reader.onload = e => {
             console.log("Imported schema: ".concat(e.target.result))
-            let importJson = JSON.parse(e.target.result);
-            this.$refs['file'].reset()
+            let importJson = null;
+            try {
+              importJson = JSON.parse(e.target.result);
+            } catch(e) { 
+              console.log(e)
+              alert("Invalid Schema: Json file is invalid")
+              return 
+            } finally {
+              this.$refs['file'].reset()
+            }
+
             if(importJson.constructor != Object){
               alert("Invalid Schema: Expecting a dictionary.")
               return
