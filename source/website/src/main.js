@@ -3,10 +3,8 @@
 
 import Vue from 'vue'
 import { BootstrapVue, BIconQuestionCircleFill, BIconXCircle, BIconPlusSquare } from 'bootstrap-vue'
-
 import 'bootstrap/dist/css/bootstrap.css'
 import 'bootstrap-vue/dist/bootstrap-vue.css'
-
 import App from './App.vue'
 import store from './store'
 import router from './router.js'
