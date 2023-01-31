@@ -47,7 +47,7 @@ SPDX-License-Identifier: Apache-2.0
           Select destinations
         </b-link>
         <hr>
-        Step5
+        Step 5
         <b-link
           id="step5"
           to="/step5"
@@ -57,7 +57,7 @@ SPDX-License-Identifier: Apache-2.0
           Confirm details
         </b-link>
         <hr>
-        Step6
+        Step 6
         <b-link
           id="step6"
           to="/step6"
