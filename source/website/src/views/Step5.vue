@@ -27,7 +27,7 @@ SPDX-License-Identifier: Apache-2.0
                 Click Submit to record this dataset in AMC.
               </b-col>
               <b-col sm="3" align="right">
-                <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push('Step3')">
+                <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push({path: '/step3'})">
                   Previous
                 </button> &nbsp;
                 <button type="submit" class="btn btn-primary mb-2" @click="onSubmit">
@@ -194,7 +194,7 @@ SPDX-License-Identifier: Apache-2.0
           }
           
           // Navigate to next step
-          this.$router.push('Step5')
+          this.$router.push({path: '/step5'})
         }
         catch (e) {
           this.modal_title = e.response.status + " " + e.response.statusText

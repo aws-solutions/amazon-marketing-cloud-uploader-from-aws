@@ -143,7 +143,7 @@ SPDX-License-Identifier: Apache-2.0
       onSubmit() {
         this.$store.commit('updateS3key', this.new_s3key)
         this.$store.commit('saveStep3FormInput', [])
-        this.$router.push('Step2')
+        this.$router.push({path: '/step2'})
       },
       onRowSelected(items) {
         let newKeys = [];
