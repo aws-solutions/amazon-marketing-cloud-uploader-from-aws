@@ -60,6 +60,15 @@ SPDX-License-Identifier: Apache-2.0
         >
           DIMENSION datasets must not include a MainEventTime field.
         </b-alert>
+        <b-alert
+          variant="danger"
+          dismissible
+          fade
+          :show="showImportErrors"
+          @dismissed="showImportErrors=false"
+        >
+          {{ errorImportMessage }}
+        </b-alert>
         <b-row style="text-align: left">
           <b-col cols="2">
             <Sidebar :is-step3-active="true" />
@@ -199,6 +208,8 @@ SPDX-License-Identifier: Apache-2.0
         items: [],
         columns: [],
         content_type: "",
+        showImportErrors: false,
+        errorImportMessage: "",
         fields: [
           { key: 'name', sortable: true },
           { key: 'description', sortable: false },
@@ -313,6 +324,10 @@ SPDX-License-Identifier: Apache-2.0
           document.getElementById('importFile').click()
         }
       },
+      showImportAlert(errorMessage){
+        this.errorImportMessage = errorMessage
+        this.showImportErrors = true
+      },
       onImport(e){
           let files = e.target.files || e.dataTransfer.files;
           if (!files.length) return;
@@ -324,30 +339,30 @@ SPDX-License-Identifier: Apache-2.0
               importJson = JSON.parse(e.target.result);
             } catch(e) { 
               console.log(e)
-              alert("Invalid Schema: Json file is invalid")
+              this.showImportAlert("Invalid Schema: Json file is invalid");
               return 
             } finally {
               this.$refs['file'].reset()
             }
 
             if(importJson.constructor != Object){
-              alert("Invalid Schema: Expecting a dictionary.")
+              this.showImportAlert("Invalid Schema: Expecting a dictionary.");
               return
             }
             if (!Object.keys(importJson).length){
-              alert("Invalid Schema: Json file is empty.")
+              this.showImportAlert("Invalid Schema: Json file is empty.");
               return
             }
             if (!("columns" in importJson)){
-              alert("Invalid Schema: columns key is required in imported schema.")
+              this.showImportAlert("Invalid Schema: columns key is required in imported schema.");
               return
             }
             if (importJson.columns.constructor.name != "Array"){
-              alert("Invalid Schema: Expecting an array type for columns key.")
+              this.showImportAlert("Invalid Schema: Expecting an array type for columns key.");
               return
             }
             if (!importJson.columns.length){
-              alert("Invalid Schema: columns key is empty.")
+              this.showImportAlert("Invalid Schema: columns key is empty.");
               return
             }
 
@@ -356,13 +371,12 @@ SPDX-License-Identifier: Apache-2.0
                 let column = importJson.columns[column_index]
                 for (var key in column){
                 if (!valid_keys.includes(key)){
-                  alert("Invalid Schema: Only these valid column keys ".concat(valid_keys).concat(" are required."))
+                  this.showImportAlert("Invalid Schema: Only these valid column keys ".concat(valid_keys).concat(" are required."));
                   return
                 } 
               }
             }
            
-
             this.isBusy = true;
             this.column_type_options.forEach(x => x.disabled = false)
             this.pii_type_options.forEach(x => x.disabled = false)
@@ -377,6 +391,7 @@ SPDX-License-Identifier: Apache-2.0
             })
             this.$store.commit('saveStep3FormInput', this.items)
             this.isBusy = false;
+            this.showImportErrors = false
             console.log("Schema Imported.")
           };
           reader.readAsText(files[0]);
