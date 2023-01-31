@@ -6,5 +6,5 @@ export default {
   deleted_columns: [],
   dataset_definition: {},
   step3_form_input: {},
-  destinations: {}
+  destinations: []
 }
