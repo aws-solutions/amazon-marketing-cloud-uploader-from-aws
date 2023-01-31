@@ -139,7 +139,7 @@ SPDX-License-Identifier: Apache-2.0
             </b-row>
             <b-row>
               <b-col sm="9" align="right">
-                <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push('Step1')">
+                <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push({path: '/step1'})">
                   Previous
                 </button> &nbsp;
                 <button type="submit" class="btn btn-primary mb-2" @click="onSubmit">
@@ -236,7 +236,7 @@ SPDX-License-Identifier: Apache-2.0
           this.showFormError = true;
         } else {
           this.$store.commit('updateDatasetDefinition', this.new_dataset_definition)
-          this.$router.push('Step3')
+          this.$router.push({path: '/step3'})
         }
       },
       validForm() {

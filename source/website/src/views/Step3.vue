@@ -87,7 +87,7 @@ SPDX-License-Identifier: Apache-2.0
                 Fill in the table to define properties for each field in the input data.
               </b-col>
               <b-col sm="3" align="right" class="row align-items-end">
-                <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push('Step2')">
+                <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push({path: '/step2'})">
                   Previous
                 </button> &nbsp;
                 <button type="submit" class="btn btn-primary mb-2" @click="onSubmit">
@@ -499,7 +499,7 @@ SPDX-License-Identifier: Apache-2.0
           this.showServerError = true;
           
         this.$store.commit('updateDatasetDefinition', this.new_dataset_definition)
-        this.$router.push('Step4')
+        this.$router.push({path: '/step4'})
       },
       changeDescription(value, index) {
         this.items[index].description = value;

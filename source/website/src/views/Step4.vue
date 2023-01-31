@@ -36,7 +36,7 @@ SPDX-License-Identifier: Apache-2.0
               <p v-else="selected_amc_instances.length > 1">{{selected_amc_instances.length}} AMC instances selected.</p>
                 </b-col>
               <b-col sm="3" align="right" class="row align-items-end">
-                <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push('Step3')">
+                <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push({path: '/step3'})">
                   Previous
                 </button> &nbsp;
                 <button type="submit" class="btn btn-primary mb-2" @click="onSubmit">
@@ -183,7 +183,7 @@ SPDX-License-Identifier: Apache-2.0
         this.showFormError = false
         if (this.validateForm()) {
           this.$store.commit('updateDestinations', this.selected_amc_instances)
-          this.$router.push('Step5')
+          this.$router.push({path: '/step5'})
         }
       },
       validateForm() {
