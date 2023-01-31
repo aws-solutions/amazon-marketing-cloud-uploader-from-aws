@@ -64,7 +64,7 @@ SPDX-License-Identifier: Apache-2.0
           :class="{ active: isStep6Active }"
         >
           <br>
-          Monitor upload
+          Monitor uploads
         </b-link>
         <hr>
         Settings
