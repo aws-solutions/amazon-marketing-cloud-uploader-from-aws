@@ -46,26 +46,6 @@ SPDX-License-Identifier: Apache-2.0
             <br>
             <div>
               <b-form-group
-                id="bucket"
-                label-cols-lg="1"
-                label-align-lg="left"
-                content-cols-lg="9"
-                label="S3 Bucket:"
-                label-for="bucket"
-              >
-                <b-form-input id="bucket" plaintext :placeholder="bucket"></b-form-input>
-              </b-form-group>
-              <b-form-group
-                id="selected-file-field"
-                label-cols-lg="1"
-                label-align-lg="left"
-                content-cols-lg="5"
-                label="S3 Keys:"
-                label-for="s3key"
-              >
-                <b-form-input id="s3key" v-model="new_s3key" @change="updateS3key"></b-form-input>
-              </b-form-group>
-              <b-form-group
                 id="dataset-id-field"
                 label-cols-lg="1"
                 label-align-lg="left"
@@ -166,7 +146,6 @@ SPDX-License-Identifier: Apache-2.0
     },
     data() {
       return {
-        new_s3key: '',
         new_dataset_definition: {},
         dataset_id: '',
         description: '',
@@ -188,9 +167,6 @@ SPDX-License-Identifier: Apache-2.0
     },
     computed: {
       ...mapState(['dataset_definition', 's3key']),
-      bucket() {
-        return "s3://"+this.DATA_BUCKET_NAME;
-      }
     },
     deactivated: function () {
       console.log('deactivated');
@@ -220,11 +196,6 @@ SPDX-License-Identifier: Apache-2.0
       this.dataset_type = this.new_dataset_definition['dataSetType']
     },
     methods: {
-      updateS3key() {
-        console.log("changing s3key to " + this.new_s3key)
-        this.$store.commit('updateS3key', this.new_s3key)
-        this.$store.commit('saveStep3FormInput', [])
-      },
       onSubmit() {
         this.showFormError = false;
         this.new_dataset_definition['dataSetId'] = this.dataset_id
