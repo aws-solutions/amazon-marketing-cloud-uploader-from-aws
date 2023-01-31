@@ -47,7 +47,7 @@ SPDX-License-Identifier: Apache-2.0
               <br>
               <!-- User Interface controls -->
               <b-row>
-                <b-col sm="4" lg="6" class="my-1">
+                <b-col class="my-1">
                   <b-form-group
                       label="Filter"
                       label-for="filter-input"
@@ -71,7 +71,7 @@ SPDX-License-Identifier: Apache-2.0
                   </b-form-group>
                 </b-col>
 
-                <b-col sm="7" lg="5" class="my-1">
+                <b-col class="my-1">
                   <b-form-group
                       label="Filter On"
                       description="Leave all unchecked to filter on all data"
@@ -96,7 +96,7 @@ SPDX-License-Identifier: Apache-2.0
             </div>
             <!-- Main table element -->
             <b-table
-                :items="available_amc_instances"
+                :items="formattedItems"
                 :fields="fields"
                 :filter="filter"
                 :filter-included-fields="filterOn"
@@ -113,7 +113,7 @@ SPDX-License-Identifier: Apache-2.0
                 </div>
               </template>
               <template #cell(actions)="row">
-                <b-button size="sm" @click="selectEndpoint(row.item.endpoint)" class="mr-1" v-if="!selected_amc_instances.includes(row.item.endpoint)">
+                <b-button size="sm" @click="select(row.item.endpoint)" class="mr-1" v-if="!selected_amc_instances.includes(row.item.endpoint)">
                   Select
                 </b-button>
                 <b-button size="sm" @click="unSelectEndpoint(row.item.endpoint)" class="mr-1" v-if="selected_amc_instances.includes(row.item.endpoint)">
@@ -122,7 +122,7 @@ SPDX-License-Identifier: Apache-2.0
               </template>
             </b-table>
             <div v-if="isBusy === false">
-              <b-button size="sm" @click="selectAllRows">Select all</b-button> &nbsp;
+              <b-button size="sm" @click="selectAll">Select all</b-button> &nbsp;
               <b-button size="sm" @click="clearAll">Clear all</b-button>
             </div>
           </b-col>
@@ -164,6 +164,18 @@ SPDX-License-Identifier: Apache-2.0
       }
     },
     computed: {
+      formattedItems () {
+        if (!this.available_amc_instances) return []
+        return this.available_amc_instances.map(item => {
+          if (this.selected_amc_instances.includes(item.endpoint)) {
+            item._rowVariant = "info"  
+          }
+          else {
+            item._rowVariant = ""
+          }
+          return item
+        })
+      },
       ...mapState(['destinations']),
     },
     deactivated: function () {
@@ -177,39 +189,33 @@ SPDX-License-Identifier: Apache-2.0
     },
     mounted: function() {
       this.read_system_configuration('GET', 'system/configuration')
+      this.selected_amc_instances = this.destinations
     },
     methods: {
       onFiltered(filteredItems) {
         this.filtered_amc_instances = filteredItems
       },
-      selectAllRows() {
+      selectAll() {
         // apply select all to the filtered table result if it has been filtered
         if (this.filtered_amc_instances.length > 0) {
-          this.filtered_amc_instances.forEach(x => this.selectEndpoint(x.endpoint))
+          this.filtered_amc_instances.forEach(x => this.select(x.endpoint))
         } else {
-          this.selected_amc_instances = this.filtered_amc_instances.map(x => x.endpoint)
-          // highlight all rows
-          this.available_amc_instances.map(x => x._rowVariant = 'info')
+          this.selected_amc_instances = this.available_amc_instances.map(x => x.endpoint)
         }
       },
       clearAll() {
         this.selected_amc_instances = []
-        // unhighlight all rows
-        this.available_amc_instances.map(x => x._rowVariant = '')
       },
-      selectEndpoint(endpoint) {
+      select(endpoint) {
+        this.showFormError = false
         if (!this.selected_amc_instances.includes(endpoint)) {
           this.selected_amc_instances = this.selected_amc_instances.concat(endpoint)
-          // highlight the row
-          this.available_amc_instances.map(x => this.selected_amc_instances.includes(x.endpoint) ? x._rowVariant = 'info' : null)
         }
       },
       unSelectEndpoint(endpoint) {
         if (this.selected_amc_instances.includes(endpoint)) {
           const index = this.selected_amc_instances.indexOf(endpoint)
           this.selected_amc_instances.splice(index, 1)
-          // unhighlight the row
-          this.available_amc_instances.map(x => x.endpoint === endpoint ? x._rowVariant = '' : null)
         }
       },
       onSubmit() {
