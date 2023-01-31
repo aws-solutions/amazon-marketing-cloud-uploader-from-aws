@@ -254,7 +254,7 @@ SPDX-License-Identifier: Apache-2.0
         this.showServerError = false
         const amc_instances = data["Value"]
         for (let amc_instance of amc_instances) {
-          if (tags in amc_instance && amc_instance.tags.length > 0) {
+          if ('tags' in amc_instance && amc_instance.tags.length > 0) {
             amc_instance.tag_list = Object.values(amc_instance.tags).map(x => x.value).toString().replace(',', ', ')
           }
         }
