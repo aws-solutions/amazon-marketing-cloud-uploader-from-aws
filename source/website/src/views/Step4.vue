@@ -176,7 +176,6 @@ SPDX-License-Identifier: Apache-2.0
     },
     mounted: function() {
       this.read_system_configuration('GET', 'system/configuration')
-      this.selected_amc_instances = this.destinations
     },
     methods: {
       onSubmit() {
@@ -212,7 +211,6 @@ SPDX-License-Identifier: Apache-2.0
           }
           if (response.length > 0 && "Value" in response[0]) {
             this.available_amc_instances = response[0]["Value"]
-            console.log(JSON.stringify(this.available_amc_instances))
           }
         }
         catch (e) {
