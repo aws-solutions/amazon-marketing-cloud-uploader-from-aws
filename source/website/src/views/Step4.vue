@@ -31,7 +31,7 @@ SPDX-License-Identifier: Apache-2.0
             <div v-if="isBusy === false">
               <b-row>
                 <b-col>
-              <p v-if="selected_amc_instances.length === 0" class="text-secondary">Click table rows to select AMC Instances for upload.</p>
+              <p v-if="selected_amc_instances.length === 0" class="text-secondary">Select AMC Instances to receive uploads.</p>
               <p v-else-if="selected_amc_instances.length === 1">{{selected_amc_instances.length}} AMC instance selected.</p>
               <p v-else="selected_amc_instances.length > 1">{{selected_amc_instances.length}} AMC instances selected.</p>
                 </b-col>
@@ -47,7 +47,7 @@ SPDX-License-Identifier: Apache-2.0
               <br>
               <!-- User Interface controls -->
               <b-row>
-                <b-col lg="6" class="my-1">
+                <b-col sm="4" lg="6" class="my-1">
                   <b-form-group
                       label="Filter"
                       label-for="filter-input"
@@ -71,7 +71,7 @@ SPDX-License-Identifier: Apache-2.0
                   </b-form-group>
                 </b-col>
 
-                <b-col lg="5" class="my-1">
+                <b-col sm="7" lg="5" class="my-1">
                   <b-form-group
                       label="Filter On"
                       description="Leave all unchecked to filter on all data"
@@ -87,7 +87,7 @@ SPDX-License-Identifier: Apache-2.0
                         class="mt-1"
                     >
                       <b-form-checkbox value="name">Endpoint</b-form-checkbox>
-                      <b-form-checkbox value="age">Account Id</b-form-checkbox>
+                      <b-form-checkbox value="data_upload_account_id">Account Id</b-form-checkbox>
                       <b-form-checkbox value="tag_list">Tags</b-form-checkbox>
                     </b-form-checkbox-group>
                   </b-form-group>
@@ -100,13 +100,11 @@ SPDX-License-Identifier: Apache-2.0
                 :fields="fields"
                 :filter="filter"
                 :filter-included-fields="filterOn"
+                @filtered="onFiltered"
                 :busy="isBusy"
                 stacked="md"
                 show-empty
                 small
-                selectable
-                select-mode="multi"
-                @row-selected="onRowSelected"
             >
               <template #table-busy>
                 <div class="text-center my-2">
@@ -114,17 +112,19 @@ SPDX-License-Identifier: Apache-2.0
                   <strong>&nbsp;&nbsp;Loading...</strong>
                 </div>
               </template>
-              <template #cell(selected)="{ rowSelected }">
-                <template v-if="rowSelected">
-                  <span aria-hidden="true">&check;</span>
-                  <span class="sr-only">Selected</span>
-                </template>
-                <template v-else>
-                  <span aria-hidden="true">&nbsp;</span>
-                  <span class="sr-only">Not selected</span>
-                </template>
+              <template #cell(actions)="row">
+                <b-button size="sm" @click="selectEndpoint(row.item.endpoint)" class="mr-1" v-if="!selected_amc_instances.includes(row.item.endpoint)">
+                  Select
+                </b-button>
+                <b-button size="sm" @click="unSelectEndpoint(row.item.endpoint)" class="mr-1" v-if="selected_amc_instances.includes(row.item.endpoint)">
+                  Unselect
+                </b-button>
               </template>
             </b-table>
+            <div v-if="isBusy === false">
+              <b-button size="sm" @click="selectAllRows">Select all</b-button> &nbsp;
+              <b-button size="sm" @click="clearSelected">Clear selected</b-button>
+            </div>
           </b-col>
         </b-row>
       </b-container>
@@ -147,11 +147,12 @@ SPDX-License-Identifier: Apache-2.0
         isBusy: false,
         isStep4Active: true,
         available_amc_instances: [{"endpoint": "","data_upload_account_id": "", "tags": []}],
+        filtered_amc_instances: [],
         fields: [
-          {key: 'selected'},
           {key: 'endpoint', label: 'AMC Endpoint', sortable: true, thStyle: { width: '50%'}},
           {key: 'data_upload_account_id', label: 'Data Upload Account Id', sortable: true},
-          {key: 'tag_list', label: 'Tags', sortable: false}
+          {key: 'tag_list', label: 'Tags', sortable: false},
+          { key: 'actions', label: 'Actions' }
         ],
         totalRows: 1,
         filter: null,
@@ -178,6 +179,39 @@ SPDX-License-Identifier: Apache-2.0
       this.read_system_configuration('GET', 'system/configuration')
     },
     methods: {
+      onFiltered(filteredItems) {
+        this.filtered_amc_instances = filteredItems
+      },
+      selectAllRows() {
+        // apply select all to the filtered table result if it has been filtered
+        if (this.filtered_amc_instances.length > 0) {
+          this.filtered_amc_instances.forEach(x => this.selectEndpoint(x.endpoint))
+        } else {
+          this.selected_amc_instances = this.filtered_amc_instances.map(x => x.endpoint)
+          // highlight all rows
+          this.available_amc_instances.map(x => x._rowVariant = 'info')
+        }
+      },
+      clearSelected() {
+        this.selected_amc_instances = []
+        // unhighlight all rows
+        this.available_amc_instances.map(x => x._rowVariant = '')
+      },
+      selectEndpoint(endpoint) {
+        if (!this.selected_amc_instances.includes(endpoint)) {
+          this.selected_amc_instances = this.selected_amc_instances.concat(endpoint)
+          // highlight the row
+          this.available_amc_instances.map(x => this.selected_amc_instances.includes(x.endpoint) ? x._rowVariant = 'info' : null)
+        }
+      },
+      unSelectEndpoint(endpoint) {
+        if (this.selected_amc_instances.includes(endpoint)) {
+          const index = this.selected_amc_instances.indexOf(endpoint)
+          this.selected_amc_instances.splice(index, 1)
+          // unhighlight the row
+          this.available_amc_instances.map(x => x.endpoint === endpoint ? x._rowVariant = '' : null)
+        }
+      },
       onSubmit() {
         this.showServerError = false
         this.showFormError = false
@@ -192,11 +226,6 @@ SPDX-License-Identifier: Apache-2.0
           return false
         }
         return true
-      },
-      onRowSelected(items) {
-        let selected_amc_instances = [];
-        for(let item of items) selected_amc_instances.push(item.endpoint)
-        this.selected_amc_instances = selected_amc_instances
       },
       async read_system_configuration(method, resource) {
         this.showServerError = false
