@@ -82,7 +82,7 @@ SPDX-License-Identifier: Apache-2.0
                         placeholder="(Click to edit)">
                       </voerro-tags-input>
                     </b-col>
-                    <b-col align="right">
+                    <b-col cols="1" align="right">
                         <b-button v-b-tooltip.hover.right size="sm" style="display: flex;" variant="link" title="Remove row" @click="delete_row(row.index)">
                           <b-icon-x-circle variant="secondary"></b-icon-x-circle>
                         </b-button>
@@ -146,8 +146,7 @@ SPDX-License-Identifier: Apache-2.0
           {key: 'data_upload_account_id', label: 'Data Upload Account Id', sortable: true},
           {key: 'tags', label: 'Tags', sortable: false}
         ],
-        isSettingsActive: true,
-        results: [],
+        isSettingsActive: true
       }
     },
     deactivated: function () {
@@ -253,7 +252,6 @@ SPDX-License-Identifier: Apache-2.0
       },
       async save_system_configuration(method, resource, data) {
         this.showServerError = false
-        this.results = []
         const amc_instances = data["Value"]
         for (let amc_instance of amc_instances) {
           if (tags in amc_instance && amc_instance.tags.length > 0) {
@@ -262,7 +260,6 @@ SPDX-License-Identifier: Apache-2.0
         }
         console.log("sending " + method + " " + resource + " " + JSON.stringify(data))
         const apiName = 'amcufa-api'
-        let response = ""
         this.isBusy = true;
         try {
           if (method === "POST") {
@@ -270,9 +267,8 @@ SPDX-License-Identifier: Apache-2.0
               headers: {'Content-Type': 'application/json'},
               body: data
             };
-            response = await this.$Amplify.API.post(apiName, resource, requestOpts);
+            await this.$Amplify.API.post(apiName, resource, requestOpts);
           }
-          this.results = response
         }
         catch (e) {
           this.showServerError = true;
@@ -283,7 +279,6 @@ SPDX-License-Identifier: Apache-2.0
       },
       async read_system_configuration(method, resource) {
         this.showServerError = false
-        this.results = []
         console.log("sending " + method + " " + resource)
         const apiName = 'amcufa-api'
         let response = ""
