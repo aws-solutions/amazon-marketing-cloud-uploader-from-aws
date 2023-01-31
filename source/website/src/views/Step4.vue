@@ -123,7 +123,7 @@ SPDX-License-Identifier: Apache-2.0
             </b-table>
             <div v-if="isBusy === false">
               <b-button size="sm" @click="selectAllRows">Select all</b-button> &nbsp;
-              <b-button size="sm" @click="clearSelected">Clear selected</b-button>
+              <b-button size="sm" @click="clearAll">Clear all</b-button>
             </div>
           </b-col>
         </b-row>
@@ -192,7 +192,7 @@ SPDX-License-Identifier: Apache-2.0
           this.available_amc_instances.map(x => x._rowVariant = 'info')
         }
       },
-      clearSelected() {
+      clearAll() {
         this.selected_amc_instances = []
         // unhighlight all rows
         this.available_amc_instances.map(x => x._rowVariant = '')
