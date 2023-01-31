@@ -154,7 +154,6 @@ SPDX-License-Identifier: Apache-2.0
           {key: 'tag_list', label: 'Tags', sortable: false},
           { key: 'actions', label: 'Actions' }
         ],
-        totalRows: 1,
         filter: null,
         filterOn: [],
         showServerError: false,
@@ -235,7 +234,6 @@ SPDX-License-Identifier: Apache-2.0
       },
       async read_system_configuration(method, resource) {
         this.showServerError = false
-        this.results = []
         console.log("sending " + method + " " + resource)
         const apiName = 'amcufa-api'
         let response = ""
