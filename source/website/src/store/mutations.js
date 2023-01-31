@@ -16,5 +16,11 @@ export default {
   },
   updateDestinations (state, value) {
     state.destinations = value
+  },
+  updateAmcMonitor (state, value) {
+    state.amc_monitor = value
+  },
+  updateAmcSelectorVisibility (state, value) {
+    state.amc_selector_visible_state = value
   }
 }
