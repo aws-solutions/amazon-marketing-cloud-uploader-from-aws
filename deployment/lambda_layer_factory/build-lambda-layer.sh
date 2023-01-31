@@ -15,7 +15,6 @@
 
 # Check to see if input has been provided:
 if [ -z "$1" ]; then
-    echo "Please provide a fully qualified s3 bucket for the lambda layer code to reside and the region of the deploy."
     echo "USAGE: ./build-lambda-layer.sh <requirements.txt>"
     exit 1
 fi
@@ -32,12 +31,12 @@ fi
 # Check to see if AWS CLI and Docker are installed
 docker --version
 if [ $? -ne 0 ]; then
-  echo "ERROR: install Docker before running this script"
+  echo "ERROR: install Docker before running this script."
   exit 1
 else
   docker ps > /dev/null
   if [ $? -ne 0 ]; then
-      echo "ERROR: start Docker before running this script"
+      echo "ERROR: start Docker before running this script."
       exit 1
   fi
 fi
