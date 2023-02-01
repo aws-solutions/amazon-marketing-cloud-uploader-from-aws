@@ -15,7 +15,7 @@ export default {
     state.s3key = value
   },
   updateDestinations (state, value) {
-    state.destinations = value
+    state.destination_endpoints = value
   },
   updateAmcMonitor (state, value) {
     state.amc_monitor = value

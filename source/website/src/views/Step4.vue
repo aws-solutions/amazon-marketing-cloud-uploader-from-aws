@@ -27,11 +27,11 @@ SPDX-License-Identifier: Apache-2.0
             >
               You must select at least one AMC Instance.
             </b-alert>
-            <h3>Select destinations</h3>
+            <h3>Select AMC Endpoints</h3>
             <div v-if="isBusy === false">
               <b-row>
                 <b-col>
-              <p v-if="selected_amc_instances.length === 0" class="text-secondary">Select AMC Instances to receive uploads.</p>
+              <p v-if="selected_amc_instances.length === 0" class="text-secondary">Select one or more AMC endpoints to receive uploads.</p>
               <p v-else-if="selected_amc_instances.length === 1">{{selected_amc_instances.length}} AMC instance selected.</p>
               <p v-else="selected_amc_instances.length > 1">{{selected_amc_instances.length}} AMC instances selected.</p>
                 </b-col>
@@ -149,10 +149,10 @@ SPDX-License-Identifier: Apache-2.0
         available_amc_instances: [{"endpoint": "","data_upload_account_id": "", "tags": []}],
         filtered_amc_instances: [],
         fields: [
+          {key: 'actions', label: 'Actions' },
           {key: 'endpoint', label: 'AMC Endpoint', sortable: true, thStyle: { width: '50%'}},
           {key: 'data_upload_account_id', label: 'Data Upload Account Id', sortable: true},
-          {key: 'tag_list', label: 'Tags', sortable: false},
-          { key: 'actions', label: 'Actions' }
+          {key: 'tag_list', label: 'Tags', sortable: false}
         ],
         filter: null,
         filterOn: [],
@@ -175,7 +175,7 @@ SPDX-License-Identifier: Apache-2.0
           return item
         })
       },
-      ...mapState(['destinations']),
+      ...mapState(['destination_endpoints']),
     },
     deactivated: function () {
       console.log('deactivated');
@@ -188,7 +188,7 @@ SPDX-License-Identifier: Apache-2.0
     },
     mounted: function() {
       this.read_system_configuration('GET', 'system/configuration')
-      this.selected_amc_instances = this.destinations
+      this.selected_amc_instances = this.destination_endpoints
     },
     methods: {
       onFiltered(filteredItems) {

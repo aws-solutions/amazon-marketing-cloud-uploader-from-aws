@@ -24,13 +24,14 @@ SPDX-License-Identifier: Apache-2.0
             <h3>Confirm Details</h3>
             <b-row>
               <b-col sm="7">
-                Click Submit to record this dataset in AMC.
+                <p v-if="isValid">Click Submit to record this dataset in AMC.</p>
+                <p v-else class="text-danger">Invalid dataset. Verify that your dataset definition is complete.</p>
               </b-col>
               <b-col sm="3" align="right">
                 <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push({path: '/step4'})">
                   Previous
                 </button> &nbsp;
-                <button type="submit" class="btn btn-primary mb-2" @click="onSubmit">
+                <button type="submit" class="btn btn-primary mb-2" @click="onSubmit" :disabled=!isValid>
                   Submit
                   <b-spinner v-if="isBusy" style="vertical-align: sub" small label="Spinning"></b-spinner>
                 </button>
@@ -39,14 +40,19 @@ SPDX-License-Identifier: Apache-2.0
             <b-row>
               <b-col cols="7">
                 <h5>Input files:</h5>
-                <ul>
-                  <li v-for="item in s3key.split(',')">
-                    {{ "s3://" + DATA_BUCKET_NAME + "/" + item }}
-                  </li>
-                </ul>
+                <div v-if="s3key !== ''">
+                  <ul>
+                    <li v-for="item in s3key.split(',')">
+                      {{ "s3://" + DATA_BUCKET_NAME + "/" + item }}
+                    </li>
+                  </ul>
+                </div>
+                <div v-else>
+                  <br>
+                </div>
                 <h5>Destinations:</h5>
                 <ul>
-                <li v-for="amc_instance in destinations">
+                <li v-for="amc_instance in destination_endpoints">
                   {{ amc_instance }}
                 </li>
                 </ul>
@@ -110,11 +116,15 @@ SPDX-License-Identifier: Apache-2.0
         showModal: false,
         modal_title: '',
         isStep5Active: true,
-        response: ''
+        response: '',
+        apiName: 'amcufa-api'
       }
     },
     computed: {
-      ...mapState(['deleted_columns', 'dataset_definition', 's3key', 'destinations']),
+      ...mapState(['deleted_columns', 'dataset_definition', 's3key', 'destination_endpoints']),
+      isValid() {
+        return !(this.s3key === '' || this.destination_endpoints.length === 0 || !this.dataset.columns || this.dataset.columns.length === 0)
+      },
       encryption_key() {
         if (this.CUSTOMER_MANAGED_KEY === "") {
           return "default"
@@ -155,55 +165,89 @@ SPDX-License-Identifier: Apache-2.0
         this.showModal = false
       },
       onSubmit() {
-        this.send_request('POST', 'create_dataset', {'body': this.dataset_definition})
+        // Send a request to create datasets to each endpoint in parallel.
+        this.create_datasets(this.destination_endpoints)
+        console.log("Finished defining datasets.")
+        // Start Glue ETL job now that the dataset has been accepted by AMC
+        let s3keysList = this.s3key.split(',').map((item) => item.trim())
+        // Wait for all those requests to complete, then start the glue job.
+        for (let key of s3keysList) {
+          this.start_amc_transformation('POST', 'start_amc_transformation', {
+            'sourceBucket': this.DATA_BUCKET_NAME,
+            'sourceKey': key,
+            'outputBucket': this.ARTIFACT_BUCKET_NAME,
+            'piiFields': JSON.stringify(this.pii_fields),
+            'deletedFields': JSON.stringify(this.deleted_columns),
+            'timestampColumn': this.timestamp_column_name,
+            'datasetId': this.dataset_definition.dataSetId,
+            'period': this.dataset_definition.period,
+            'destination_endpoints': this.destination_endpoints
+          })
+        }
       },
-      async send_request(method, resource, data) {
+      create_datasets(destination_endpoints) {
+        for(let i in destination_endpoints) {
+          this.create_dataset('POST', 'create_dataset', {'body': this.dataset_definition, 'destination_endpoint': destination_endpoints[i]}).then(result => {
+            console.log("create_dataset() result for " + destination_endpoints[i])
+            console.log(JSON.stringify(result))
+            this.isBusy = false
+          })
+        }
+      },
+      async create_dataset(method, resource, data) {
+        this.modal_title = ''
+        this.response = ''
         console.log("sending " + method + " " + resource + " " + JSON.stringify(data))
-        const apiName = 'amcufa-api'
-        let response = ""
+        this.isBusy = true;
+        let requestOpts = {
+          headers: {'Content-Type': 'application/json'},
+          body: data
+        };
+        try {
+          const result = await this.$Amplify.API.post(this.apiName, resource, requestOpts)
+          return result
+        } catch (e) {
+          console.log(e.toString())
+          if (e.response) {
+            this.modal_title = e.response.status + " " + e.response.statusText
+          } else {
+            this.modal_title = e.toString()
+          }
+          this.isBusy = false;
+          this.showModal = true
+        }
+      },
+      async start_amc_transformation(method, resource, data) {
         this.isBusy = true;
         try {
-          if (method === "GET") {
-            response = await this.$Amplify.API.get(apiName, resource);
-          } else if (method === "POST") {
-            let requestOpts = {
-              headers: {'Content-Type': 'application/json'},
-              body: data
-            };
-            response = await this.$Amplify.API.post(apiName, resource, requestOpts);
-          }
-          console.log(JSON.stringify(response))
-          console.log("Dataset defined successfully")
-          
           // Start Glue ETL job now that the dataset has been accepted by AMC
           let s3keysList = this.s3key.split(',').map((item) => item.trim())
-
           for (let key of s3keysList) {
             console.log("Starting Glue ETL job for s3://" + this.DATA_BUCKET_NAME + "/" + key)
-            resource = 'start_amc_transformation'
-            data = {'sourceBucket': this.DATA_BUCKET_NAME, 'sourceKey': key, 'outputBucket': this.ARTIFACT_BUCKET_NAME, 'piiFields': JSON.stringify(this.pii_fields),'deletedFields': JSON.stringify(this.deleted_columns), 'timestampColumn': this.timestamp_column_name, 'datasetId': this.dataset_definition.dataSetId, 'period': this.dataset_definition.period}
             let requestOpts = {
               headers: {'Content-Type': 'application/json'},
               body: data
             };
             console.log("POST " + resource + " " + JSON.stringify(requestOpts))
-            response = await this.$Amplify.API.post(apiName, resource, requestOpts);
-            console.log(response)
-            console.log(JSON.stringify(response))
+            this.response = await this.$Amplify.API.post(this.apiName, resource, requestOpts);
+            console.log(JSON.stringify(this.response))
             console.log("Started Glue ETL job")
           }
-          
-          // Navigate to next step
-          this.$router.push({path: '/step5'})
         }
         catch (e) {
-          this.modal_title = e.response.status + " " + e.response.statusText
-          console.log("ERROR: " + this.modal_title)
+          console.log(e.toString())
+          if (e.response) {
+            this.modal_title = e.response.status + " " + e.response.statusText
+          } else {
+            this.modal_title = e.toString()
+          }
           this.isBusy = false;
-          this.response = JSON.stringify(e.response.data)  
           this.showModal = true
+          return
         }
         this.isBusy = false;
+        // Navigate to next step
+        this.$router.push({path: '/step6'})
       }
     }
   }

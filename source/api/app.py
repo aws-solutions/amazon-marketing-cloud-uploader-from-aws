@@ -51,7 +51,7 @@ CUSTOMER_MANAGED_KEY = os.environ['CUSTOMER_MANAGED_KEY']
 application_json = 'application/json'
 data = '/data/'
 
-@app.route('/list_datasets', cors=True, methods=['GET'], authorizer=authorizer)
+@app.route('/list_datasets', cors=True, methods=['POST'], authorizer=authorizer)
 def list_datasets():
     """
     List datasets in AMC.
@@ -64,8 +64,9 @@ def list_datasets():
     """
     log_request_parameters()
     try:
+        destination_endpoint = app.current_request.json_body['destination_endpoint']
         path = '/dataSets'
-        response = sigv4.get(path)
+        response = sigv4.get(destination_endpoint, path)
         return Response(body=response.text,
                         status_code=response.status_code,
                         headers={'Content-Type': application_json})
@@ -87,6 +88,7 @@ def create_dataset():
     log_request_parameters()
     try:
         body = app.current_request.json_body['body']
+        destination_endpoint = app.current_request.json_body['destination_endpoint']
         if body['period'] == 'autodetect':
             # Initialize the dataset period to P1D. This will be updated later
             # when the AWS Glue job measures the actual dataset period.
@@ -95,7 +97,7 @@ def create_dataset():
         if CUSTOMER_MANAGED_KEY != '':
             body['customerEncryptionKeyArn'] = CUSTOMER_MANAGED_KEY
         path = '/dataSets'
-        response = sigv4.post(path, json.dumps(body))
+        response = sigv4.post(destination_endpoint, path, json.dumps(body))
         return Response(body=response.text,
                         status_code=response.status_code,
                         headers={'Content-Type': application_json})
@@ -187,8 +189,9 @@ def upload_status():
     try:
         data_set_id = app.current_request.json_body['dataSetId']
         upload_id = app.current_request.json_body['uploadId']
+        destination_endpoint = app.current_request.json_body['destination_endpoint']
         path = data + data_set_id + '/uploads/' + upload_id
-        response = sigv4.get(path)
+        response = sigv4.get(destination_endpoint, path)
         return Response(body=response.text,
                         status_code=response.status_code,
                         headers={'Content-Type': application_json})
@@ -211,11 +214,12 @@ def list_uploads():
     log_request_parameters()
     try:
         data_set_id = app.current_request.json_body['dataSetId']
+        destination_endpoint = app.current_request.json_body['destination_endpoint']
         next_token = ''
         if "nextToken" in app.current_request.json_body:
             next_token = app.current_request.json_body['nextToken']
         path = data + data_set_id + '/uploads/'
-        response = sigv4.get(path, request_parameters="nextToken="+next_token)
+        response = sigv4.get(destination_endpoint, path, request_parameters="nextToken="+next_token)
         return Response(body=response.text,
                         status_code=response.status_code,
                         headers={'Content-Type': application_json})
@@ -238,14 +242,15 @@ def delete_dataset():
     log_request_parameters()
     try:
         data_set_id = app.current_request.json_body['dataSetId']
+        destination_endpoint = app.current_request.json_body['destination_endpoint']
         # Step 1/2: delete uploaded data
         # This should delete any data files that customers uploaded for either FACT or DIMENSION datasets
         current_datetime = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
         path = data + data_set_id + '?timeWindowStart=1970-01-01T00:00:00Z&timeWindowEnd=' + current_datetime
-        sigv4.delete(path)
+        sigv4.delete(destination_endpoint, path)
         # Step 2/2: delete the dataset definition
         path = '/dataSets/' + data_set_id
-        response = sigv4.delete(path)
+        response = sigv4.delete(destination_endpoint, path)
         return Response(body=response.text,
                         status_code=response.status_code,
                         headers={'Content-Type': application_json})
