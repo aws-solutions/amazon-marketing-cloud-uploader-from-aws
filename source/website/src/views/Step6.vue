@@ -25,17 +25,18 @@ SPDX-License-Identifier: Apache-2.0
               <b-card-header header-tag="header" class="p-2" role="tab">
                 <b-row>
                   <b-col>
-                    <h5 class="mb-0">AMC Instance Selector</h5>
+                    <h5 class="mb-0">AMC Endpoint Selector</h5>
                   </b-col>
                   <b-col align="right">
-                    <b-button v-if="amc_selector_visible === true" size="sm" v-b-toggle.accordion-1 @click="changeAmcSelectorVisibility">Hide</b-button>
-                    <b-button v-if="amc_selector_visible === false" size="sm" v-b-toggle.accordion-1 @click="changeAmcSelectorVisibility">Show</b-button>
+                    <b-button v-b-toggle:amc-selector @click="changeAmcSelectorVisibility">
+                      <span class="when-open">Hide</span><span class="when-closed">Show</span>
+                    </b-button>
                   </b-col>
                 </b-row>
               </b-card-header>
-              <b-collapse id="accordion-1" accordion="my-accordion" role="tabpanel">
+              <b-collapse v-model="amc_selector_visible" id="amc-selector">
                 <b-card-body>
-                  <p class="text-secondary">Click on a row in the table to select an AMC Instance.</p>
+                  <p class="text-secondary">Click a row in the table to select an AMC endpoint.</p>
 
                   <b-row>
                     <b-col lg="6" class="my-1">
@@ -115,11 +116,11 @@ SPDX-License-Identifier: Apache-2.0
                 </b-card-body>
               </b-collapse>
             </b-card>
-            <div v-if="amc_instance_selection === ''">
-              <p class="text-danger">Choose an AMC Instance from the table shown above.</p>
+            <div v-if="amc_instance_selection === '' && isBusy4 === false">
+              <p class="text-danger">Choose an AMC endpoint from the table shown above.</p>
             </div>
             <div v-else>
-              <b>AMC Instance:</b>
+              <b>Selected endpoint:</b>
               {{ amc_instance_selection }}
               <hr>
               <b-row>
@@ -140,7 +141,7 @@ SPDX-License-Identifier: Apache-2.0
                 small
                 :fields="dataset_fields"
                 :items="datasets"
-                :busy="isBusy"
+                :busy="isBusy1"
                 :per-page="perPagePhase1"
                 :current-page="currentPagePhase1"
                 sort-by="updatedTime"
@@ -389,13 +390,12 @@ SPDX-License-Identifier: Apache-2.0
           {key: "status", label: "Status"},
           {key: "show_details", label: "Show Details"}
         ],
-        isBusy: false,
+        isBusy1: false,
         isBusy2: false,
         isBusy3: false,
         isBusy4: false,
         showServerError: false,
         isStep6Active: true,
-        response: ''
       }
     },
     computed: {
@@ -447,7 +447,6 @@ SPDX-License-Identifier: Apache-2.0
     },
     methods: {
       changeAmcSelectorVisibility() {
-        this.amc_selector_visible = !this.amc_selector_visible
         this.$store.commit('updateAmcSelectorVisibility', this.amc_selector_visible)
       },
       onFiltered(filteredItems) {
@@ -475,7 +474,7 @@ SPDX-License-Identifier: Apache-2.0
       },
       async deleteDataset(dataSetId) {
         this.datasets = this.datasets.filter(x => x.dataSetId !== dataSetId)
-        await this.delete_dataset({'dataSetId': dataSetId})
+        await this.delete_dataset({'dataSetId': dataSetId, 'destination_endpoint': this.amc_instance_selection})
       },
       async delete_dataset(data) {
         const apiName = 'amcufa-api'
@@ -492,13 +491,13 @@ SPDX-License-Identifier: Apache-2.0
           console.log(response)
         }
         catch (e) {
-          console.log("ERROR: " + e.response.data.message)
-          this.response = e.response.data.message
+          console.log("ERROR: " + e)
+          if (e.response) console.log(e.response.data.message)
         }
       },
       async listDatasetUploads(dataSetId) {
         this.selected_dataset = dataSetId
-        await this.list_uploads({'dataSetId': dataSetId})
+        await this.list_uploads({'dataSetId': dataSetId, 'destination_endpoint': this.amc_instance_selection})
       },
       async list_uploads(data) {
         this.uploads = []
@@ -521,32 +520,35 @@ SPDX-License-Identifier: Apache-2.0
           } while (data.nextToken);
         }
         catch (e) {
-          console.log("ERROR: " + e.response.data.message)
+          console.log("ERROR: " + e)
+          if (e.response) console.log(e.response.data.message)
+        } finally {
           this.isBusy3 = false;
-          this.response = e.response.data.message
         }
-        this.isBusy3 = false;
       },
       async list_datasets() {
         const apiName = 'amcufa-api'
         let response = ""
-        const method = 'GET'
+        const method = 'POST'
+        const data = {'destination_endpoint': this.amc_instance_selection}
         const resource = 'list_datasets'
-        this.isBusy = true;
+        this.isBusy1 = true;
         try {
-          if (method === "GET") {
-            console.log("sending " + method + " " + resource)
-            response = await this.$Amplify.API.get(apiName, resource);
-            console.log(response)
-            this.datasets = response.dataSets
-          } 
+          console.log("sending " + method + " " + resource + " " + JSON.stringify(data))
+          let requestOpts = {
+            headers: {'Content-Type': 'application/json'},
+            body: data
+          };
+          const response = await this.$Amplify.API.post(apiName, resource, requestOpts);
+          console.log(response)
+          this.datasets = response.dataSets
         }
         catch (e) {
-          console.log("ERROR: " + e.response.data.message)
-          this.isBusy = false;
-          this.response = e.response.data.message
+          console.log("ERROR: " + e)
+          if (e.response) console.log(e.response.data.message)
+        } finally {
+          this.isBusy1 = false;
         }
-        this.isBusy = false;
       },
       async get_etl_jobs() {
         this.isBusy2 = true;
@@ -556,19 +558,17 @@ SPDX-License-Identifier: Apache-2.0
         const method = 'GET'
         const resource = 'get_etl_jobs'
         try {
-          if (method === "GET") {
-            console.log("sending " + method + " " + resource)
-            response = await this.$Amplify.API.get(apiName, resource);
-            console.log(response)
-            this.etl_jobs = response.JobRuns
-          } 
+          console.log("sending " + method + " " + resource)
+          response = await this.$Amplify.API.get(apiName, resource);
+          console.log(response)
+          if ('JobRuns' in response) this.etl_jobs = response.JobRuns
         }
         catch (e) {
-          console.log("ERROR: " + e.response.data.message)
+          console.log("ERROR: " + e)
+          if (e.response) console.log(e.response.data.message)
+        } finally {
           this.isBusy2 = false;
-          this.response = e.response.data.message
         }
-        this.isBusy2 = false;
       },
       async read_system_configuration(method, resource) {
         this.showServerError = false
@@ -582,6 +582,13 @@ SPDX-License-Identifier: Apache-2.0
           }
           if (response.length > 0 && "Value" in response[0]) {
             this.available_amc_instances = response[0]["Value"]
+            // If there is only one registered AMC Instance, then select that one by default: 
+            if (response.length === 1) {
+              this.amc_instance_selection = this.available_amc_instances[0].endpoint
+              this.$store.commit('updateAmcMonitor', this.amc_instance_selection)
+            }
+          } else {
+            this.$router.push({path: '/settings'})
           }
         }
         catch (e) {
@@ -595,3 +602,9 @@ SPDX-License-Identifier: Apache-2.0
   }
 </script>
 
+<style>
+.collapsed > .when-open,
+.not-collapsed > .when-closed {
+  display: none;
+}
+</style>

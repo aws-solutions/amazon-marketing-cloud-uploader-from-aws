@@ -35,7 +35,6 @@ logger.setLevel(logging.INFO)
 logger.addHandler(handler)
 
 # Environment variables
-AMC_ENDPOINT = os.environ["AMC_ENDPOINT_URL"]
 AMC_API_ROLE = os.environ["AMC_API_ROLE_ARN"]
 SOLUTION_NAME = os.environ["SOLUTION_NAME"]
 SOLUTION_VERSION = os.environ["SOLUTION_VERSION"]
@@ -67,7 +66,7 @@ def getSignatureKey(key, dateStamp, regionName, serviceName):
     return kSigning
 
 
-def delete(path) -> dict:
+def delete(AMC_ENDPOINT, path) -> dict:
     # ************* REQUEST VALUES *************
     access_key, secret_key, session_token = getAmcApiTokens()
     method = 'DELETE'
@@ -161,7 +160,7 @@ def delete(path) -> dict:
     return r
 
 
-def get(path) -> dict:
+def get(AMC_ENDPOINT, path) -> dict:
     # ************* REQUEST VALUES *************
     access_key, secret_key, session_token = getAmcApiTokens()
     method = 'GET'
@@ -254,7 +253,7 @@ def get(path) -> dict:
     logger.info(r.text)
     return r
 
-def put(path, body_data) -> dict:
+def put(AMC_ENDPOINT, path, body_data) -> dict:
     # ************* REQUEST VALUES *************
     access_key, secret_key, session_token = getAmcApiTokens()
     method = 'PUT'
@@ -347,7 +346,7 @@ def put(path, body_data) -> dict:
     logger.info(r.text)
     return r
 
-def post(path, body_data) -> dict:
+def post(AMC_ENDPOINT, path, body_data) -> dict:
     # ************* REQUEST VALUES *************
     access_key, secret_key, session_token = getAmcApiTokens()
     method = 'POST'
