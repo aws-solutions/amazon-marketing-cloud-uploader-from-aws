@@ -28,7 +28,7 @@ def browser():
 
 def test_everything(browser, test_environment, stack_resources):
     browser.implicitly_wait(5)
-    browser.get(stack_resources['UserInterface'])
+    browser.get(test_environment.get("LOCALHOST_URL") or stack_resources['UserInterface'])
     wait = WebDriverWait(browser, 30)
     # Login
     username_field = browser.find_element("xpath", "/html/body/div/div/div/div/div[2]/div[1]/div/input")
@@ -97,6 +97,18 @@ def test_everything(browser, test_environment, stack_resources):
     # and the first option should be selected by default
     assert len(browser.find_elements(By.ID, "time_period_options"))
     assert browser.find_element(By.XPATH, '//*[@id="time_period_options_BV_option_0"]').is_selected()
+
+    # open Step 3
+    browser.find_element(By.ID, "step3").click()
+
+    assert browser.find_element(By.XPATH, "//button[contains(text(), 'Export')]")
+    assert browser.find_element(By.XPATH, "//button[@title='Export column schema']")
+    assert browser.find_element(By.XPATH, "//button[contains(text(), 'Import')]")
+    assert browser.find_element(By.XPATH, "//button[@title='Import column schema']")
+    assert browser.find_element(By.XPATH, "//button[contains(text(), 'Reset')]")
+
+    assert browser.find_element(By.XPATH, "//button[contains(text(), 'Next')]")
+    assert browser.find_element(By.XPATH, "//button[contains(text(), 'Previous')]")
 
     # Sign out
     browser.find_element("xpath", "/html/body/div/div/div/div[1]/nav/div/ul/li/a").click()
