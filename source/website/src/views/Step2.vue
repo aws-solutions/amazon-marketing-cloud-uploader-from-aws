@@ -65,78 +65,109 @@ SPDX-License-Identifier: Apache-2.0
               >
                 <b-form-input id="s3key" v-model="new_s3key" @change="updateS3key"></b-form-input>
               </b-form-group>
-              <b-form-group
-                id="dataset-id-field"
-                label-cols-lg="1"
-                label-align-lg="left"
-                content-cols-lg="5"
-                description="The unique identifier of the dataset – shown in the AMC UI"
-                label="Name:"
-                label-for="dataset-id-input"
-              >
-                <b-form-input id="dataset-id-input" v-model="dataset_id"></b-form-input>
-              </b-form-group>
-              <b-form-group
-                id="dataset-description-field"
-                label-cols-lg="1"
-                label-align-lg="left"
-                content-cols-lg="7"
-                description="Human-readable description - shown in AMC UI"
-                label="Description:"
-                label-for="dataset-description-input"
-              >
-                <b-form-input id="dataset-description-input" v-model="description" placeholder="(optional)"></b-form-input>
-              </b-form-group>
+              <b-form-radio-group 
+                v-model="dataset_mode"
+                :options="dataset_mode_options"
+                class="mb-3"
+                @change="updateDatasetMode"
+              ></b-form-radio-group>
+              <div v-if="dataset_mode === 'JOIN'">              
+                Select a dataset:&nbsp;
+                <b-spinner 
+                  v-if="datasets.length === 0" 
+                  type="border" 
+                  small
+                >
+                </b-spinner>
+                <b-form-select 
+                  v-else
+                  v-model="new_selected_dataset" 
+                  :options="datasets"
+                  class="w-50"
+                >
+                  <template #first>
+                    <b-form-select-option :value="null" disabled>
+                      -- Choose one --
+                    </b-form-select-option>
+                  </template>
+                </b-form-select>
+                <br>
+                <br>
+              </div>
+              <div v-if="dataset_mode === 'CREATE'">
+                <b-form-group
+                  id="dataset-id-field"
+                  label-cols-lg="1"
+                  label-align-lg="left"
+                  content-cols-lg="5"
+                  description="The unique identifier of the dataset – shown in the AMC UI"
+                  label="Name:"
+                  label-for="dataset-id-input"
+                >
+                  <b-form-input
+                    id="dataset-id-input"
+                    v-model="dataset_id"
+                    :state="datasetIsValid"
+                  >
+                  </b-form-input>
+                  <b-form-invalid-feedback id="input-live-feedback">
+                    A dataset with that name already exists.
+                  </b-form-invalid-feedback>
+                </b-form-group>
+                <b-form-group
+                  id="dataset-description-field"
+                  label-cols-lg="1"
+                  label-align-lg="left"
+                  content-cols-lg="7"
+                  description="Human-readable description - shown in AMC UI"
+                  label="Description:"
+                  label-for="dataset-description-input"
+                >
+                  <b-form-input id="dataset-description-input" v-model="description" placeholder="(optional)"></b-form-input>
+                </b-form-group>
+                <b-row>
+                  <b-col sm="3">
+                    <b-form-group v-slot="{ ariaDescribedby }">
+                      <slot name="label">
+                        Dataset Type:
+                        <b-link v-b-modal.modal-dataset-type>
+                          <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
+                        </b-link>
+                      </slot>
+                      <b-form-radio-group
+                        v-model="dataset_type"
+                        :options="dataset_type_options"
+                        :aria-describedby="ariaDescribedby"
+                        name="dataset-type-radios"
+                        stacked
+                      ></b-form-radio-group>
+                    </b-form-group>
+                  </b-col>
+                  <b-col sm="2">
+                    Encryption Mode:
+                    <b-link v-b-modal.modal-encryption-mode>
+                      <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
+                    </b-link>
+                    <div class="text-muted">
+                      {{ ENCRYPTION_MODE }}
+                    </div>
+                  </b-col>
+                </b-row>
+              </div>
+              <div v-if="dataset_mode === 'JOIN'">
+                <b-row>
+                  <b-col sm="2">
+                    Encryption Mode:
+                    <b-link v-b-modal.modal-encryption-mode>
+                      <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
+                    </b-link>
+                    <div class="text-muted">
+                      {{ ENCRYPTION_MODE }}
+                    </div>
+                  </b-col>
+                </b-row>
+              </div>
             </div>
-            <b-row>
-              <b-col sm="3">
-                <b-form-group v-slot="{ ariaDescribedby }">
-                  <slot name="label">
-                    Dataset Type:
-                    <b-link v-b-modal.modal-dataset-type>
-                      <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
-                    </b-link>
-                  </slot>
-                  <b-form-radio-group
-                    id="dataset_type_options"
-                    v-model="dataset_type"
-                    :options="dataset_type_options"
-                    :aria-describedby="ariaDescribedby"
-                    name="dataset-type-radios"
-                    stacked
-                  ></b-form-radio-group>
-                </b-form-group>
-              </b-col>
-              <b-col v-if="dataset_type==='FACT'" sm="3">
-                <b-form-group v-slot="{ ariaDescribedby }">
-                  <slot name="label">
-                    Dataset Period:
-                    <b-link v-b-modal.modal-dataset-period>
-                      <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
-                    </b-link>
-                  </slot>
-                  <b-form-radio-group
-                    id="time_period_options"
-                    v-model="time_period"
-                    :options="time_period_options"
-                    :aria-describedby="ariaDescribedby"
-                    name="time-period-radios"
-                    stacked
-                  ></b-form-radio-group>
-                </b-form-group>
-              </b-col>
-            </b-row>
-            <b-row>
-              <b-col sm="2">
-                Encryption Mode:
-                <b-link v-b-modal.modal-encryption-mode>
-                  <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
-                </b-link>
-                <div class="text-muted">
-                  {{ ENCRYPTION_MODE }}
-                </div>
-              </b-col>
-            </b-row>
             <b-row>
               <b-col sm="9" align="right">
                 <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push('Step1')">
@@ -166,7 +197,14 @@ SPDX-License-Identifier: Apache-2.0
     },
     data() {
       return {
+        datasets: [],
+        dataset_mode: 'CREATE',
+        dataset_mode_options: [
+          { value: 'CREATE', text: 'Create new dataset'},
+          { value: 'JOIN', text: 'Add to existing dataset'}
+        ],
         new_s3key: '',
+        new_selected_dataset: null,
         new_dataset_definition: {},
         dataset_id: '',
         description: '',
@@ -187,7 +225,11 @@ SPDX-License-Identifier: Apache-2.0
       }
     },
     computed: {
-      ...mapState(['dataset_definition', 's3key']),
+      ...mapState(['dataset_definition', 's3key', 'selected_dataset']),
+      datasetIsValid() {
+        if (this.dataset_id === '' || this.dataset_id === undefined) return null
+        else return !this.datasets.includes(this.dataset_id)
+      },
       bucket() {
         return "s3://"+this.DATA_BUCKET_NAME;
       }
@@ -200,8 +242,13 @@ SPDX-License-Identifier: Apache-2.0
     },
     created: function () {
       console.log('created')
+      this.list_datasets()
     },
     mounted: function() {
+      if (this.selected_dataset !== null) {
+        this.dataset_mode = 'JOIN'
+        this.new_selected_dataset = this.selected_dataset
+      }
       this.new_s3key = this.s3key
       this.new_dataset_definition = this.dataset_definition
       this.dataset_id = this.new_dataset_definition['dataSetId']
@@ -220,8 +267,43 @@ SPDX-License-Identifier: Apache-2.0
       this.dataset_type = this.new_dataset_definition['dataSetType']
     },
     methods: {
+      async list_datasets() {
+        const apiName = 'amcufa-api'
+        let response = ""
+        const method = 'GET'
+        const resource = 'list_datasets'
+        this.isBusy = true;
+        try {
+          if (method === "GET") {
+            console.log("sending " + method + " " + resource)
+            response = await this.$Amplify.API.get(apiName, resource);
+            console.log(response.dataSets.map(x => x.dataSetId))
+            this.datasets = response.dataSets.map(x => x.dataSetId)
+          }
+        }
+        catch (e) {
+          console.log("ERROR: " + e.response.data.message)
+          this.isBusy = false;
+          this.response = e.response.data.message
+        }
+        this.isBusy = false;
+      },
+      updateDatasetMode() {
+        console.log("Changing dataset mode to: " + this.dataset_mode)
+        if (this.dataset_mode === 'CREATE') {
+          // reset form fields for JOIN 
+          this.new_selected_dataset = null
+          this.$store.commit('updateSelectedDataset', this.new_selected_dataset)
+        }
+        if (this.dataset_mode === 'JOIN') {
+          // reset form fields for CREATE 
+          this.dataset_id = ''
+          this.dataset_type = ''
+          this.$store.commit('updateSelectedDataset', this.new_selected_dataset)
+        }
+      },
       updateS3key() {
-        console.log("changing s3key to " + this.new_s3key)
+        console.log("Changing s3key to " + this.new_s3key)
         this.$store.commit('updateS3key', this.new_s3key)
         this.$store.commit('saveStep3FormInput', [])
       },
@@ -235,13 +317,28 @@ SPDX-License-Identifier: Apache-2.0
         if (!this.validForm()) {
           this.showFormError = true;
         } else {
-          this.$store.commit('updateDatasetDefinition', this.new_dataset_definition)
-          this.$router.push('Step3')
+          if (this.dataset_mode === 'CREATE') {
+            this.$store.commit('updateDatasetDefinition', this.new_dataset_definition)
+            this.$router.push('Step3')
+          } else if (this.dataset_mode === 'JOIN') {
+            this.$store.commit('updateSelectedDataset', this.new_selected_dataset)
+            this.$router.push('Step3')
+          } else {
+            this.formErrorMessage = "Invalid dataset mode."
+            this.showFormError = true;
+          }
         }
       },
       validForm() {
         if (!this.s3key && !this.new_s3key) {
           this.formErrorMessage = "Missing s3key."
+          return false
+        }
+        if (this.dataset_mode === 'JOIN' && this.new_selected_dataset != null) {
+          return true
+        }
+        if (this.dataset_mode === 'JOIN' && this.new_selected_dataset == null) {
+          this.formErrorMessage = "Missing dataset selection."
           return false
         }
         if (!this.new_dataset_definition['dataSetId'] || this.new_dataset_definition['dataSetId'].length === 0) {

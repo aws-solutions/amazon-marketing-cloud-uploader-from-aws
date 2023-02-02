@@ -65,6 +65,29 @@ def list_datasets():
         logger.error(e)
         return {"Status": "Error", "Message": e}
 
+@app.route('/describe_dataset', cors=True, methods=['POST'], authorizer=authorizer)
+def describe_dataset():
+    """
+    Describe the schema and properties of an existing AMC dataset.
+
+    Returns:
+
+    .. code-block:: python
+
+        {"dataSets": [...]}
+    """
+    log_request_parameters()
+    try:
+        data_set_id = app.current_request.json_body['dataSetId']
+        path = '/dataSets/' + data_set_id
+        response = sigv4.get(path)
+        return Response(body=response.text,
+                        status_code=response.status_code,
+                        headers={'Content-Type': 'application/json'})
+    except Exception as e:
+        logger.error(e)
+        return {"Status": "Error", "Message": e}
+
 @app.route('/create_dataset', cors=True, methods=['POST'], authorizer=authorizer)
 def create_dataset():
     """
