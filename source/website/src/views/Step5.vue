@@ -168,12 +168,10 @@ SPDX-License-Identifier: Apache-2.0
         // Send a request to create datasets to each endpoint in parallel.
         this.create_datasets(this.destination_endpoints)
         console.log("Finished defining datasets.")
-        // Start Glue ETL job now that the dataset has been accepted by AMC
-        let s3keysList = this.s3key.split(',').map((item) => item.trim())
         // Wait for all those requests to complete, then start the glue job.
         this.start_amc_transformation('POST', 'start_amc_transformation', {
           'sourceBucket': this.DATA_BUCKET_NAME,
-          'sourceKey': key,
+          // 'sourceKey': key,
           'outputBucket': this.ARTIFACT_BUCKET_NAME,
           'piiFields': JSON.stringify(this.pii_fields),
           'deletedFields': JSON.stringify(this.deleted_columns),
@@ -221,6 +219,7 @@ SPDX-License-Identifier: Apache-2.0
           // Start Glue ETL job now that the dataset has been accepted by AMC
           let s3keysList = this.s3key.split(',').map((item) => item.trim())
           for (let key of s3keysList) {
+            data["sourceKey"] = key
             console.log("Starting Glue ETL job for s3://" + this.DATA_BUCKET_NAME + "/" + key)
             let requestOpts = {
               headers: {'Content-Type': 'application/json'},

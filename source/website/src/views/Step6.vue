@@ -388,7 +388,14 @@ SPDX-License-Identifier: Apache-2.0
           {key: 'Actions'}
         ],
         etl_jobs: [],
-        etl_fields: ['DatasetId', 'Id', 'StartedOn', 'CompletedOn', 'ExecutionTime', 'JobRunState', 'show_details'],
+        etl_fields: [
+          {key: 'DatasetId', label: 'Dataset Id', sortable: true},
+          {key: 'filename', label: 'File Name', sortable: true},
+          {key: 'StartedOn', label: 'Started On', sortable: true},
+          {key: 'ExecutionTime', label: 'Duration', sortable: true},
+          {key: 'JobRunState', label: 'JobRunState', sortable: true},
+          {key: 'show_details', label: 'Show Details', sortable: true}
+        ],
         uploads: [],
         upload_fields: [
           {key: "dateCreated", label: "Date Created", sortable: true},
@@ -505,7 +512,6 @@ SPDX-License-Identifier: Apache-2.0
             body: data
           };
           response = await this.$Amplify.API.post(apiName, resource, requestOpts);
-          console.log(response)
         }
         catch (e) {
           console.log("ERROR: " + e)
@@ -558,7 +564,6 @@ SPDX-License-Identifier: Apache-2.0
             body: data
           };
           const response = await this.$Amplify.API.post(apiName, resource, requestOpts);
-          console.log(response)
           this.datasets = response.dataSets
         }
         catch (e) {
@@ -579,8 +584,13 @@ SPDX-License-Identifier: Apache-2.0
         try {
           console.log("sending " + method + " " + resource)
           response = await this.$Amplify.API.get(apiName, resource);
-          console.log(response)
-          if ('JobRuns' in response) this.etl_jobs = response.JobRuns
+          if ('JobRuns' in response) {
+            this.etl_jobs = response.JobRuns.map(x => {
+              x["filename"] = x.Arguments["--source_key"];
+              if ("StartedOn" in x) x["StartedOn"] = new Date(x["StartedOn"]).toLocaleString() 
+              return x
+            })
+          }
         }
         catch (e) {
           console.log("ERROR: " + e)
