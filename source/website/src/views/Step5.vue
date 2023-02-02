@@ -171,19 +171,17 @@ SPDX-License-Identifier: Apache-2.0
         // Start Glue ETL job now that the dataset has been accepted by AMC
         let s3keysList = this.s3key.split(',').map((item) => item.trim())
         // Wait for all those requests to complete, then start the glue job.
-        for (let key of s3keysList) {
-          this.start_amc_transformation('POST', 'start_amc_transformation', {
-            'sourceBucket': this.DATA_BUCKET_NAME,
-            'sourceKey': key,
-            'outputBucket': this.ARTIFACT_BUCKET_NAME,
-            'piiFields': JSON.stringify(this.pii_fields),
-            'deletedFields': JSON.stringify(this.deleted_columns),
-            'timestampColumn': this.timestamp_column_name,
-            'datasetId': this.dataset_definition.dataSetId,
-            'period': this.dataset_definition.period,
-            'destination_endpoints': JSON.stringify(this.destination_endpoints)
-          })
-        }
+        this.start_amc_transformation('POST', 'start_amc_transformation', {
+          'sourceBucket': this.DATA_BUCKET_NAME,
+          'sourceKey': key,
+          'outputBucket': this.ARTIFACT_BUCKET_NAME,
+          'piiFields': JSON.stringify(this.pii_fields),
+          'deletedFields': JSON.stringify(this.deleted_columns),
+          'timestampColumn': this.timestamp_column_name,
+          'datasetId': this.dataset_definition.dataSetId,
+          'period': this.dataset_definition.period,
+          'destination_endpoints': JSON.stringify(this.destination_endpoints)
+        })
       },
       create_datasets(destination_endpoints) {
         for(let i in destination_endpoints) {
