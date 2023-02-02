@@ -87,7 +87,6 @@ SPDX-License-Identifier: Apache-2.0
                         class="mt-1"
                     >
                       <b-form-checkbox value="name">Endpoint</b-form-checkbox>
-                      <b-form-checkbox value="data_upload_account_id">Account Id</b-form-checkbox>
                       <b-form-checkbox value="tag_list">Tags</b-form-checkbox>
                     </b-form-checkbox-group>
                   </b-form-group>
@@ -116,7 +115,7 @@ SPDX-License-Identifier: Apache-2.0
                 <b-button size="sm" @click="select(row.item.endpoint)" class="mr-1" v-if="!selected_amc_instances.includes(row.item.endpoint)">
                   Select
                 </b-button>
-                <b-button size="sm" @click="unSelectEndpoint(row.item.endpoint)" class="mr-1" v-if="selected_amc_instances.includes(row.item.endpoint)">
+                <b-button size="sm" @click="unselectEndpoint(row.item.endpoint)" class="mr-1" v-if="selected_amc_instances.includes(row.item.endpoint)">
                   Unselect
                 </b-button>
               </template>
@@ -151,7 +150,6 @@ SPDX-License-Identifier: Apache-2.0
         fields: [
           {key: 'actions', label: 'Actions' },
           {key: 'endpoint', label: 'AMC Endpoint', sortable: true, thStyle: { width: '50%'}},
-          {key: 'data_upload_account_id', label: 'Data Upload Account Id', sortable: true},
           {key: 'tag_list', label: 'Tags', sortable: false}
         ],
         filter: null,
@@ -211,7 +209,7 @@ SPDX-License-Identifier: Apache-2.0
           this.selected_amc_instances = this.selected_amc_instances.concat(endpoint)
         }
       },
-      unSelectEndpoint(endpoint) {
+      unselectEndpoint(endpoint) {
         if (this.selected_amc_instances.includes(endpoint)) {
           const index = this.selected_amc_instances.indexOf(endpoint)
           this.selected_amc_instances.splice(index, 1)
