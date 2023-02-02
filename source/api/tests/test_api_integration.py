@@ -45,6 +45,7 @@ logger.setLevel(logging.DEBUG)
 _test_configs = {
     "s3bucket": os.environ['TEST_S3_BUCKET_NAME'],
     "outputBucket": os.environ['TEST_OUTPUT_BUCKET'],
+    "amcEndpoint": os.environ['AMC_API_ENDPOINT']
 }
 
 _test_data = [
@@ -180,6 +181,7 @@ def test_data_set_type():
                     body=json.dumps(
                         {
                             "body": {
+                                "destination_endpoint": _test_configs["amcEndpoint"],
                                 "dataSetId": data_set_id,
                                 "fileFormat": file_format,
                                 "period": "P1D",
@@ -278,7 +280,8 @@ def test_data_set_type():
                             "deletedFields": "[]",
                             "timestampColumn": "timestamp",
                             "datasetId": data_set_id,
-                            "period": period
+                            "period": period,
+                            "destination_endpoints": [_test_configs["amcEndpoint"]]
                         }
                     )
                 )
@@ -303,9 +306,11 @@ def test_data_set_type():
                 assert len(response.json_body["JobRuns"]) > 0
                 assert response.json_body["JobRuns"][0]["JobName"] == os.environ["AMC_GLUE_JOB_NAME"]
                
-                response = client.http.get(
+                response = client.http.post(
                     '/list_datasets',
                     headers={'Content-Type': 'application/json'},
+                    body=json.dumps({
+                        "destination_endpoint": _test_configs["amcEndpoint"]})
                 )
                 assert response.status_code == 200
                 assert len(response.json_body["dataSets"]) > 0
@@ -316,7 +321,9 @@ def test_data_set_type():
                 response = client.http.post(
                     '/list_uploads',
                     headers={'Content-Type': 'application/json'},
-                    body=json.dumps({"dataSetId": data_set_id})
+                    body=json.dumps({
+                        "destination_endpoint": _test_configs["amcEndpoint"],
+                        "dataSetId": data_set_id})
                 )
                 assert response.status_code == 200
                 assert len(response.json_body["uploads"]) > 0
@@ -330,6 +337,7 @@ def test_data_set_type():
                     headers={'Content-Type': 'application/json'},
                     body=json.dumps(
                         {
+                            "destination_endpoint": _test_configs["amcEndpoint"],
                             "uploadId": str(response.json_body["uploads"][0]["uploadId"]),
                             "dataSetId": data_set_id,
                         })
@@ -357,6 +365,7 @@ def test_data_set_type():
                         headers={'Content-Type': 'application/json'},
                         body=json.dumps(
                             {
+                                "destination_endpoint": _test_configs["amcEndpoint"],
                                 "dataSetId": data_set_id,
                             })
                     )
