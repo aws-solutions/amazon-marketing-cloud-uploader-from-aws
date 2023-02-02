@@ -128,7 +128,7 @@ SPDX-License-Identifier: Apache-2.0
               <b-row>
                 <b-col cols="10">
                   <h3>Datasets</h3>
-                  <p class="text-secondary">Showing datasets from AMC endpoint <em>{{ selected_endpoint === '' ? "none" : selected_endpoint }}</em></p>
+                  <p class="text-secondary" v-if="!showAmcApiError">Showing datasets from AMC endpoint <em>{{ selected_endpoint === '' ? "none" : selected_endpoint }}</em></p>
                 </b-col>
                 <b-col align="right">
                   <b-button @click="list_datasets()">
@@ -198,16 +198,13 @@ SPDX-License-Identifier: Apache-2.0
                   :total-rows="rows1"
                   aria-controls="shotTable"
                 ></b-pagination>
+                <br>
               </div>
-              <br>
-              <b-row>
+              <b-row v-if="!showAmcApiError">
                 <b-col>
                   <h3>Uploads</h3>
                   <div v-if="selected_dataset">
                     <p class="text-secondary">Showing uploads for <em>{{ selected_dataset }}</em></p>
-                  </div>
-                  <div v-else-if="showAmcApiError">
-                    <br>
                   </div>
                   <div v-else>
                     <p class="text-danger">Please select a dataset from the table above.</p>
