@@ -101,7 +101,7 @@ if 'destination_endpoints' in args:
 else:
     print("Missing required arg: destination_endpoints")
     exit(1)
-if destination_endpoints.len == 0:
+if len(destination_endpoints) == 0:
     print("destination_endpoints cannot be empty")
     exit(1)
 pii_fields = []
