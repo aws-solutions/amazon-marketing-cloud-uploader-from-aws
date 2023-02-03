@@ -35,6 +35,9 @@ SPDX-License-Identifier: Apache-2.0
           </ul>
           <p>By default, this tool will automatically use the shortest possible period which is appropriate for your data and partition input files accordingly. However, you can override the auto-detected period by explicitly setting it in the dataset definition.</p>
         </b-modal>
+        <b-modal id="modal-country" title="Country" ok-only>
+          <p><strong>One country per file:</strong> If uploaded data contains hashed identifiers, it is recommended to separate upload data by country. For example, if you have data with both CA and US records, these records should be split into different files as the included File Preparation tool for hashing and normalization will apply country-specific normalization rules for fields such as phone number and address.</p>
+        </b-modal>
         <b-row style="text-align: left">
           <b-col cols="2">
             <Sidebar :is-step2-active="true" />
@@ -87,6 +90,25 @@ SPDX-License-Identifier: Apache-2.0
               >
                 <b-form-input id="dataset-description-input" v-model="description" placeholder="(optional)"></b-form-input>
               </b-form-group>
+              <b-row>
+                <b-col sm="1">
+                  <slot name="label">
+                    Country:
+                    <b-link v-b-modal.modal-country>
+                      <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
+                    </b-link>
+                  </slot>
+                </b-col>
+                <b-col sm="5">
+                <b-form-group
+                description="Select country - this tool applies country-specific normalization to all rows in the input file">
+                <b-form-select id="country-code" v-model="selected" class="mb-3">
+                  <b-form-select-option :value="US">US</b-form-select-option>
+                  <b-form-select-option value="UK">UK</b-form-select-option>
+                </b-form-select>
+              </b-form-group>
+            </b-col>
+            </b-row>
             </div>
             <b-row>
               <b-col sm="3">
