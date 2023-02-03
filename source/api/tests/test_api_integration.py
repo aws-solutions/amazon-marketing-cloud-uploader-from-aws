@@ -278,7 +278,8 @@ def test_data_set_type():
                             "deletedFields": "[]",
                             "timestampColumn": "timestamp",
                             "datasetId": data_set_id,
-                            "period": period
+                            "period": period,
+                            "countryCode": "US"
                         }
                     )
                 )
