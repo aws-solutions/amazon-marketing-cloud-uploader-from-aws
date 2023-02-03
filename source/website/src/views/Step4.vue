@@ -59,6 +59,9 @@ SPDX-License-Identifier: Apache-2.0
             <b-row>
               <b-col cols="10">
                 <h5>Columns:</h5>
+                <div v-if="deleted_columns.length > 0">
+                  Excluding columns {{ deleted_columns }} in {{ s3key }} from upload.
+                </div>
                 <b-table 
                   v-if="dataset.columns && dataset.columns.length > 0"
                   small
@@ -105,7 +108,7 @@ SPDX-License-Identifier: Apache-2.0
       }
     },
     computed: {
-      ...mapState(['deleted_columns', 'dataset_definition', 's3key']),
+      ...mapState(['deleted_columns', 'dataset_definition', 's3key', 'selected_dataset']),
       encryption_key() {
         if (this.CUSTOMER_MANAGED_KEY === "") {
           return "default"
@@ -146,52 +149,65 @@ SPDX-License-Identifier: Apache-2.0
         this.showModal = false
       },
       onSubmit() {
-        this.send_request('POST', 'create_dataset', {'body': this.dataset_definition})
+        this.isBusy = true
+        if (this.selected_dataset === null) {
+          this.create_dataset()
+        }
+
+        let s3keysList = this.s3key.split(',').map((item) => item.trim())
+        for (let key of s3keysList) {
+          this.start_glue_etl(key)
+        }
+
+        this.isBusy = false
+
+        // Navigate to next step
+        this.$router.push('Step5')
       },
-      async send_request(method, resource, data) {
-        console.log("sending " + method + " " + resource + " " + JSON.stringify(data))
+            async create_dataset() {
+        const resource = "create_dataset"
+        const data = {'body': this.dataset_definition}
+        console.log("sending POST " + " " + resource + " " + JSON.stringify(data))
         const apiName = 'amcufa-api'
         let response = ""
-        this.isBusy = true;
+        let requestOpts = {
+          headers: {'Content-Type': 'application/json'},
+          body: data
+        };
         try {
-          if (method === "GET") {
-            response = await this.$Amplify.API.get(apiName, resource);
-          } else if (method === "POST") {
-            let requestOpts = {
-              headers: {'Content-Type': 'application/json'},
-              body: data
-            };
-            response = await this.$Amplify.API.post(apiName, resource, requestOpts);
-          }
+          response = await this.$Amplify.API.post(apiName, resource, requestOpts);
           console.log(JSON.stringify(response))
           console.log("Dataset defined successfully")
-          
-          // Start Glue ETL job now that the dataset has been accepted by AMC
-          let s3keysList = this.s3key.split(',').map((item) => item.trim())
-
-          for (let key of s3keysList) {
-            console.log("Starting Glue ETL job for s3://" + this.DATA_BUCKET_NAME + "/" + key)
-            resource = 'start_amc_transformation'
-            data = {'sourceBucket': this.DATA_BUCKET_NAME, 'sourceKey': key, 'outputBucket': this.ARTIFACT_BUCKET_NAME, 'piiFields': JSON.stringify(this.pii_fields),'deletedFields': JSON.stringify(this.deleted_columns), 'timestampColumn': this.timestamp_column_name, 'datasetId': this.dataset_definition.dataSetId, 'period': this.dataset_definition.period}
-            let requestOpts = {
-              headers: {'Content-Type': 'application/json'},
-              body: data
-            };
-            console.log("POST " + resource + " " + JSON.stringify(requestOpts))
-            response = await this.$Amplify.API.post(apiName, resource, requestOpts);
-            console.log(response)
-            console.log(JSON.stringify(response))
-            console.log("Started Glue ETL job")
-          }
-          
-          // Navigate to next step
-          this.$router.push('Step5')
-        }
-        catch (e) {
+        } catch (e) {
           this.modal_title = e.response.status + " " + e.response.statusText
           console.log("ERROR: " + this.modal_title)
           this.isBusy = false;
-          this.response = JSON.stringify(e.response.data)  
+          this.response = JSON.stringify(e.response.data)
+          this.showModal = true
+        }
+      },
+      async start_glue_etl(key) {
+        // Start Glue ETL job now that the dataset has been accepted by AMC
+        console.log("Starting Glue ETL job for s3://" + this.DATA_BUCKET_NAME + "/" + this.s3key)
+        const resource = 'start_amc_transformation'
+        const apiName = 'amcufa-api'
+        let response = ""
+        const data = {'sourceBucket': this.DATA_BUCKET_NAME, 'sourceKey': key, 'outputBucket': this.ARTIFACT_BUCKET_NAME, 'piiFields': JSON.stringify(this.pii_fields),'deletedFields': JSON.stringify(this.deleted_columns), 'timestampColumn': this.timestamp_column_name, 'datasetId': this.dataset_definition.dataSetId, 'period': this.dataset_definition.period}
+        let requestOpts = {
+          headers: {'Content-Type': 'application/json'},
+          body: data
+        };
+        console.log("POST " + resource + " " + JSON.stringify(requestOpts))
+        try {
+          response = await this.$Amplify.API.post(apiName, resource, requestOpts);
+          console.log(response)
+          console.log(JSON.stringify(response))
+          console.log("Started Glue ETL job")
+        } catch (e) {
+          this.modal_title = e.response.status + " " + e.response.statusText
+          console.log("ERROR: " + this.modal_title)
+          this.isBusy = false;
+          this.response = JSON.stringify(e.response.data)
           this.showModal = true
         }
         this.isBusy = false;
