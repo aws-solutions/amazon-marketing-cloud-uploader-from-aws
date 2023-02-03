@@ -116,6 +116,7 @@ def start_amc_transformation():
         timestamp_column = app.current_request.json_body['timestampColumn']
         dataset_id = app.current_request.json_body['datasetId']
         period = app.current_request.json_body['period']
+        country_code = app.current_request.json_body['countryCode']
         session = boto3.session.Session(region_name=os.environ['AWS_REGION'])
         client = session.client('glue', config=config)
         args = {
@@ -126,7 +127,8 @@ def start_amc_transformation():
             "--deleted_fields": deleted_fields,
             "--timestamp_column": timestamp_column,
             "--dataset_id": dataset_id,
-            "--period": period
+            "--period": period,
+            "--country_code": country_code
         }
         logger.info('Starting Glue job:')
         logger.info('Equivalent AWS CLI command: ')
