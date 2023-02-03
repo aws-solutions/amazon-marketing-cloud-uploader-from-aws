@@ -52,21 +52,9 @@ import boto3
 import re
 from datetime import datetime
 
-# Hardcode country code for now.
-country_code = 'US'
-
 # Resolve sonarqube code smells
 writing = "Writing "
 rows_to = " rows to "
-
-###############################
-# DATA NORMALIZATION PATTERNS
-###############################
-
-addressNormalizer = AddressNormalizer(country_code)
-stateNormalizer = StateNormalizer(country_code)
-zipNormalizer = ZipNormalizer(country_code)
-phoneNormalizer = PhoneNormalizer(country_code)
 
 ###############################
 # PARSE ARGS
@@ -74,7 +62,7 @@ phoneNormalizer = PhoneNormalizer(country_code)
 
 # Read required parameters
 try:
-    args = getResolvedOptions(sys.argv, ['JOB_NAME', 'solution_id', 'uuid', 'enable_anonymous_data', 'anonymous_data_logger', 'source_bucket', 'source_key', 'output_bucket', 'pii_fields', 'deleted_fields', 'dataset_id', 'period'])
+    args = getResolvedOptions(sys.argv, ['JOB_NAME', 'solution_id', 'uuid', 'enable_anonymous_data', 'anonymous_data_logger', 'source_bucket', 'source_key', 'output_bucket', 'pii_fields', 'deleted_fields', 'dataset_id', 'period', 'country_code'])
 except GlueArgumentError as e:
     print(e)
     exit(1)
@@ -104,6 +92,8 @@ if 'period' in args:
         print("ERROR: Invalid user-defined value for dataset period:")
         print(user_defined_partition_size)
         exit(1)
+if 'country_code' in args:
+    country_code = json.loads(args['country_code'])
 
 # Read optional parameters
 try:
@@ -170,6 +160,15 @@ if timestamp_column:
         print(e)
         print('Failed to parse timeseries in column ' + timestamp_column)
         raise e
+
+###############################
+# DATA NORMALIZATION PATTERNS
+###############################
+
+addressNormalizer = AddressNormalizer(country_code)
+stateNormalizer = StateNormalizer(country_code)
+zipNormalizer = ZipNormalizer(country_code)
+phoneNormalizer = PhoneNormalizer(country_code)
 
 ###############################
 # DATA NORMALIZATION
