@@ -14,6 +14,11 @@ import logging
 solution_config = json.loads(os.environ['botoConfig'])
 config = config.Config(**solution_config)
 
+# Environment variables
+AMC_API_ROLE = os.environ["AMC_API_ROLE_ARN"]
+
+# Boto3 clients
+IAM_CLIENT = boto3.client("iam", config=config)
 S3_CLIENT = boto3.client("s3", config=config)
 S3_RESOURCE = boto3.resource('s3', config=config)
 GLUE_CLIENT = boto3.client("glue", config=config)
@@ -474,9 +479,12 @@ def save_settings():
             # Get the list of data upload account ids associated with each AMC instance.
             # Use set type to avoid duplicates
             data_upload_account_ids = set()
+            endpoints = set()
             for item in amc_instances:
                 data_upload_account_ids.add(item["data_upload_account_id"])
+                endpoints.add(item["endpoint"])
             data_upload_account_ids = list(data_upload_account_ids)
+            endpoints = list(endpoints)
             # Construct a bucket policy statement with a principal that includes
             # each data upload account id.
             data_upload_statement = \
@@ -501,6 +509,22 @@ def save_settings():
             logger.info('saving bucket policy')
             result = S3_CLIENT.put_bucket_policy(Bucket=ARTIFACT_BUCKET, Policy=json.dumps(policy))
             logger.info(json.dumps(result))
+
+            # Add permission to use the AMC API endpoint from the AMC_API_ROLE
+            amc_endpoint_access_policy = IAM_CLIENT.get_role_policy(
+                RoleName=AMC_API_ROLE,
+                PolicyName='AmcApiAccess'
+            )
+            other_statements = [x for x in amc_endpoint_access_policy['PolicyDocument']['Statement'] if not ("Sid" in x and x["Sid"] == "AmcEndpointAccessPolicy")]
+            endpoint_arns = ['"arn:aws:execute-api:*:*:' + x.split('/')[2].split('.')[0] + '/*"' for x in endpoints]
+            endpoint_arns_string = ", ".join(str(item) for item in endpoint_arns)
+            amc_endpoint_statement = '{"Sid": "AmcEndpointAccessPolicy", "Action": ["execute-api:Invoke"], "Resource": [' + endpoint_arns_string + '], "Effect": "Allow"}'
+            amc_endpoint_access_policy['PolicyDocument']['Statement'] = other_statements + [json.loads(amc_endpoint_statement)]
+            IAM_CLIENT.put_role_policy(
+                RoleName=AMC_API_ROLE,
+                PolicyName='AmcApiAccess',
+                PolicyDocument=json.dumps(amc_endpoint_access_policy['PolicyDocument'])
+            )
     except Exception as e:
         logger.error("Exception {}".format(e))
         raise ChaliceViewError("Exception '%s'" % e)
