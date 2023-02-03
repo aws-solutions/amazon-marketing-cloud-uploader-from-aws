@@ -102,8 +102,8 @@ SPDX-License-Identifier: Apache-2.0
                 <b-col sm="5">
                 <b-form-group
                 description="Select country - this tool applies country-specific normalization to all rows in the input file">
-                <b-form-select id="country-code" v-model="selected" class="mb-3">
-                  <b-form-select-option :value="US">US</b-form-select-option>
+                <b-form-select id="country-code-dropdown" v-model="country_code">
+                  <b-form-select-option value="US">US</b-form-select-option>
                   <b-form-select-option value="UK">UK</b-form-select-option>
                 </b-form-select>
               </b-form-group>
@@ -192,6 +192,7 @@ SPDX-License-Identifier: Apache-2.0
         new_dataset_definition: {},
         dataset_id: '',
         description: '',
+        country_code: "US",
         dataset_type: '',
         // time_period is autodetected in Glue ETL and updated in amc_uploader.py 
         time_period: 'autodetect',
@@ -228,6 +229,7 @@ SPDX-License-Identifier: Apache-2.0
       this.new_dataset_definition = this.dataset_definition
       this.dataset_id = this.new_dataset_definition['dataSetId']
       this.description = this.new_dataset_definition['description']
+      this.country_code = this.new_dataset_definition['countryCode']
       this.file_format = Object.keys(this.new_dataset_definition).includes('fileFormat')?this.new_dataset_definition['fileFormat']:this.file_format
       // set default value for file format
       if (this.file_format === '') {
@@ -251,6 +253,7 @@ SPDX-License-Identifier: Apache-2.0
         this.showFormError = false;
         this.new_dataset_definition['dataSetId'] = this.dataset_id
         this.new_dataset_definition['description'] = this.description
+        this.new_dataset_definition['countryCode'] = this.country_code
         this.new_dataset_definition['period'] = this.time_period
         this.new_dataset_definition['dataSetType'] = this.dataset_type
         this.new_dataset_definition['compressionFormat'] = 'GZIP'
