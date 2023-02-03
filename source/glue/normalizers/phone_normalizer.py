@@ -1,5 +1,6 @@
 import phonenumbers
 
+# phone number cannot start with certain digits for the indicated country
 restrictedDigits = {
     "GB": ["4", "6"]
 }
