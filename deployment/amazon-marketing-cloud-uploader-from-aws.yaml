@@ -11,9 +11,6 @@ Parameters:
   AmcEndpointUrl:
     Description: "AMC API Endpoint URL"
     Type: String
-  DataUploadAccountId:
-    Description: "AMC data upload AWS account ID."
-    Type: String
   CustomerManagedKey:
     Description: "(Optional) ARN of a customer managed KMS encryption key (CMK) to use for encryption and decryption of original data files during the ETL pipeline and query computation in AMC."
     Type: String
@@ -99,19 +96,6 @@ Resources:
       PolicyDocument:
         Version: 2012-10-17
         Statement:
-          - Effect: Allow
-            Principal: 
-              AWS: !Sub 'arn:aws:iam::${DataUploadAccountId}:root'
-            Action: 
-              - 's3:GetObject'
-              - 's3:GetObjectVersion'
-            Resource: !Sub "arn:aws:s3:::${ArtifactBucket}/*"
-          - Effect: Allow
-            Principal:
-              AWS: !Sub 'arn:aws:iam::${DataUploadAccountId}:root'
-            Action: 
-              - 's3:ListBucket'
-            Resource: !Sub "arn:aws:s3:::${ArtifactBucket}"
           - Effect: Deny
             Principal: "*"
             Action: "*"
@@ -387,7 +371,6 @@ Resources:
       Environment:
         Variables:
           AMC_API_ROLE_ARN: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-AmcApiAccessRole'
-          AMC_ENDPOINT_URL: !Ref AmcEndpointUrl
           SOLUTION_NAME: !FindInMap ["Application", "Solution", "Name"]
           SOLUTION_VERSION: !FindInMap ["Application", "Solution", "Version"]
           botoConfig: !Join
@@ -715,30 +698,12 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
-              - Effect: Allow
+              - Sid: "AmcEndpointAccessPolicy"
+                Effect: Deny
                 Action:
                   - "execute-api:Invoke"
                 Resource:
-                  - !Join [
-                      "",
-                    [
-                        "arn:aws:execute-api:*:*:",
-                        "Fn::Select": [
-                            0,
-                            "Fn::Split": [
-                                ".",
-                                "Fn::Select": [
-                                    2,
-                                    "Fn::Split": [
-                                        "/",
-                                        !Ref AmcEndpointUrl
-                                    ]
-                                ]
-                            ]
-                        ],
-                        "/*"
-                    ]
-                  ]
+                  - "arn:aws:execute-api:*:*:*/*"
 
   ApiStack:
     Type: "AWS::CloudFormation::Stack"

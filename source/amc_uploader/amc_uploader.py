@@ -19,10 +19,8 @@
 
 from lib import sigv4
 import urllib.parse
-from botocore import config
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-import os
 import json
 import logging
 import base64
@@ -30,10 +28,6 @@ import base64
 # Patch libraries to instrument downstream calls
 from aws_xray_sdk.core import patch_all
 patch_all()
-
-# Environment variables
-solution_config = json.loads(os.environ['botoConfig'])
-config = config.Config(**solution_config)
 
 # format log messages like this:
 formatter = logging.Formatter('{%(pathname)s:%(lineno)d} %(levelname)s - %(message)s')
