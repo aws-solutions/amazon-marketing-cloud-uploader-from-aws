@@ -74,107 +74,213 @@ SPDX-License-Identifier: Apache-2.0
             <Sidebar :is-step3-active="true" />
           </b-col>
           <b-col cols="10">
-            <h3>Define Columns</h3>
-            <b-alert
-              show
-              variant="warning"
-              dismissible
-            >
-              <strong>IMPORTANT:</strong> When defining columns in this step, it is very important to carefully indicate which columns contain PII. If you neglect to indicate that a column contains PII, then that column will load as plain text into AMC.
-            </b-alert>
+            <div v-if="selected_dataset === null">
+              <h3>Define Columns</h3>
+              <b-alert
+                show
+                variant="warning"
+                dismissible
+              >
+                <strong>IMPORTANT:</strong> When defining columns in this step, it is very important to carefully indicate which columns contain PII. If you neglect to indicate that a column contains PII, then that column will load as plain text into AMC.
+              </b-alert>
+              <b-row>
+                <b-col>
+                  Fill in the table to define properties for each field in the input data.
+                </b-col>
+                <b-col sm="3" align="right" class="row align-items-end">
+                  <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push('Step2')">
+                    Previous
+                  </button> &nbsp;
+                  <button type="submit" class="btn btn-primary mb-2" @click="onSubmit">
+                    Next
+                  </button>
+                </b-col>
+              </b-row>
+              <b-table
+                :items="items"
+                :fields="fields" 
+                :busy="busy_getting_datafile_columns"
+                head-variant="light"
+                small
+                borderless
+              >
+                <template #cell(Actions)="data">
+                  <b-link
+                    class="text-danger"
+                    @click="deleteColumn(`${data.item.name}`)"
+                  >
+                    Delete
+                  </b-link>
+                </template>
+                <template #cell(description)="data">
+                  <b-form-input 
+                    :value="data.item.description"
+                    @change="x => changeDescription(x, data.index)"
+                  >
+                  </b-form-input>
+                </template>
+                <template #cell(data_type)="data">
+                  <b-form-select 
+                    id="dropdown-1" 
+                    :options="data_type_options"
+                    :value="data.item.data_type" 
+                    @change="x => changeDataType(x, data.index)"
+                  >
+                  </b-form-select>
+                </template>
+                <template #cell(nullable)="data">
+                  <b-form-checkbox
+                    v-model="data.item.nullable"
+                    :disabled="data.item.column_type === 'PII'"
+                    @change="changeNullable()"
+                  >
+                  </b-form-checkbox>
+                </template>
+                <template #cell(column_type)="data">
+                  <b-form-select 
+                    id="dropdown-column-type" 
+                    :options="column_type_options"
+                    :value="data.item.column_type" 
+                    @change="x => changeColumnType(x, data.index)"
+                  >
+                  </b-form-select>
+                </template>
+                <template #cell(pii_type)="data">
+                  <b-form-select
+                    id="dropdown-pii-type"
+                    :options="pii_type_options"
+                    :value="data.item.pii_type"
+                    :disabled="data.item.column_type !== 'PII'"
+                    @change="x => changePiiType(x, data.index)"
+                  >
+                  </b-form-select>
+                </template>
+                <template #table-busy>
+                  <div class="text-center my-2">
+                    <b-spinner class="align-middle"></b-spinner>
+                    <strong>&nbsp;&nbsp;Loading...</strong>
+                  </div>
+                </template>
+              </b-table>
+            </div><div v-if="selected_dataset !== null">
+              <h3>Validate Columns</h3>
+              <!-- The following two alerts are intended to help the user know
+              when their data file does not have the same columns that were defined
+              for the dataset they want to merge with.
+              -->
+              <b-alert
+                :show="missing_columns.length > 0 && busy_getting_datafile_columns === false && busy_getting_dataset_definition === false"
+                variant="danger"
+                dismissible
+              >
+                ERROR: Your data file is missing the following columns required to join with this dataset: {{ missing_columns }}
+              </b-alert>
+              <b-alert
+                :show="extra_columns.length > 0 && busy_getting_datafile_columns === false && busy_getting_dataset_definition === false"
+                variant="warning"
+                dismissible
+              >
+                WARNING: The following columns will not be uploaded from {{ s3key }} because they are undefined for dataset {{ selected_dataset }}: {{ extra_columns }}
+              </b-alert>
+              <b-row>
+                <b-col>
+                  <div v-if="busy_getting_datafile_columns || busy_getting_dataset_definition">
+                    Checking compatibility... &nbsp;<b-spinner small class="align-middle"></b-spinner>
+                  </div>
+                  <div v-else>
+                    File "<span style="font-family: monospace;">{{ s3key }}</span>" is <b>{{ missing_columns.length>0?"not compatible":"compatible" }}</b> with dataset "<span style="font-family: monospace;">{{ selected_dataset }}</span>".
+                  </div>
+                </b-col>
+                <b-col sm="3" align="right" class="row align-items-end">
+                  <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push('Step2')">
+                    Previous
+                  </button> &nbsp;
+                  <button
+                    :disabled="missing_columns.length > 0"
+                    type="submit" 
+                    class="btn btn-primary mb-2" 
+                    @click="onSubmit"
+                  >
+                    Next
+                  </button>
+                </b-col>
+              </b-row>
+              <b-card>
+                Dataset definition:
+                <b-table
+                  :items="selected_dataset_items"
+                  :fields="selected_dataset_fields"
+                  :busy="busy_getting_dataset_definition"
+                  head-variant="light"
+                  small
+                  borderless
+                >
+                  <template #cell(description)="data">
+                    <b-form-input
+                      :value="data.item.description"
+                      disabled
+                    >
+                    </b-form-input>
+                  </template>
+                  <template #cell(data_type)="data">
+                    <b-form-select
+                      id="dropdown-1"
+                      :options="data_type_options"
+                      :value="data.item.data_type"
+                      disabled
+                    >
+                    </b-form-select>
+                  </template>
+                  <template #cell(nullable)="data">
+                    <b-form-checkbox
+                      v-model="data.item.nullable"
+                      disabled
+                    >
+                    </b-form-checkbox>
+                  </template>
+                  <template #cell(column_type)="data">
+                    <b-form-select
+                      id="dropdown-column-type"
+                      :options="column_type_options"
+                      :value="data.item.column_type"
+                      disabled
+                    >
+                    </b-form-select>
+                  </template>
+                  <template #cell(pii_type)="data">
+                    <b-form-select
+                      id="dropdown-pii-type"
+                      :options="pii_type_options"
+                      :value="data.item.pii_type"
+                      disabled
+                    >
+                    </b-form-select>
+                  </template>
+                  <template #table-busy>
+                    <div class="text-center my-2">
+                      <b-spinner class="align-middle"></b-spinner>
+                      <strong>&nbsp;&nbsp;Loading...</strong>
+                    </div>
+                  </template>
+                </b-table>
+              </b-card>
+              <br>
+            </div>
             <b-row>
-              <b-col>
-                Fill in the table to define properties for each field in the input data.
-              </b-col>
-              <b-col sm="3" align="right" class="row align-items-end">
-                <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push('Step2')">
-                  Previous
-                </button> &nbsp;
-                <button type="submit" class="btn btn-primary mb-2" @click="onSubmit">
-                  Next
-                </button>
-              </b-col>
-            </b-row>
-            <b-table
-              :items="items"
-              :fields="fields" 
-              :busy="isBusy"
-              head-variant="light"
-              small
-              borderless
-            >
-              <template #cell(Actions)="data">
-                <b-link
-                  class="text-danger"
-                  @click="deleteColumn(`${data.item.name}`)"
-                >
-                  Delete
-                </b-link>
-              </template>
-              <template #cell(description)="data">
-                <b-form-input 
-                  :value="data.item.description"
-                  @change="x => changeDescription(x, data.index)"
-                >
-                </b-form-input>
-              </template>
-              <template #cell(data_type)="data">
-                <b-form-select 
-                  id="dropdown-1" 
-                  :options="data_type_options"
-                  :value="data.item.data_type" 
-                  @change="x => changeDataType(x, data.index)"
-                >
-                </b-form-select>
-              </template>
-              <template #cell(nullable)="data">
-                <b-form-checkbox
-                  v-model="data.item.nullable"
-                  :disabled="data.item.column_type === 'PII'"
-                  @change="changeNullable()"
-                >
-                </b-form-checkbox>
-              </template>
-              <template #cell(column_type)="data">
-                <b-form-select 
-                  id="dropdown-column-type" 
-                  :options="column_type_options"
-                  :value="data.item.column_type" 
-                  @change="x => changeColumnType(x, data.index)"
-                >
-                </b-form-select>
-              </template>
-              <template #cell(pii_type)="data">
-                <b-form-select
-                  id="dropdown-pii-type"
-                  :options="pii_type_options"
-                  :value="data.item.pii_type"
-                  :disabled="data.item.column_type !== 'PII'"
-                  @change="x => changePiiType(x, data.index)"
-                >
-                </b-form-select>
-              </template>
-              <template #table-busy>
-                <div class="text-center my-2">
-                  <b-spinner class="align-middle"></b-spinner>
-                  <strong>&nbsp;&nbsp;Loading...</strong>
-                </div>
-              </template>
-            </b-table>
-            <b-row>
-              <b-col></b-col>
-              <b-col sm="4" align="right" class="row align-items-end">
-                <b-button v-b-tooltip.hover type="submit" title="Export column schema" variant="outline-primary" @click="onExport">
-                  Export
-                </b-button> &nbsp;
-                <b-button v-b-tooltip.hover type="submit" title="Import column schema" variant="outline-primary" @click="onBrowseImports">
-                  Import
-                </b-button>&nbsp;
-                <b-button type="submit" variant="outline-secondary" @click="onReset">
-                  Reset
-                </b-button>
-                <b-form-file id="importFile" ref="file" accept="application/json" type="file" style="visibility: hidden" @change="onImport" />
-              </b-col>
+              <b-container fluid>
+                <b-col v-if="selected_dataset === null" sm="4" align="right" class="row align-items-end">
+                  <b-button v-b-tooltip.hover type="submit" title="Export column schema" variant="outline-primary" @click="onExport">
+                    Export
+                  </b-button> &nbsp;
+                  <b-button v-b-tooltip.hover type="submit" title="Import column schema" variant="outline-primary" @click="onBrowseImports">
+                    Import
+                  </b-button>&nbsp;
+                  <b-button type="submit" variant="outline-secondary" @click="onReset">
+                    Reset
+                  </b-button>
+                  <b-form-file id="importFile" ref="file" accept="application/json" type="file" style="visibility: hidden" @change="onImport" />
+                </b-col>
+              </b-container>
             </b-row>
           </b-col>
         </b-row>
@@ -196,7 +302,8 @@ SPDX-License-Identifier: Apache-2.0
     data() {
       return {
         new_dataset_definition: {},
-        isBusy: false,
+        busy_getting_datafile_columns: false,
+        busy_getting_dataset_definition: false,
         showServerError: false,
         showSchemaError: false,
         showMissingDataAlert: false,
@@ -206,7 +313,19 @@ SPDX-License-Identifier: Apache-2.0
         showUserIdWarning: false,
         userIdWarningMessage: "Do not include user_id and user_type columns in data files containing hashed identifiers. These columns are used by AMC when a match is found in a hashed record.",
         items: [],
+        selected_dataset_items: [],
+        selected_dataset_description: "",
+        selected_dataset_period: "",
+        selected_dataset_type: "",
         columns: [],
+        selected_dataset_fields: [
+          { key: 'name', sortable: true },
+          { key: 'description', sortable: false },
+          { key: 'data_type', sortable: true },
+          { key: 'column_type', sortable: true },
+          { key: 'pii_type', sortable: true },
+          { key: 'nullable', sortable: false },
+        ],
         content_type: "",
         showImportErrors: false,
         errorImportMessage: "",
@@ -248,7 +367,17 @@ SPDX-License-Identifier: Apache-2.0
       }
     },
     computed: {
-      ...mapState(['deleted_columns','dataset_definition', 's3key', 'step3_form_input']),
+      ...mapState(['deleted_columns','dataset_definition', 's3key', 'step3_form_input', 'selected_dataset']),
+      extra_columns() {
+        const dataset_columns = this.selected_dataset_items.map(x => x.name)
+        const file_columns = this.items.map(x => x.name)
+        return file_columns.filter(x => !dataset_columns.includes(x))
+      },
+      missing_columns() {
+        const dataset_columns = this.selected_dataset_items.map(x => x.name)
+        const file_columns = this.items.map(x => x.name)
+        return dataset_columns.filter(x => !file_columns.includes(x))
+      },
       contains_hashed_identifier() {
         return this.items.filter(x => (x.column_type === 'PII')).length > 0
       },
@@ -287,13 +416,20 @@ SPDX-License-Identifier: Apache-2.0
       console.log('created')
     },
     mounted: function() {
+      if (this.selected_dataset !== null) {
+        // If the user opted to join to an existing dataset, then load that dataset's
+        // schema into the web form and disable any changes:
+        this.describe_dataset()
+      }
+      // Otherwise prompt the user to specify the schema for the new dataset 
+      // that they want to create:
       this.new_dataset_definition = this.dataset_definition
       if (!this.s3key) {
         this.showMissingDataAlert = true
       }
-      else if (!this.step3_form_input.length) {
-        this.send_request('POST', 'get_data_columns', {'s3bucket': this.DATA_BUCKET_NAME, 's3key':this.s3key})
-      } else {
+      else if (!this.step3_form_input.length|| this.selected_dataset !== null) {
+        this.get_datafile_columns('POST', 'get_data_columns', {'s3bucket': this.DATA_BUCKET_NAME, 's3key':this.s3key, 'file_format':this.dataset_definition.fileFormat})
+      } else if (this.selected_dataset === null) {
         this.items = this.step3_form_input
       }
     },
@@ -307,6 +443,7 @@ SPDX-License-Identifier: Apache-2.0
       onReset() {
         this.$store.commit('updateDeletedColumns', [])
         this.send_request('POST', 'get_data_columns', {'s3bucket': this.DATA_BUCKET_NAME, 's3key':this.s3key})
+        this.get_datafile_columns('POST', 'get_data_columns', {'s3bucket': this.DATA_BUCKET_NAME, 's3key':this.s3key, 'file_format':this.dataset_definition.fileFormat})
         this.column_type_options.forEach(x => x.disabled = false)
         this.pii_type_options.forEach(x => x.disabled = false)
       },
@@ -377,7 +514,7 @@ SPDX-License-Identifier: Apache-2.0
               }
             }
            
-            this.isBusy = true;
+            this.busy_getting_datafile_columns = true;
             this.column_type_options.forEach(x => x.disabled = false)
             this.pii_type_options.forEach(x => x.disabled = false)
             this.items = importJson.columns.map(x => {return {
@@ -390,7 +527,7 @@ SPDX-License-Identifier: Apache-2.0
               }
             })
             this.$store.commit('saveStep3FormInput', this.items)
-            this.isBusy = false;
+            this.busy_getting_datafile_columns = false;
             this.showImportErrors = false
             console.log("Schema Imported.")
           };
@@ -423,7 +560,16 @@ SPDX-License-Identifier: Apache-2.0
         return true
       },
       onSubmit() {
+        if (this.selected_dataset !== null) {
+          this.extra_columns.forEach(x => this.deleteColumn(x))
+          this.items = this.selected_dataset_items
+          this.dataset_definition.dataSetId = this.selected_dataset
+          this.dataset_definition.description = this.selected_dataset_description
+          this.dataset_definition.dataSetType = this.selected_dataset_type
+          this.dataset_definition.period = this.selected_dataset_period
+        }
         if (!this.validateForm()) return
+
         // remove the nullable attribute if it is false
         this.items.map(x => {
           if (x.nullable === false) delete x.nullable
@@ -542,15 +688,15 @@ SPDX-License-Identifier: Apache-2.0
         this.items[index].nullable = true
         this.$store.commit('saveStep3FormInput', this.items)
       },
-      async send_request(method, resource, data) {
+      async get_datafile_columns(method, resource, data) {
         console.log("sending " + method + " " + resource + " " + JSON.stringify(data))
+        this.items = []
+        this.$store.commit('updateDeletedColumns', [])
         const apiName = 'amcufa-api'
         let response = ""
-        this.isBusy = true;
+        this.busy_getting_datafile_columns = true;
         try {
-          if (method === "GET") {
-            response = await this.$Amplify.API.get(apiName, resource);
-          } else if (method === "POST") {
+          if (method === "POST") {
             let requestOpts = {
               headers: {'Content-Type': 'application/json'},
               body: data
@@ -577,18 +723,48 @@ SPDX-License-Identifier: Apache-2.0
             this.showUserIdWarning = true;
           }
           this.content_type = response.content_type
-          console.log(JSON.stringify(this.items))
         }
         catch (e) {
-          if(e.response.status === 400) this.showSchemaError = true;
-          else this.showServerError = true;
-
           console.log("ERROR: " + e.response.data.message)
-          this.isBusy = false;
+          this.busy_getting_datafile_columns = false;
+          this.showServerError = true;
           this.results = e.response.data.message
         }
-        this.isBusy = false;
-      }
-    }
+        this.busy_getting_datafile_columns = false;
+      },
+      async describe_dataset() {
+        this.selected_dataset_items = []
+        const apiName = 'amcufa-api'
+        let response = ""
+        const method = 'POST'
+        const resource = 'describe_dataset'
+        const data = {'dataSetId': this.selected_dataset}
+        this.busy_getting_dataset_definition = true;
+        try {
+          console.log("sending " + method + " " + resource + " " + JSON.stringify(data))
+          let requestOpts = {
+            headers: {'Content-Type': 'application/json'},
+            body: data
+          };
+          response = await this.$Amplify.API.post(apiName, resource, requestOpts);
+          this.selected_dataset_type = response.dataSetType
+          this.selected_dataset_description = response.description
+          this.selected_dataset_period = response.period
+          // read schema for PII fields
+          this.selected_dataset_items = this.selected_dataset_items.concat(response.columns.filter(x => "externalUserIdType" in x).map(x => ({"name": x.name, "description": x.description, "data_type": x.dataType, "column_type": "PII", "nullable": x.isNullable, "pii_type": x.externalUserIdType.identifierType})))
+          // read schema for Timestamp field
+          this.selected_dataset_items = this.selected_dataset_items.concat(response.columns.filter(x => x.isMainEventTime === true).map(x => ({"name": x.name, "description": x.description, "data_type": x.dataType, "column_type": "isMainEventTime", "pii_type":""})))
+          // read schema for Dimension fields
+          this.selected_dataset_items = this.selected_dataset_items.concat(response.columns.filter(x => x.columnType === "DIMENSION").map(x => ({"name": x.name, "description": x.description, "data_type": x.dataType, "column_type": x.columnType, "pii_type":"", "nullable": x.isNullable})))
+          // read schema for Metric fields
+          this.selected_dataset_items = this.selected_dataset_items.concat(response.columns.filter(x => x.columnType === "METRIC").map(x => ({"name": x.name, "description": x.description, "data_type": x.dataType, "column_type": x.columnType, "pii_type":"", "nullable": x.isNullable})))
+        }
+        catch (e) {
+          console.log("ERROR: " + e.response.data.message)
+          this.response = e.response.data.message
+        }
+        this.busy_getting_dataset_definition = false;
+      },
   }
+}
 </script>
