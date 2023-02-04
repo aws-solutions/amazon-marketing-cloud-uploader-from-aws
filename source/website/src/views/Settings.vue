@@ -13,6 +13,12 @@ SPDX-License-Identifier: Apache-2.0
             <Sidebar :is-settings-active="true" />
           </b-col>
           <b-col cols="10">
+            <b-modal id="modal-amc-endpoint" title="AMC Endpoints" ok-only>
+              AMC endpoint URLs must reside in <b>{{ AWS_REGION }}</b> and match the following regex pattern:
+              <br>
+              <br>
+              <code>https://.*.execute-api.{{AWS_REGION}}.amazonaws.com/prod</code>
+            </b-modal>
             <b-alert
                 v-model="showServerError"
                 variant="danger"
@@ -92,6 +98,11 @@ SPDX-License-Identifier: Apache-2.0
                     </b-col>
                   </b-row>
                 </template>
+                <template #head(endpoint)>AMC Endpoint
+                  <b-link v-b-modal.modal-amc-endpoint>
+                    <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
+                  </b-link>
+                </template>
               </b-table>
               <b-row>
                 <b-col align="left">
@@ -135,6 +146,7 @@ SPDX-License-Identifier: Apache-2.0
       return {
         importFilename: null,
         showImportSuccess: false,
+        showRegionWarning: true,
         showServerError: false,
         showImportError: false,
         dismissSecs: 5,
@@ -169,10 +181,10 @@ SPDX-License-Identifier: Apache-2.0
     methods: {
       isValidEndpoint(x) {
         // This function is used enable an error icon in a form input field.
-        // If valid we return null instead of true because we don't want to
-        // show the green check mark icon.
         if (!x) return false
-        if (x.match('https://.+.execute-api..+.amazonaws.com/prod') != null) return null
+        // If the endpoint is valid then we return null instead of true because
+        // we don't want to show the green check mark icon.
+        if (x.match('https://.+.execute-api.'+this.AWS_REGION+'.amazonaws.com/prod') != null) return null
         else return false
       },
       isValidAccountId(x) {
