@@ -15,7 +15,7 @@ solution_config = json.loads(os.environ['botoConfig'])
 config = config.Config(**solution_config)
 
 # Environment variables
-AMC_API_ROLE = os.environ["AMC_API_ROLE_ARN"]
+AMC_API_ROLE_ARN = os.environ["AMC_API_ROLE_ARN"]
 
 # Boto3 clients
 IAM_CLIENT = boto3.client("iam", config=config)
@@ -512,7 +512,7 @@ def save_settings():
 
             # Add permission to use the AMC API endpoint from the AMC_API_ROLE
             amc_endpoint_access_policy = IAM_CLIENT.get_role_policy(
-                RoleName=AMC_API_ROLE,
+                RoleName=AMC_API_ROLE_ARN.split('/')[1],
                 PolicyName='AmcApiAccess'
             )
             other_statements = [x for x in amc_endpoint_access_policy['PolicyDocument']['Statement'] if not ("Sid" in x and x["Sid"] == "AmcEndpointAccessPolicy")]
@@ -521,7 +521,7 @@ def save_settings():
             amc_endpoint_statement = '{"Sid": "AmcEndpointAccessPolicy", "Action": ["execute-api:Invoke"], "Resource": [' + endpoint_arns_string + '], "Effect": "Allow"}'
             amc_endpoint_access_policy['PolicyDocument']['Statement'] = other_statements + [json.loads(amc_endpoint_statement)]
             IAM_CLIENT.put_role_policy(
-                RoleName=AMC_API_ROLE,
+                RoleName=AMC_API_ROLE_ARN.split('/')[1],
                 PolicyName='AmcApiAccess',
                 PolicyDocument=json.dumps(amc_endpoint_access_policy['PolicyDocument'])
             )
