@@ -242,6 +242,10 @@ SPDX-License-Identifier: Apache-2.0
           }
           if (response.length > 0 && "Value" in response[0]) {
             this.available_amc_instances = response[0]["Value"]
+            // set default endpoint if there is only one to choose
+            if (this.available_amc_instances.length == 1) {
+              this.select(this.available_amc_instances[0].endpoint)
+            }
           }
         }
         catch (e) {
