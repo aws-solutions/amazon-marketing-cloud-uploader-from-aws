@@ -8,9 +8,6 @@ Parameters:
   DataBucketName:
     Description: "Name of the S3 bucket from which source data will be uploaded. Bucket is NOT created by this CFT."
     Type: String
-  AmcEndpointUrl:
-    Description: "AMC API Endpoint URL"
-    Type: String
   CustomerManagedKey:
     Description: "(Optional) ARN of a customer managed KMS encryption key (CMK) to use for encryption and decryption of original data files during the ETL pipeline and query computation in AMC."
     Type: String
@@ -761,7 +758,6 @@ Resources:
             - "api.zip"
         ArtifactBucket: !Ref ArtifactBucket
         DataBucketName: !Ref DataBucketName
-        AmcEndpointUrl: !Ref AmcEndpointUrl
         AmcApiRoleArn: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-AmcApiAccessRole'
         AmcGlueJobName: !GetAtt GlueStack.Outputs.AmcGlueJobName
         TracingConfigMode: "Active"

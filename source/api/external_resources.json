@@ -30,10 +30,6 @@
       "Type": "String",
       "Description": "S3 bucket containing first-party data object for ingest"
     },
-    "AmcEndpointUrl": {
-      "Type": "String",
-      "Description": "AMC endpoint URL"
-    },
     "AmcApiRoleArn": {
       "Type": "String",
       "Description": "AMC API Role"
@@ -144,6 +140,16 @@
                 {
                   "Effect": "Allow",
                   "Action": [
+                    "iam:GetRolePolicy",
+                    "iam:PutRolePolicy"
+                  ],
+                  "Resource": {
+                    "Ref": "AmcApiRoleArn"
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
                     "glue:StartJobRun",
                     "glue:GetJobRuns"
                   ],
@@ -249,9 +255,6 @@
             },
             "SOLUTION_NAME": {
               "Ref": "Name"
-            },
-            "AMC_ENDPOINT_URL": {
-              "Ref": "AmcEndpointUrl"
             },
             "AMC_API_ROLE_ARN": {
               "Ref": "AmcApiRoleArn"
