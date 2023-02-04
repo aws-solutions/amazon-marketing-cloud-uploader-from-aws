@@ -5,7 +5,6 @@
     "botoConfig": "{}",
     "VERSION": "",
     "SOLUTION_NAME": "",
-    "AMC_ENDPOINT_URL": "",
     "AMC_API_ROLE_ARN": "",
     "AMC_GLUE_JOB_NAME": "",
     "ARTIFACT_BUCKET": "",
