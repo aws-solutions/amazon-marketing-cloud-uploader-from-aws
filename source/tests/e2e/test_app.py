@@ -97,6 +97,10 @@ def test_everything(browser, test_environment, stack_resources):
     # and the first option should be selected by default
     assert len(browser.find_elements(By.ID, "time_period_options"))
     assert browser.find_element(By.XPATH, '//*[@id="time_period_options_BV_option_0"]').is_selected()
+    # select US as country and check that the value updates
+    cc_dropdown = browser.find_element(By.ID, "country-code-dropdown")
+    Select(cc_dropdown).select_by_value("US")
+    assert cc_dropdown.get_attribute("value") == "US"
 
     # open Step 3
     browser.find_element(By.ID, "step3").click()
