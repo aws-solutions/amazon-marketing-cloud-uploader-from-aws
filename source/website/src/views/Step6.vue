@@ -237,6 +237,12 @@ SPDX-License-Identifier: Apache-2.0
                         <strong>&nbsp;&nbsp;Loading...</strong>
                       </div>
                     </template>
+                    <template #cell(dateCreated)="row">
+                      {{ new Date(row.item.dateCreated).toLocaleString() }}
+                    </template>
+                    <template #cell(sourceFileS3Key)="row">
+                      {{ row.item.sourceFileS3Key.split('/').slice(-1)[0] }}
+                    </template>
                     <template #cell(show_details)="row">
                       <b-form-checkbox @change="row.toggleDetails">
                       </b-form-checkbox>
@@ -396,14 +402,13 @@ SPDX-License-Identifier: Apache-2.0
         uploads: [],
         upload_fields: [
           {key: "dateCreated", label: "Date Created", sortable: true},
-          {key: "totalFileCount", label: "Total Files"},
-          {key: "errorFileCount", label: "Bad Files"},
-          {key: "rowsAcceptedTotal", label: "Rows Accepted"},
-          {key: "rowsDroppedTotal", label: "Rows Dropped"},
-          {key: "rowsWithResolvedIdentity", label: "Identities Resolved"},
+          {key: "totalFileCount", label: "Total Files", sortable: true},
+          {key: "errorFileCount", label: "Bad Files", sortable: true},
+          {key: "rowsAcceptedTotal", label: "Rows Accepted", sortable: true},
+          {key: "rowsDroppedTotal", label: "Rows Dropped", sortable: true},
+          {key: "rowsWithResolvedIdentity", label: "Identities Resolved", sortable: true},
           {key: "sourceFileS3Key", label: "Source File", sortable: true},
-          {key: "uploadId", label: "Upload Id"},
-          {key: "status", label: "Status"},
+          {key: "status", label: "Status", sortable: true},
           {key: "show_details", label: "Show Details"}
         ],
         isBusy1: false,
