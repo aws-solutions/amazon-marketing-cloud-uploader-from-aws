@@ -192,7 +192,7 @@ SPDX-License-Identifier: Apache-2.0
         new_dataset_definition: {},
         dataset_id: '',
         description: '',
-        country_code: "US",
+        country_code: '',
         dataset_type: '',
         // time_period is autodetected in Glue ETL and updated in amc_uploader.py 
         time_period: 'autodetect',
@@ -279,6 +279,10 @@ SPDX-License-Identifier: Apache-2.0
         }
         if (/^[a-zA-Z0-9_-]+$/.test(this.dataset_id) === false) {
           this.formErrorMessage = "Dataset name must match regex ^[a-zA-Z0-9_-]+$"
+          return false
+        }
+        if (!this.new_dataset_definition['countryCode']  || this.new_dataset_definition['countryCode'].length === 0) {
+          this.formErrorMessage = "Missing country."
           return false
         }
         if (!this.new_dataset_definition['dataSetType']  || this.new_dataset_definition['dataSetType'].length === 0) {
