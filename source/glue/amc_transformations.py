@@ -93,7 +93,7 @@ if 'period' in args:
         print(user_defined_partition_size)
         exit(1)
 if 'country_code' in args:
-    country_code = json.loads(args['country_code'])
+    country_code = args['country_code']
 
 # Read optional parameters
 try:
