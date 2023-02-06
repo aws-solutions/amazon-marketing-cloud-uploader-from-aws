@@ -2,3 +2,4 @@
 requests_aws4auth
 webdriver-manager
 selenium
+phonenumbers
