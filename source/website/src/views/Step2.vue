@@ -36,7 +36,7 @@ SPDX-License-Identifier: Apache-2.0
           <p>By default, this tool will automatically use the shortest possible period which is appropriate for your data and partition input files accordingly. However, you can override the auto-detected period by explicitly setting it in the dataset definition.</p>
         </b-modal>
         <b-modal id="modal-country" title="Country" ok-only>
-          <p><strong>One country per file:</strong> If uploaded data contains hashed identifiers, it is recommended to separate upload data by country. For example, if you have data with both CA and US records, these records should be split into different files as the included File Preparation tool for hashing and normalization will apply country-specific normalization rules for fields such as phone number and address.</p>
+          <p><strong>One country per file:</strong> If uploaded data contains hashed identifiers, it is recommended to separate upload data by country. For example, if you have data with both CA and US records, these records should be split into different files as the tool will apply country-specific normalization rules for fields such as phone number and address.</p>
         </b-modal>
         <b-row style="text-align: left">
           <b-col cols="2">
