@@ -133,10 +133,89 @@ def test_US_zip_normalizer():
 
     test = zip_normalizer.normalize("1")
     assert test.normalizedZip == ""
-    
+
     test = zip_normalizer.normalize("zip")
     assert test.normalizedZip == ""
 
     test = zip_normalizer.normalize(">$%&*")
+    assert test.normalizedZip == ""
+    
+# UK
+def test_UK_address_normalizer():
+    from glue.normalizers.address_normalizer import AddressNormalizer
+    address_normalizer = AddressNormalizer("UK")
+
+    test = address_normalizer.normalize("5180 Merchant PLACE")
+    assert test.normalizedAddress == "5180merchantpl"
+
+    test = address_normalizer.normalize("30 MARCY AVENUE")
+    assert test.normalizedAddress == "30marcyave"
+
+    test = address_normalizer.normalize("22337 Sheridan Aly")
+    assert test.normalizedAddress == "22337sheridanalley"
+
+def test_UK_phone_normalizer():
+    from glue.normalizers.phone_normalizer import PhoneNormalizer
+    phone_normalizer = PhoneNormalizer("UK")
+
+    test = phone_normalizer.normalize("5714120599")
+    assert test.normalizedPhone == "445714120599"
+    
+    test = phone_normalizer.normalize("571-981-5803")
+    assert test.normalizedPhone == "445719815803"
+
+    test = phone_normalizer.normalize("+1 (413) 871-4499")
+    assert test.normalizedPhone == ""
+
+    test = phone_normalizer.normalize("671-981-5803")
+    assert test.normalizedPhone == ""
+
+    test = phone_normalizer.normalize("(465) 4688938")
+    assert test.normalizedPhone == ""
+
+    test = phone_normalizer.normalize("+373 (156) 138-7725")
+    assert test.normalizedPhone == ""
+
+    test = phone_normalizer.normalize("4894722238")
+    assert test.normalizedPhone == ""
+
+    test = phone_normalizer.normalize("invalid phone")
+    assert test.normalizedPhone == ""
+
+    test = phone_normalizer.normalize("1")
+    assert test.normalizedPhone == ""
+
+    test = phone_normalizer.normalize("123456789123456789")
+    assert test.normalizedPhone == ""
+
+def test_UK_zip_normalizer():
+    from glue.normalizers.zip_normalizer import ZipNormalizer
+    zip_normalizer = ZipNormalizer("UK")
+
+    test = zip_normalizer.normalize("A11AA")
+    assert test.normalizedZip == "A11AA"
+
+    test = zip_normalizer.normalize("A111AA")
+    assert test.normalizedZip == "A111AA"
+
+    test = zip_normalizer.normalize("AA11AA")
+    assert test.normalizedZip == "AA11AA"
+
+    test = zip_normalizer.normalize("AA111AA")
+    assert test.normalizedZip == "AA111AA"
+
+    test = zip_normalizer.normalize("A1A1AA")
+    assert test.normalizedZip == "A1A1AA"
+    
+    test = zip_normalizer.normalize("AA1A1AA")
+    assert test.normalizedZip == "AA1A1AA"
+
+    test = zip_normalizer.normalize(">$%&*")
+    assert test.normalizedZip == ""
+
+    test = zip_normalizer.normalize("AAAAAA")
+    assert test.normalizedZip == ""
+
+    test = zip_normalizer.normalize("90065")
     assert test.normalizedZip == ""
     
