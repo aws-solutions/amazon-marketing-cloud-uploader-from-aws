@@ -233,6 +233,7 @@ SPDX-License-Identifier: Apache-2.0
           { value: 'DIMENSION', text: 'Dimension', disabled: false},
           { value: 'METRIC', text: 'Metric', disabled: false},
           { value: 'isMainEventTime', text: 'MainEventTime', disabled: false},
+          { value: 'LiveRamp', text: 'LiveRamp', disabled: false},
         ],
         pii_type_options: [
           { value: 'EMAIL', text: 'EMAIL', disabled: false},
@@ -366,12 +367,12 @@ SPDX-License-Identifier: Apache-2.0
               return
             }
 
-            let valid_keys = ["name", "description", "data_type", "column_type", "pii_type", "nullable"]
+            let valid_keys = ["name", "description", "data_type", "dataType", "columnType", "column_type", "pii_type", "nullable", "externalUserIdType", "isMainEventTime"]
             for (var column_index in importJson.columns){
                 let column = importJson.columns[column_index]
                 for (var key in column){
                 if (!valid_keys.includes(key)){
-                  this.showImportAlert("Invalid Schema: Only these valid column keys ".concat(valid_keys).concat(" are required."));
+                  this.showImportAlert("Invalid Schema: Only these valid column keys ".concat(JSON.stringify(valid_keys, '\t')).concat(" are required.\nInvalid Key: ").concat(key));
                   return
                 } 
               }
@@ -380,11 +381,12 @@ SPDX-License-Identifier: Apache-2.0
             this.isBusy = true;
             this.column_type_options.forEach(x => x.disabled = false)
             this.pii_type_options.forEach(x => x.disabled = false)
+            importJson = this.resolveKeys(importJson)
             this.items = importJson.columns.map(x => {return {
                 "name": x.name,
                 "description": x.description.charAt(0).toUpperCase() + x.description.replace(/[^a-zA-Z0-9]/g, ' ').slice(1),
-                "data_type": x.data_type,
-                "column_type": x.column_type,
+                "data_type": x.data_type || x.dataType,
+                "column_type": x.column_type || x.columnType,
                 "pii_type": x.pii_type,
                 "nullable": x.nullable
               }
@@ -395,6 +397,25 @@ SPDX-License-Identifier: Apache-2.0
             console.log("Schema Imported.")
           };
           reader.readAsText(files[0]);
+      },
+      resolveKeys(data) {
+        for (var column_index in data.columns){
+          let column = data.columns[column_index]
+          if ("isMainEventTime" in column){
+            data.columns[column_index]["column_type"] = "isMainEventTime"
+          }else if ("externalUserIdType" in column){
+            if (column.externalUserIdType.type === "LiveRamp"){
+              data.columns[column_index]["column_type"] = column.externalUserIdType.type
+            }else if (column.externalUserIdType.type === "HashedIdentifier" && "identifierType" in column.externalUserIdType){
+              data.columns[column_index]["column_type"] = "PII"
+              data.columns[column_index]["pii_type"] = column.externalUserIdType.identifierType
+            }else{
+              console.log("Cannot resolve externalUserIdType: ".concat(JSON.stringify(column.externalUserIdType)))
+            }
+          }
+        }
+        console.log("Resolve Schema: ".concat(JSON.stringify(data)))
+        return data
       },
       validateForm() {
         // All fields must have values.
@@ -463,6 +484,21 @@ SPDX-License-Identifier: Apache-2.0
             this.columns.push(column_definition)
           }
         )
+        // add liveramp identifier
+        this.items.filter(x => x.column_type === 'LiveRamp')
+          .forEach(x => {
+            const column_definition = {
+              "name": x.name,
+              "description": x.description,
+              "dataType": x.data_type,
+              "externalUserIdType": {
+                "type": "LiveRamp"
+              }
+            }
+            if (x.nullable === true) column_definition.nullable = true
+            this.columns.push(column_definition)
+            
+          })
         // add identifier for main event timestamp column
         this.items.filter(x => x.column_type === 'isMainEventTime')
           .forEach(x => {
@@ -477,7 +513,7 @@ SPDX-License-Identifier: Apache-2.0
           })
         
         // add identifiers for non-PII columns
-        this.items.filter(x => (x.pii_type === "" && x.column_type !== 'isMainEventTime'))
+        this.items.filter(x => (x.pii_type === "" && (x.column_type !== 'isMainEventTime' && x.column_type !== 'LiveRamp')))
           .forEach(x => {
             const column_definition = {
               "name": x.name,
