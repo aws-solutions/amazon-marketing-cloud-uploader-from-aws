@@ -17,29 +17,29 @@ SPDX-License-Identifier: Apache-2.0
               AMC endpoint URLs must reside in <b>{{ AWS_REGION }}</b> and match the following regex pattern:
               <br>
               <br>
-              <code>https://.*.execute-api.{{AWS_REGION}}.amazonaws.com/prod</code>
+              <code>https://.*.execute-api.{{ AWS_REGION }}.amazonaws.com/prod</code>
             </b-modal>
             <b-alert
-                v-model="showServerError"
-                variant="danger"
-                dismissible
+              v-model="showServerError"
+              variant="danger"
+              dismissible
             >
               Server error. See Cloudwatch logs for API resource, /system/configuration.
             </b-alert>
             <b-alert
-                :show="showSuccessCountDown"
-                dismissible
-                fade
-                variant="success"
-                @dismissed="showSuccessCountDown=0"
-                @dismiss-count-down="countDownChanged"
+              :show="showSuccessCountDown"
+              dismissible
+              fade
+              variant="success"
+              @dismissed="showSuccessCountDown=0"
+              @dismiss-count-down="countDownChanged"
             >
               This alert will dismiss after {{ showSuccessCountDown }} seconds...
             </b-alert>
             <b-alert
-                :show="showImportError"
-                variant="danger"
-                dismissible
+              :show="showImportError"
+              variant="danger"
+              dismissible
             >
               Import failed. Check data format.
             </b-alert>
@@ -51,7 +51,9 @@ SPDX-License-Identifier: Apache-2.0
             </b-row>
             <br>
             <div>
-              <p class="text-secondary">Click table cells to edit values.</p>
+              <p class="text-secondary">
+                Click table cells to edit values.
+              </p>
               <b-table
                 ref="settingsTable"
                 :items="amcInstances"
@@ -71,34 +73,36 @@ SPDX-License-Identifier: Apache-2.0
                   </div>
                 </template>
                 <template #cell(endpoint)="row">
-                  <b-form-input placeholder="(Click to edit)" v-model="row.item.endpoint" :state="isValidEndpoint(row.item.endpoint)" class="custom-text-field " />
+                  <b-form-input v-model="row.item.endpoint" placeholder="(Click to edit)" :state="isValidEndpoint(row.item.endpoint)" class="custom-text-field " />
                 </template>
                 <template #cell(data_upload_account_id)="row">
-                  <b-form-input placeholder="(Click to edit)" v-model="row.item.data_upload_account_id" :state="isValidAccountId(row.item.data_upload_account_id)" class="custom-text-field " />
+                  <b-form-input v-model="row.item.data_upload_account_id" placeholder="(Click to edit)" :state="isValidAccountId(row.item.data_upload_account_id)" class="custom-text-field " />
                 </template>
                 <template #cell(tags)="row">
                   <b-row no-gutters>
                     <b-col cols="10">
-                      <voerro-tags-input element-id="tags"
-                        v-model="row.item.tags"
-                        :add-tags-on-space="true"
-                        :add-tags-on-comma="true"
-                        :add-tags-on-blur="true"
-                        :typeahead="false"
-                        placeholder="(Click to edit)">
+                      <voerro-tags-input v-model="row.item.tags"
+                                         element-id="tags"
+                                         :add-tags-on-space="true"
+                                         :add-tags-on-comma="true"
+                                         :add-tags-on-blur="true"
+                                         :typeahead="false"
+                                         placeholder="(Click to edit)"
+                      >
                       </voerro-tags-input>
                     </b-col>
                     <b-col cols="1" align="right">
-                        <b-button v-b-tooltip.hover.right size="sm" style="display: flex;" variant="link" title="Remove row" @click="delete_row(row.index)">
-                          <b-icon-x-circle variant="secondary"></b-icon-x-circle>
-                        </b-button>
-                        <b-button v-b-tooltip.hover.right size="sm" style="display: flex;" variant="link" title="Add row" @click="add_row(row.index)">
-                          <b-icon-plus-square variant="secondary"></b-icon-plus-square>
-                        </b-button>
+                      <b-button v-b-tooltip.hover.right size="sm" style="display: flex;" variant="link" title="Remove row" @click="delete_row(row.index)">
+                        <b-icon-x-circle variant="secondary"></b-icon-x-circle>
+                      </b-button>
+                      <b-button v-b-tooltip.hover.right size="sm" style="display: flex;" variant="link" title="Add row" @click="add_row(row.index)">
+                        <b-icon-plus-square variant="secondary"></b-icon-plus-square>
+                      </b-button>
                     </b-col>
                   </b-row>
                 </template>
-                <template #head(endpoint)>AMC Endpoint
+                <template #head(endpoint)>
+                  AMC Endpoint
                   <b-link v-b-modal.modal-amc-endpoint>
                     <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
                   </b-link>
@@ -109,7 +113,7 @@ SPDX-License-Identifier: Apache-2.0
                   <b-button id="import_button" type="button" variant="outline-secondary" class="mb-2" @click="onImport">
                     Import
                   </b-button> &nbsp;
-                  <b-form-file style="display:none;" v-model="importFilename" id="importFile" accept="application/json" @input="importFile"></b-form-file>
+                  <b-form-file id="importFile" v-model="importFilename" style="display:none;" accept="application/json" @input="importFile"></b-form-file>
                   <b-button id="export_button" type="button" variant="outline-secondary" class="mb-2" @click="onExport">
                     Export
                   </b-button>
@@ -118,7 +122,7 @@ SPDX-License-Identifier: Apache-2.0
                   <b-button id="reset_button" type="reset" variant="outline-secondary" class="mb-2" @click="onReset">
                     Reset
                   </b-button> &nbsp;
-                  <b-button id="save_button" type="submit" variant="primary" class="mb-2" @click="onSubmit" :disabled="!isValidForm">
+                  <b-button id="save_button" type="submit" variant="primary" class="mb-2" :disabled="!isValidForm" @click="onSubmit">
                     Save
                   </b-button>
                 </b-col>
@@ -161,6 +165,11 @@ SPDX-License-Identifier: Apache-2.0
         isSettingsActive: true
       }
     },
+    computed: {
+      isValidForm() {
+        return this.amcInstances.length > 0 && this.amcInstances.every(x => this.isValidEndpoint(x.endpoint) !== false && this.isValidAccountId(x.data_upload_account_id) !== false)
+      }
+    },
     deactivated: function () {
       console.log('deactivated');
     },
@@ -169,11 +178,6 @@ SPDX-License-Identifier: Apache-2.0
     },
     created: function () {
       console.log('created')
-    },
-    computed: {
-      isValidForm() {
-        return this.amcInstances.length > 0 && this.amcInstances.every(x => this.isValidEndpoint(x.endpoint) !== false && this.isValidAccountId(x.data_upload_account_id) !== false)
-      }
     },
     mounted: function() {
       this.read_system_configuration('GET', 'system/configuration')

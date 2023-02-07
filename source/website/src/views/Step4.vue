@@ -14,16 +14,16 @@ SPDX-License-Identifier: Apache-2.0
           </b-col>
           <b-col cols="10">
             <b-alert
-                v-model="showServerError"
-                variant="danger"
-                dismissible
+              v-model="showServerError"
+              variant="danger"
+              dismissible
             >
               Server error. See Cloudwatch logs for API resource, /system/configuration.
             </b-alert>
             <b-alert
-                v-model="showFormError"
-                variant="danger"
-                dismissible
+              v-model="showFormError"
+              variant="danger"
+              dismissible
             >
               You must select at least one AMC Instance.
             </b-alert>
@@ -31,41 +31,49 @@ SPDX-License-Identifier: Apache-2.0
             <div v-if="isBusy === false">
               <b-row>
                 <b-col>
-              <p v-if="selected_amc_instances.length === 0" class="text-secondary">Select one or more AMC endpoints to receive uploads.</p>
-              <p v-else-if="selected_amc_instances.length === 1">{{selected_amc_instances.length}} AMC instance selected.</p>
-              <p v-else="selected_amc_instances.length > 1">{{selected_amc_instances.length}} AMC instances selected.</p>
+                  <p v-if="selected_amc_instances.length === 0" class="text-secondary">
+                    Select one or more AMC endpoints to receive uploads.
+                  </p>
+                  <p v-else-if="selected_amc_instances.length === 1">
+                    {{ selected_amc_instances.length }} AMC instance selected.
+                  </p>
+                  <p v-else>
+                    {{ selected_amc_instances.length }} AMC instances selected.
+                  </p>
                 </b-col>
-              <b-col sm="3" align="right" class="row align-items-end">
-                <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push({path: '/step3'})">
-                  Previous
-                </button> &nbsp;
-                <button type="submit" class="btn btn-primary mb-2" @click="onSubmit">
-                  Next
-                </button>
-              </b-col>
+                <b-col sm="3" align="right" class="row align-items-end">
+                  <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push({path: '/step3'})">
+                    Previous
+                  </button> &nbsp;
+                  <button type="submit" class="btn btn-primary mb-2" @click="onSubmit">
+                    Next
+                  </button>
+                </b-col>
               </b-row>
               <br>
               <!-- User Interface controls -->
               <b-row>
                 <b-col class="my-1">
                   <b-form-group
-                      label="Filter"
-                      label-for="filter-input"
-                      label-cols-sm="3"
-                      label-align-sm="right"
-                      label-size="sm"
-                      class="mb-0"
+                    label="Filter"
+                    label-for="filter-input"
+                    label-cols-sm="3"
+                    label-align-sm="right"
+                    label-size="sm"
+                    class="mb-0"
                   >
                     <b-input-group size="sm">
                       <b-form-input
-                          id="filter-input"
-                          v-model="filter"
-                          type="search"
-                          placeholder="Type to Search"
+                        id="filter-input"
+                        v-model="filter"
+                        type="search"
+                        placeholder="Type to Search"
                       ></b-form-input>
 
                       <b-input-group-append>
-                        <b-button :disabled="!filter" @click="filter = ''">Clear</b-button>
+                        <b-button :disabled="!filter" @click="filter = ''">
+                          Clear
+                        </b-button>
                       </b-input-group-append>
                     </b-input-group>
                   </b-form-group>
@@ -73,21 +81,25 @@ SPDX-License-Identifier: Apache-2.0
 
                 <b-col class="my-1">
                   <b-form-group
-                      label="Filter On"
-                      description="Leave all unchecked to filter on all data"
-                      label-cols-sm="3"
-                      label-align-sm="right"
-                      label-size="sm"
-                      class="mb-0"
-                      v-slot="{ ariaDescribedby }"
+                    v-slot="{ ariaDescribedby }"
+                    label="Filter On"
+                    description="Leave all unchecked to filter on all data"
+                    label-cols-sm="3"
+                    label-align-sm="right"
+                    label-size="sm"
+                    class="mb-0"
                   >
                     <b-form-checkbox-group
-                        v-model="filterOn"
-                        :aria-describedby="ariaDescribedby"
-                        class="mt-1"
+                      v-model="filterOn"
+                      :aria-describedby="ariaDescribedby"
+                      class="mt-1"
                     >
-                      <b-form-checkbox value="name">Endpoint</b-form-checkbox>
-                      <b-form-checkbox value="tag_list">Tags</b-form-checkbox>
+                      <b-form-checkbox value="name">
+                        Endpoint
+                      </b-form-checkbox>
+                      <b-form-checkbox value="tag_list">
+                        Tags
+                      </b-form-checkbox>
                     </b-form-checkbox-group>
                   </b-form-group>
                 </b-col>
@@ -95,15 +107,15 @@ SPDX-License-Identifier: Apache-2.0
             </div>
             <!-- Main table element -->
             <b-table
-                :items="formattedItems"
-                :fields="fields"
-                :filter="filter"
-                :filter-included-fields="filterOn"
-                @filtered="onFiltered"
-                :busy="isBusy"
-                stacked="md"
-                show-empty
-                small
+              :items="formattedItems"
+              :fields="fields"
+              :filter="filter"
+              :filter-included-fields="filterOn"
+              :busy="isBusy"
+              stacked="md"
+              show-empty
+              small
+              @filtered="onFiltered"
             >
               <template #table-busy>
                 <div class="text-center my-2">
@@ -112,17 +124,21 @@ SPDX-License-Identifier: Apache-2.0
                 </div>
               </template>
               <template #cell(actions)="row">
-                <b-button size="sm" @click="select(row.item.endpoint)" class="mr-1" v-if="!selected_amc_instances.includes(row.item.endpoint)">
+                <b-button v-if="!selected_amc_instances.includes(row.item.endpoint)" size="sm" class="mr-1" @click="select(row.item.endpoint)">
                   Select
                 </b-button>
-                <b-button size="sm" @click="unselectEndpoint(row.item.endpoint)" class="mr-1" v-if="selected_amc_instances.includes(row.item.endpoint)">
+                <b-button v-if="selected_amc_instances.includes(row.item.endpoint)" size="sm" class="mr-1" @click="unselectEndpoint(row.item.endpoint)">
                   Unselect
                 </b-button>
               </template>
             </b-table>
             <div v-if="isBusy === false">
-              <b-button size="sm" @click="selectAll">Select all</b-button> &nbsp;
-              <b-button size="sm" @click="clearAll">Clear all</b-button>
+              <b-button size="sm" @click="selectAll">
+                Select all
+              </b-button> &nbsp;
+              <b-button size="sm" @click="clearAll">
+                Clear all
+              </b-button>
             </div>
           </b-col>
         </b-row>
