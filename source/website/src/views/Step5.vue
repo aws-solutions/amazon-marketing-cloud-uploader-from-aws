@@ -7,14 +7,6 @@ SPDX-License-Identifier: Apache-2.0
   <div>
     <div class="headerTextBackground">
       <Header />
-      <b-modal
-        v-model="showModal"
-        :title="modal_title"
-        ok-only
-        @ok="hideModal"
-      >
-        {{ response }}
-      </b-modal>
       <b-container fluid>
         <b-row style="text-align: left">
           <b-col cols="2">
@@ -31,7 +23,7 @@ SPDX-License-Identifier: Apache-2.0
                 <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push({path: '/step4'})">
                   Previous
                 </button> &nbsp;
-                <button type="submit" class="btn btn-primary mb-2" @click="onSubmit" :disabled=!isValid>
+                <button type="submit" class="btn btn-primary mb-2" @click="onSubmit" :disabled="!isValid || isBusy">
                   Submit
                   <b-spinner v-if="isBusy" style="vertical-align: sub" small label="Spinning"></b-spinner>
                 </button>
@@ -52,8 +44,19 @@ SPDX-License-Identifier: Apache-2.0
                 </div>
                 <h5>Destinations:</h5>
                 <ul>
-                <li v-for="amc_instance in destination_endpoints">
-                  {{ amc_instance }}
+                <li v-for="endpoint in destination_endpoints">
+                  <div v-if="endpoint_request(endpoint).is_busy">
+                    {{ endpoint }} <b-spinner small></b-spinner>
+                  </div>
+                  <div v-if="endpoint_request(endpoint).is_busy === false">
+                    <div v-if="endpoint_request(endpoint).status.toLowerCase().includes('error')">
+                      {{ endpoint }} <p class="text-danger" style="display:inline"><br>{{ endpoint_request(endpoint).status }}</p>
+                    </div>
+                    <div v-else>
+                      {{ endpoint }}
+                    </div>
+                  </div>
+                  <div v-else></div>
                 </li>
                 </ul>
                 <br>
@@ -110,11 +113,13 @@ SPDX-License-Identifier: Apache-2.0
     },
     data() {
       return {
-        column_fields: ['name', 'description', 'dataType', 'columnType', 'nullable', 'isMainUserId', 'isMainUserIdType', 'isMainUserId', 'externalUserIdType.identifierType','isMainEventTime'],
+        destination_fields: [
+          {key: 'endpoint', label: 'AMC Endpoint', sortable: true},
+          {key: 'actions', label: 'Actions'},
+        ],
+          column_fields: ['name', 'description', 'dataType', 'columnType', 'nullable', 'isMainUserId', 'isMainUserIdType', 'isMainUserId', 'externalUserIdType.identifierType','isMainEventTime'],
         dataset_fields: [{key: '0', label: 'Name'}, {key: '1', label: 'Value'}],
-        isBusy: false,
-        showModal: false,
-        modal_title: '',
+        endpoint_request_state: [],
         isStep5Active: true,
         response: '',
         apiName: 'amcufa-api'
@@ -122,6 +127,10 @@ SPDX-License-Identifier: Apache-2.0
     },
     computed: {
       ...mapState(['deleted_columns', 'dataset_definition', 's3key', 'destination_endpoints']),
+      isBusy() {
+        // if any endpoint is busy then return true
+        return this.endpoint_request_state.filter(x => x.is_busy === true).length > 0
+      },
       isValid() {
         return !(this.s3key === '' || this.destination_endpoints.length === 0 || !this.dataset.columns || this.dataset.columns.length === 0)
       },
@@ -159,10 +168,18 @@ SPDX-License-Identifier: Apache-2.0
     },
     created: function () {
       console.log('created')
+      this.endpoint_request_state = this.destination_endpoints.map(x => ({
+        "endpoint": x,
+        "status": "",
+        "is_busy": false
+      }))
     },
     methods: {
-      hideModal() {
-        this.showModal = false
+      endpoint_request(endpoint) {
+        const i =  this.endpoint_request_state.findIndex(x => x.endpoint === endpoint)
+        if (i !== null) {
+          return this.endpoint_request_state[i]
+        }
       },
       onSubmit() {
         // Send a request to create datasets to each endpoint in parallel.
@@ -182,19 +199,31 @@ SPDX-License-Identifier: Apache-2.0
         })
       },
       create_datasets(destination_endpoints) {
-        for(let i in destination_endpoints) {
-          this.create_dataset('POST', 'create_dataset', {'body': this.dataset_definition, 'destination_endpoint': destination_endpoints[i]}).then(result => {
-            console.log("create_dataset() result for " + destination_endpoints[i])
+        // set busy status to show spinner for each endpoint
+        this.endpoint_request_state = this.destination_endpoints.map(x => ({
+          "endpoint": x,
+          "status": "",
+          "is_busy": true
+        }))
+        destination_endpoints.forEach(endpoint => {
+          this.create_dataset('POST', 'create_dataset', {
+            'body': this.dataset_definition,
+            'destination_endpoint': endpoint
+          }).then(result => {
+            console.log("create_dataset() result for " + endpoint + ":")
             console.log(JSON.stringify(result))
-            this.isBusy = false
+            const j = this.endpoint_request_state.findIndex(x => x.endpoint === endpoint)
+            if (j != null) {
+              this.endpoint_request_state[j].is_busy = false
+              this.endpoint_request_state[j].status = JSON.stringify(result)
+            }
           })
-        }
+        })
       },
       async create_dataset(method, resource, data) {
         this.modal_title = ''
         this.response = ''
         console.log("sending " + method + " " + resource + " " + JSON.stringify(data))
-        this.isBusy = true;
         let requestOpts = {
           headers: {'Content-Type': 'application/json'},
           body: data
@@ -204,17 +233,10 @@ SPDX-License-Identifier: Apache-2.0
           return result
         } catch (e) {
           console.log(e.toString())
-          if (e.response) {
-            this.modal_title = e.response.status + " " + e.response.statusText
-          } else {
-            this.modal_title = e.toString()
-          }
-          this.isBusy = false;
-          this.showModal = true
+          return e.toString()
         }
       },
       async start_amc_transformation(method, resource, data) {
-        this.isBusy = true;
         try {
           // Start Glue ETL job now that the dataset has been accepted by AMC
           let s3keysList = this.s3key.split(',').map((item) => item.trim())
@@ -230,21 +252,10 @@ SPDX-License-Identifier: Apache-2.0
             console.log(JSON.stringify(this.response))
             console.log("Started Glue ETL job")
           }
-        }
-        catch (e) {
+        } catch (e) {
           console.log(e.toString())
-          if (e.response) {
-            this.modal_title = e.response.status + " " + e.response.statusText
-          } else {
-            this.modal_title = e.toString()
-          }
-          this.isBusy = false;
-          this.showModal = true
           return
         }
-        this.isBusy = false;
-        // Navigate to next step
-        this.$router.push({path: '/step6'})
       }
     }
   }
