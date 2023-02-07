@@ -30,7 +30,7 @@ SPDX-License-Identifier: Apache-2.0
               </b-col>
             </b-row>
             <b-row>
-              <b-col cols="7">
+              <b-col cols="11">
                 <h5>Input files:</h5>
                 <div v-if="s3key !== ''">
                   <ul>
@@ -48,8 +48,11 @@ SPDX-License-Identifier: Apache-2.0
                   <div v-if="endpoint_request(endpoint).is_busy">
                     {{ endpoint }} <b-spinner small></b-spinner>
                   </div>
-                  <div v-if="endpoint_request(endpoint).is_busy === false">
-                    <div v-if="endpoint_request(endpoint).status.toLowerCase().includes('error')">
+                  <div v-else>
+                    <div v-if="endpoint_request(endpoint).status === '{}'">
+                      {{ endpoint }} (<b-link variant="link" @click="onClickMonitor(endpoint)">monitor</b-link>)
+                    </div>
+                    <div v-else-if="endpoint_request(endpoint).status.toLowerCase().includes('error')">
                       {{ endpoint }} <p class="text-danger" style="display:inline"><br>{{ endpoint_request(endpoint).status }}</p>
                     </div>
                     <div v-else>
@@ -175,6 +178,10 @@ SPDX-License-Identifier: Apache-2.0
       }))
     },
     methods: {
+      onClickMonitor(endpoint) {
+        this.$store.commit('updateAmcMonitor', endpoint)
+        this.$router.push({path: '/step6'})
+      },
       endpoint_request(endpoint) {
         const i =  this.endpoint_request_state.findIndex(x => x.endpoint === endpoint)
         if (i !== null) {
@@ -249,8 +256,8 @@ SPDX-License-Identifier: Apache-2.0
             };
             console.log("POST " + resource + " " + JSON.stringify(requestOpts))
             this.response = await this.$Amplify.API.post(this.apiName, resource, requestOpts);
-            console.log(JSON.stringify(this.response))
             console.log("Started Glue ETL job")
+            console.log(JSON.stringify(this.response))
           }
         } catch (e) {
           console.log(e.toString())
