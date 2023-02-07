@@ -94,6 +94,8 @@ if 'period' in args:
         exit(1)
 if 'country_code' in args:
     country_code = args['country_code']
+else:
+    print("Missing required arg: country_code")
 
 # Read optional parameters
 try:
