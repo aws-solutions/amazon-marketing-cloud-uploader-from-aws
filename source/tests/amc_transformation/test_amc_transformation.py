@@ -11,32 +11,28 @@ def mock_env_variables():
     os.environ["AMC_API_ROLE_ARN"] = "AmcApiRoleArn"
     os.environ["botoConfig"] = '{"region_name": "us-east-1"}'
 
-def test_is_valid_email_address():
-    from glue.normalizers.email_normalizer import isValidEmailAddress
-
-    assert isValidEmailAddress("test@test.com") is True
-    assert isValidEmailAddress("this is an invalid email") is False
-
+## TEST NORMALIZERS ##
+# Global
 def test_email_normalizer():
     from glue.normalizers.email_normalizer import EmailNormalizer
+    email_normalizer = EmailNormalizer()
 
-    email_normalizer = EmailNormalizer("test@test.com")
-    assert email_normalizer.normalize() == "test@test.com"
+    test = email_normalizer.normalize("test@test.com")
+    assert test.normalizedEmail == "test@test.com"
 
-    email_normalizer = EmailNormalizer("this is an invalid email")
-    assert email_normalizer.normalize() == ""
+    test = email_normalizer.normalize("this is an invalid email")
+    assert test.normalizedEmail == ""
 
-    email_normalizer = EmailNormalizer("not.an_e-mail")
-    assert email_normalizer.normalize() == ""
+    test = email_normalizer.normalize("not.an_e-mail")
+    assert test.normalizedEmail == ""
 
-    email_normalizer = EmailNormalizer("te$s-t@te^st.c()om")
-    assert email_normalizer.normalize() == "tes-t@test.com"
+    test = email_normalizer.normalize("te$s-t@te^st.c()om")
+    assert test.normalizedEmail == "tes-t@test.com"
 
-    email_normalizer = EmailNormalizer("te-st@tEsT.CoM")
-    assert email_normalizer.normalize() == "te-st@test.com"
+    test = email_normalizer.normalize("te-st@tEsT.CoM")
+    assert test.normalizedEmail == "te-st@test.com"
 
-## TEST NORMALIZERS ##
-# US
+# US - specific
 def test_US_address_normalizer():
     from glue.normalizers.address_normalizer import AddressNormalizer
     address_normalizer = AddressNormalizer("US")
@@ -140,7 +136,7 @@ def test_US_zip_normalizer():
     test = zip_normalizer.normalize(">$%&*")
     assert test.normalizedZip == ""
     
-# UK
+# UK - specific
 def test_UK_address_normalizer():
     from glue.normalizers.address_normalizer import AddressNormalizer
     address_normalizer = AddressNormalizer("UK")
