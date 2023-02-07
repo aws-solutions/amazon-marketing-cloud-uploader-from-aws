@@ -143,6 +143,24 @@ SPDX-License-Identifier: Apache-2.0
                       ></b-form-radio-group>
                     </b-form-group>
                   </b-col>
+                  <b-col v-if="dataset_type==='FACT'" sm="3">
+                    <b-form-group v-slot="{ ariaDescribedby }">
+                      <slot name="label">
+                        Dataset Period:
+                        <b-link v-b-modal.modal-dataset-period>
+                          <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
+                        </b-link>
+                      </slot>
+                      <b-form-radio-group
+                        id="time_period_options"
+                        v-model="time_period"
+                        :options="time_period_options"
+                        :aria-describedby="ariaDescribedby"
+                        name="time-period-radios"
+                        stacked
+                      ></b-form-radio-group>
+                    </b-form-group>
+                  </b-col>
                   <b-col sm="2">
                     Encryption Mode:
                     <b-link v-b-modal.modal-encryption-mode>

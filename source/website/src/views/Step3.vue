@@ -188,7 +188,7 @@ SPDX-License-Identifier: Apache-2.0
                     Checking compatibility... &nbsp;<b-spinner small class="align-middle"></b-spinner>
                   </div>
                   <div v-else>
-                    File "<span style="font-family: monospace;">{{ s3key }}</span>" is <b>{{ missing_columns.length>0?"not compatible":"compatible" }}</b> with dataset "<span style="font-family: monospace;">{{ selected_dataset }}</span>".
+                    "<span style="font-family: monospace;">{{ s3key }}</span>" is <b>{{ missing_columns.length>0?"not compatible":"compatible" }}</b> with dataset "<span style="font-family: monospace;">{{ selected_dataset }}</span>".
                   </div>
                 </b-col>
                 <b-col sm="3" align="right" class="row align-items-end">
@@ -442,7 +442,7 @@ SPDX-License-Identifier: Apache-2.0
       },
       onReset() {
         this.$store.commit('updateDeletedColumns', [])
-        this.send_request('POST', 'get_data_columns', {'s3bucket': this.DATA_BUCKET_NAME, 's3key':this.s3key})
+        this.get_datafile_columns('POST', 'get_data_columns', {'s3bucket': this.DATA_BUCKET_NAME, 's3key':this.s3key})
         this.get_datafile_columns('POST', 'get_data_columns', {'s3bucket': this.DATA_BUCKET_NAME, 's3key':this.s3key, 'file_format':this.dataset_definition.fileFormat})
         this.column_type_options.forEach(x => x.disabled = false)
         this.pii_type_options.forEach(x => x.disabled = false)
@@ -568,7 +568,8 @@ SPDX-License-Identifier: Apache-2.0
           this.dataset_definition.dataSetType = this.selected_dataset_type
           this.dataset_definition.period = this.selected_dataset_period
         }
-        if (!this.validateForm()) return
+        if (!this.validateForm()) {console.log(this.validateForm()) 
+          return }
 
         // remove the nullable attribute if it is false
         this.items.map(x => {

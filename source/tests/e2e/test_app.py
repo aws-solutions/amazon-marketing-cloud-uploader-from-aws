@@ -17,7 +17,7 @@ def browser():
     chrome_options = Options()
     # Make sure the window is large enough in headless mode so that all
     # the elements on the page are visible
-    chrome_options.add_argument("--headless")
+    # chrome_options.add_argument("--headless")
     chrome_options.add_argument("--window-size=1920,1080")
     chrome_options.add_argument("--start-maximized")
     from selenium import webdriver
@@ -86,13 +86,20 @@ def test_everything(browser, test_environment, stack_resources):
 
     assert s3_key_text == keys
 
+    # validate add to existing dataset button triggers select data dropdown
+    browser.find_element("xpath", "/html/body/div/div/div/div[2]/div/div[2]/div[1]/div[3]/div[2]/label/span").click()
+    assert browser.find_element("xpath", "/html/body/div/div/div/div[2]/div/div[2]/div[1]/div[4]/select")
+
+    # validate create dataset button triggers name form field
+    browser.find_element("xpath", "/html/body/div/div/div/div[2]/div/div[2]/div[1]/div[3]/div[1]/label/span").click()
+    assert browser.find_element("xpath", "/html/body/div/div/div/div[2]/div/div[2]/div[1]/div[4]/div[1]/div/input")
+
     # open Step 2
     browser.find_element(By.ID, "step2").click()
-    wait.until(EC.presence_of_element_located((By.ID, "dataset_type_options")))
     # Time period options should not be visible until we click FACT
     assert not len(browser.find_elements(By.ID, "time_period_options"))
     # select FACT dataset type
-    browser.find_element(By.XPATH, '//*[@id="dataset_type_options"]/div[1]/label/span').click()
+    browser.find_element("xpath", "/html/body/div/div/div/div[2]/div/div[2]/div[1]/div[4]/div[3]/div[1]/fieldset/div/div/div[1]/label/span").click()
     # Time period options should now be visible
     # and the first option should be selected by default
     assert len(browser.find_elements(By.ID, "time_period_options"))
