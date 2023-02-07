@@ -174,11 +174,11 @@ if timestamp_column:
 ###############################
 # DATA NORMALIZATION
 ###############################
+
 # df1 will contain integer, float, and datetime columns 
 df1 = df.select_dtypes(exclude=[object])
 # df2 will contain string columns
 df2 = df.select_dtypes(include=[object])
-
 
 def address_transformations(text):
     text = addressNormalizer.normalize(text).normalizedAddress
@@ -200,32 +200,37 @@ def phone_transformations(text):
     text = phoneNormalizer.normalize(text).normalizedPhone
     return text
 
-
-# This regex expression matches a sha256 hash value.
-# Sha256 hash codes are 64 consecutive hexadecimal digits, a-f and 0-9.
-# We'll use this pattern to avoid normalizing and hashing values that are already hashed.
-sha256_pattern = "^[a-f0-9]{64}$"
+# Use this function to skip records that are null or already hashed
+def skip_record_flag(text):
+    # This regex expression matches a sha256 hash value.
+    # Sha256 hash codes are 64 consecutive hexadecimal digits, a-f and 0-9.
+    sha256_pattern = "^[a-f0-9]{64}$"
+    if pd.isnull(text) or re.match(sha256_pattern, text):
+        return True
 
 for field in pii_fields:
     column_name = field['column_name']
     if field['pii_type'] == "ADDRESS":
         df2[column_name] = df2[column_name].copy().apply(
-            lambda x: x if re.match(sha256_pattern, x) else address_transformations(x))
+            lambda x: x if skip_record_flag(x) else address_transformations(x))
     elif field['pii_type'] == "STATE":
         df2[column_name] = df2[column_name].copy().apply(
-            lambda x: x if re.match(sha256_pattern, x) else state_transformations(x))
+            lambda x: x if skip_record_flag(x) else state_transformations(x))
     elif field['pii_type'] == "ZIP":
         df2[column_name] = df2[column_name].copy().apply(
-            lambda x: x if re.match(sha256_pattern, x) else zip_transformations(x))
+            lambda x: x if skip_record_flag(x) else zip_transformations(x))
     elif field['pii_type'] == "PHONE":
         df2[column_name] = df2[column_name].copy().apply(
-            lambda x: x if re.match(sha256_pattern, x) else phone_transformations(x))
+            lambda x: x if skip_record_flag(x) else phone_transformations(x))
     elif field['pii_type'] == "EMAIL":
-        df2[column_name] = df2[column_name].copy().apply(lambda x: x.lower())
+        df2[column_name] = df2[column_name].copy().apply(
+            lambda x: x if skip_record_flag(x) else x.lower())
         df2[column_name].replace("[^\w.@-]", "", inplace=True, regex=True)
-        df2[column_name] = df2[column_name].copy().apply(lambda x: normalize_email(x))
+        df2[column_name] = df2[column_name].copy().apply(
+            lambda x: x if skip_record_flag(x) else normalize_email(x))
     else:
-        df2[column_name] = df2[column_name].copy().apply(lambda x: x.lower())
+        df2[column_name] = df2[column_name].copy().apply(
+            lambda x: x if skip_record_flag(x) else x.lower())
         # convert characters ß, ä, ö, ü, ø, æ 
         df2[column_name].replace("ß", "ss", inplace=True)
         df2[column_name].replace("ä", "ae", inplace=True)
@@ -242,10 +247,8 @@ for field in pii_fields:
 
 for field in pii_fields:
     column_name = field['column_name']
-    # If the column value looks like a sha256 hash, then don't hash it again.
-    # This allows users to import datasets that have already been hashed.
     df2[column_name] = df2[column_name].copy().apply(
-        lambda x: x if re.match(sha256_pattern, x) else hashlib.sha256(x.encode()).hexdigest())
+        lambda x: x if skip_record_flag(x) else hashlib.sha256(x.encode()).hexdigest())
 
 df = pd.concat([df1, df2], axis=1)
 
