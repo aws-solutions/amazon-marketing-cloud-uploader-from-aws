@@ -16,14 +16,18 @@ SPDX-License-Identifier: Apache-2.0
             <h3>Confirm Details</h3>
             <b-row>
               <b-col sm="7">
-                <p v-if="isValid">Click Submit to record this dataset in AMC.</p>
-                <p v-else class="text-danger">Invalid dataset. Verify that your dataset definition is complete.</p>
+                <p v-if="isValid">
+                  Click Submit to record this dataset in AMC.
+                </p>
+                <p v-else class="text-danger">
+                  Invalid dataset. Verify that your dataset definition is complete.
+                </p>
               </b-col>
               <b-col sm="3" align="right">
                 <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push({path: '/step4'})">
                   Previous
                 </button> &nbsp;
-                <button type="submit" class="btn btn-primary mb-2" @click="onSubmit" :disabled="!isValid || isBusy">
+                <button type="submit" class="btn btn-primary mb-2" :disabled="!isValid || isBusy" @click="onSubmit">
                   Submit
                   <b-spinner v-if="isBusy" style="vertical-align: sub" small label="Spinning"></b-spinner>
                 </button>
@@ -34,7 +38,7 @@ SPDX-License-Identifier: Apache-2.0
                 <h5>Input files:</h5>
                 <div v-if="s3key !== ''">
                   <ul>
-                    <li v-for="item in s3key.split(',')">
+                    <li v-for="(item, index) in s3key.split(',')" :key=item>
                       {{ "s3://" + DATA_BUCKET_NAME + "/" + item }}
                     </li>
                   </ul>
@@ -43,24 +47,27 @@ SPDX-License-Identifier: Apache-2.0
                   <br>
                 </div>
                 <h5>Destinations:</h5>
-                <ul>
-                <li v-for="endpoint in destination_endpoints">
-                  <div v-if="endpoint_request(endpoint).is_busy">
-                    {{ endpoint }} <b-spinner small></b-spinner>
-                  </div>
-                  <div v-else>
-                    <div v-if="endpoint_request(endpoint).status === '{}'">
-                      {{ endpoint }} (<b-link variant="link" @click="onClickMonitor(endpoint)">monitor</b-link>)
-                    </div>
-                    <div v-else-if="endpoint_request(endpoint).status.toLowerCase().includes('error')">
-                      {{ endpoint }} <p class="text-danger" style="display:inline"><br>{{ endpoint_request(endpoint).status }}</p>
+                <ul><li v-for="item in s3key.split(',')" :key=item>
+                  <li v-for="endpoint in destination_endpoints" :key="endpoint">
+                    <div v-if="endpoint_request(endpoint).is_busy">
+                      {{ endpoint }} <b-spinner small></b-spinner>
                     </div>
                     <div v-else>
-                      {{ endpoint }}
+                      <div v-if="endpoint_request(endpoint).status === '{}'">
+                        {{ endpoint }} (<b-link variant="link" @click="onClickMonitor(endpoint)">
+                          monitor
+                        </b-link>)
+                      </div>
+                      <div v-else-if="endpoint_request(endpoint).status.toLowerCase().includes('error')">
+                        {{ endpoint }} <p class="text-danger" style="display:inline">
+                          <br>{{ endpoint_request(endpoint).status }}
+                        </p>
+                      </div>
+                      <div v-else>
+                        {{ endpoint }}
+                      </div>
                     </div>
-                  </div>
-                  <div v-else></div>
-                </li>
+                  </li>
                 </ul>
                 <br>
                 <h5>Dataset Attributes:</h5>

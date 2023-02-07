@@ -69,9 +69,9 @@ SPDX-License-Identifier: Apache-2.0
         <hr>
         Settings
         <b-link
-            id="settings"
-            to="/settings"
-            :class="{ active: isSettingsActive }"
+          id="settings"
+          to="/settings"
+          :class="{ active: isSettingsActive }"
         >
           <br>
           AMC Instances

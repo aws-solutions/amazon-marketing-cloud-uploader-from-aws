@@ -14,9 +14,9 @@ SPDX-License-Identifier: Apache-2.0
           </b-col>
           <b-col cols="10">
             <b-alert
-                v-model="showServerError"
-                variant="danger"
-                dismissible
+              v-model="showServerError"
+              variant="danger"
+              dismissible
             >
               Server error. Failed to get AMC instance list. See Cloudwatch logs for API resource, /system/configuration.
             </b-alert>
@@ -25,7 +25,9 @@ SPDX-License-Identifier: Apache-2.0
               <b-card-header header-tag="header" class="p-2" role="tab">
                 <b-row>
                   <b-col>
-                    <h5 class="mb-0">AMC Endpoint Selector</h5>
+                    <h5 class="mb-0">
+                      AMC Endpoint Selector
+                    </h5>
                   </b-col>
                   <b-col align="right">
                     <b-button v-b-toggle:amc-selector @click="changeAmcSelectorVisibility">
@@ -34,9 +36,11 @@ SPDX-License-Identifier: Apache-2.0
                   </b-col>
                 </b-row>
               </b-card-header>
-              <b-collapse v-model="amc_selector_visible" id="amc-selector">
+              <b-collapse id="amc-selector" v-model="amc_selector_visible">
                 <b-card-body>
-                  <p class="text-secondary">Click a row in the table to select an AMC endpoint.</p>
+                  <p class="text-secondary">
+                    Click a row in the table to select an AMC endpoint.
+                  </p>
 
                   <b-row>
                     <b-col lg="6" class="my-1">
@@ -56,43 +60,49 @@ SPDX-License-Identifier: Apache-2.0
                             placeholder="Type to Search"
                           ></b-form-input>
                           <b-input-group-append>
-                            <b-button :disabled="!filter" @click="filter = ''">Clear</b-button>
+                            <b-button :disabled="!filter" @click="filter = ''">
+                              Clear
+                            </b-button>
                           </b-input-group-append>
                         </b-input-group>
                       </b-form-group>
                     </b-col>
                     <b-col lg="6" class="my-1">
                       <b-form-group
-                          label="Filter On"
-                          description="Leave all unchecked to filter on all data"
-                          label-cols-sm="3"
-                          label-align-sm="right"
-                          label-size="sm"
-                          class="mb-0"
-                          v-slot="{ ariaDescribedby }"
+                        v-slot="{ ariaDescribedby }"
+                        label="Filter On"
+                        description="Leave all unchecked to filter on all data"
+                        label-cols-sm="3"
+                        label-align-sm="right"
+                        label-size="sm"
+                        class="mb-0"
                       >
                         <b-form-checkbox-group
-                            v-model="filterOn"
-                            :aria-describedby="ariaDescribedby"
-                            class="mt-1"
+                          v-model="filterOn"
+                          :aria-describedby="ariaDescribedby"
+                          class="mt-1"
                         >
-                          <b-form-checkbox value="name">Endpoint</b-form-checkbox>
-                          <b-form-checkbox value="tag_list">Tags</b-form-checkbox>
+                          <b-form-checkbox value="name">
+                            Endpoint
+                          </b-form-checkbox>
+                          <b-form-checkbox value="tag_list">
+                            Tags
+                          </b-form-checkbox>
                         </b-form-checkbox-group>
                       </b-form-group>
                     </b-col>
                   </b-row>
                   <b-table
-                      :items="formattedItems"
-                      :fields="available_amc_instances_fields"
-                      :current-page="currentPageAmcInstances"
-                      :per-page="perPageAmcInstances"
-                      :filter="filter"
-                      :filter-included-fields="filterOn"
-                      @filtered="onFiltered"
-                      :busy="isBusy4"
-                      show-empty
-                      small
+                    :items="formattedItems"
+                    :fields="available_amc_instances_fields"
+                    :current-page="currentPageAmcInstances"
+                    :per-page="perPageAmcInstances"
+                    :filter="filter"
+                    :filter-included-fields="filterOn"
+                    :busy="isBusy4"
+                    show-empty
+                    small
+                    @filtered="onFiltered"
                   >
                     <template #table-busy>
                       <div class="text-center my-2">
@@ -101,34 +111,38 @@ SPDX-License-Identifier: Apache-2.0
                       </div>
                     </template>
                     <template #cell(actions)="row">
-                      <b-button size="sm" @click="selectEndpoint(row.item.endpoint)" class="mr-1" v-if="selected_endpoint !== row.item.endpoint">
+                      <b-button v-if="selected_endpoint !== row.item.endpoint" size="sm" class="mr-1" @click="selectEndpoint(row.item.endpoint)">
                         Select
                       </b-button>
-                      <b-button size="sm" @click="unselectEndpoint(row.item.endpoint)" class="mr-1" v-if="selected_endpoint === row.item.endpoint">
+                      <b-button v-if="selected_endpoint === row.item.endpoint" size="sm" class="mr-1" @click="unselectEndpoint()">
                         Unselect
                       </b-button>
                     </template>
                   </b-table>
                   <b-pagination
-                      v-if="available_amc_instances.length > perPageAmcInstances"
-                      v-model="currentPageAmcInstances"
-                      align="center"
-                      :per-page="perPageAmcInstances"
-                      :total-rows="rowsAmcInstances"
-                      aria-controls="shotTable"
+                    v-if="available_amc_instances.length > perPageAmcInstances"
+                    v-model="currentPageAmcInstances"
+                    align="center"
+                    :per-page="perPageAmcInstances"
+                    :total-rows="rowsAmcInstances"
+                    aria-controls="shotTable"
                   ></b-pagination>
                 </b-card-body>
               </b-collapse>
             </b-card>
             <div v-if="selected_endpoint === '' && isBusy4 === false">
-              <p class="text-danger">Choose an AMC endpoint from the table shown above.</p>
+              <p class="text-danger">
+                Choose an AMC endpoint from the table shown above.
+              </p>
             </div>
             <div v-else>
               <hr>
               <b-row>
                 <b-col cols="10">
                   <h3>Datasets</h3>
-                  <p class="text-secondary" v-if="!showAmcApiError">Showing datasets from AMC endpoint <em>{{ selected_endpoint === '' ? "none" : selected_endpoint }}</em></p>
+                  <p v-if="!showAmcApiError" class="text-secondary">
+                    Showing datasets from AMC endpoint <em>{{ selected_endpoint === '' ? "none" : selected_endpoint }}</em>
+                  </p>
                 </b-col>
                 <b-col align="right">
                   <b-button @click="list_datasets()">
@@ -137,7 +151,9 @@ SPDX-License-Identifier: Apache-2.0
                 </b-col>
               </b-row>
               <div v-if="showAmcApiError">
-                <p class="text-danger">Error listing datasets from endpoint <em>{{ selected_endpoint}}</em></p>
+                <p class="text-danger">
+                  Error listing datasets from endpoint <em>{{ selected_endpoint }}</em>
+                </p>
               </div>
               <div v-else>
                 <b-table 
@@ -204,10 +220,14 @@ SPDX-License-Identifier: Apache-2.0
                 <b-col>
                   <h3>Uploads</h3>
                   <div v-if="selected_dataset">
-                    <p class="text-secondary">Showing uploads for <em>{{ selected_dataset }}</em></p>
+                    <p class="text-secondary">
+                      Showing uploads for <em>{{ selected_dataset }}</em>
+                    </p>
                   </div>
                   <div v-else>
-                    <p class="text-danger">Please select a dataset from the table above.</p>
+                    <p class="text-danger">
+                      Please select a dataset from the table above.
+                    </p>
                   </div>
                 </b-col>
                 <b-col v-if="selected_dataset" align="right">
@@ -217,16 +237,16 @@ SPDX-License-Identifier: Apache-2.0
                 </b-col>
                 <div v-if="selected_dataset">
                   <b-table
-                      :items="uploads"
-                      :fields="upload_fields"
-                      :busy="isBusy3"
-                      :per-page="perPage2"
-                      :current-page="currentPage2"
-                      sort-by="dateCreated"
-                      :sort-desc="true"
-                      show-empty
-                      small
-                      responsive="sm"
+                    :items="uploads"
+                    :fields="upload_fields"
+                    :busy="isBusy3"
+                    :per-page="perPage2"
+                    :current-page="currentPage2"
+                    sort-by="dateCreated"
+                    :sort-desc="true"
+                    show-empty
+                    small
+                    responsive="sm"
                   >
                     <template #empty>
                       This dataset has not been uploaded.
@@ -261,12 +281,12 @@ SPDX-License-Identifier: Apache-2.0
                     </template>
                   </b-table>
                   <b-pagination
-                      v-if="uploads.length > perPage2"
-                      v-model="currentPage2"
-                      align="center"
-                      :per-page="perPage2"
-                      :total-rows="rows2"
-                      aria-controls="shotTable"
+                    v-if="uploads.length > perPage2"
+                    v-model="currentPage2"
+                    align="center"
+                    :per-page="perPage2"
+                    :total-rows="rows2"
+                    aria-controls="shotTable"
                   ></b-pagination>
                 </div>
               </b-row>
@@ -274,7 +294,9 @@ SPDX-License-Identifier: Apache-2.0
               <b-row>
                 <b-col>
                   <h3>AWS Glue Jobs</h3>
-                  <p class="text-secondary">Data transformation history.</p>
+                  <p class="text-secondary">
+                    Data transformation history.
+                  </p>
                 </b-col>
                 <b-col align="right">
                   <b-button @click="get_etl_jobs()">
@@ -448,6 +470,13 @@ SPDX-License-Identifier: Apache-2.0
         return this.available_amc_instances.length
       },
     },
+    watch: {
+      //  whenever the endpoint selection changes this function will run
+      selected_endpoint() {
+        this.datasets = []
+        if (this.selected_endpoint !== '') this.list_datasets()
+      }
+    },
     deactivated: function () {
       console.log('deactivated');
     },
@@ -465,13 +494,6 @@ SPDX-License-Identifier: Apache-2.0
       this.selected_endpoint = this.amc_monitor
       this.amc_selector_visible = this.amc_selector_visible_state
     },
-    watch: {
-      //  whenever the endpoint selection changes this function will run
-      selected_endpoint() {
-        this.datasets = []
-        if (this.selected_endpoint !== '') this.list_datasets()
-      }
-    },
     methods: {
       changeAmcSelectorVisibility() {
         this.$store.commit('updateAmcSelectorVisibility', !this.amc_selector_visible)
@@ -486,7 +508,7 @@ SPDX-License-Identifier: Apache-2.0
         this.selected_dataset = ''
         this.$store.commit('updateAmcMonitor', this.selected_endpoint)
       },
-      unselectEndpoint(endpoint) {
+      unselectEndpoint() {
         this.selected_endpoint = ''
         this.selected_dataset = ''
       },
@@ -505,7 +527,6 @@ SPDX-License-Identifier: Apache-2.0
       },
       async delete_dataset(data) {
         const apiName = 'amcufa-api'
-        let response = ""
         const method = 'POST'
         const resource = 'delete_dataset'
         try {
@@ -514,7 +535,7 @@ SPDX-License-Identifier: Apache-2.0
             headers: {'Content-Type': 'application/json'},
             body: data
           };
-          response = await this.$Amplify.API.post(apiName, resource, requestOpts);
+          await this.$Amplify.API.post(apiName, resource, requestOpts);
         }
         catch (e) {
           console.log("ERROR: " + e)
@@ -555,7 +576,6 @@ SPDX-License-Identifier: Apache-2.0
       async list_datasets() {
         this.showAmcApiError = false
         const apiName = 'amcufa-api'
-        let response = ""
         const method = 'POST'
         const data = {'destination_endpoint': this.selected_endpoint}
         const resource = 'list_datasets'
