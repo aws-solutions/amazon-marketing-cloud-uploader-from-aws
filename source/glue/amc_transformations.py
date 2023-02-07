@@ -67,6 +67,7 @@ addressNormalizer = AddressNormalizer(country_code)
 stateNormalizer = StateNormalizer(country_code)
 zipNormalizer = ZipNormalizer(country_code)
 phoneNormalizer = PhoneNormalizer(country_code)
+emailNormalizer = EmailNormalizer()
 
 ###############################
 # PARSE ARGS
@@ -198,9 +199,9 @@ def state_transformations(text):
     text = stateNormalizer.normalize(text).normalizedState.lower()
     return text
 
-def normalize_email(text):
-    email_normalize = EmailNormalizer(text)
-    return email_normalize.normalize()
+def email_transformations(text):
+    text = emailNormalizer.normalize(text).normalizedEmail
+    return text
 
 def zip_transformations(text):
     text = zipNormalizer.normalize(text).normalizedZip
@@ -235,10 +236,7 @@ for field in pii_fields:
             lambda x: x if skip_record_flag(x) else phone_transformations(x))
     elif field['pii_type'] == "EMAIL":
         df[column_name] = df[column_name].copy().apply(
-            lambda x: x if skip_record_flag(x) else x.lower())
-        df[column_name].replace("[^\w.@-]", "", inplace=True, regex=True)
-        df[column_name] = df[column_name].copy().apply(
-            lambda x: x if skip_record_flag(x) else normalize_email(x))
+            lambda x: x if skip_record_flag(x) else email_transformations(x))
     else:
         df[column_name] = df[column_name].copy().apply(
             lambda x: x if skip_record_flag(x) else x.lower())
