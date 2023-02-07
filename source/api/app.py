@@ -69,7 +69,7 @@ def list_datasets():
     """
     log_request_parameters()
     try:
-        destination_endpoint = app.current_request.json_body['destination_endpoint']
+        destination_endpoint = app.current_request.json_body['body']['destination_endpoint']
         path = '/dataSets'
         response = sigv4.get(destination_endpoint, path)
         return Response(body=response.text,
@@ -93,7 +93,7 @@ def create_dataset():
     log_request_parameters()
     try:
         body = app.current_request.json_body['body']
-        destination_endpoint = app.current_request.json_body['destination_endpoint']
+        destination_endpoint = app.current_request.json_body['body']['destination_endpoint']
         if body['period'] == 'autodetect':
             # Initialize the dataset period to P1D. This will be updated later
             # when the AWS Glue job measures the actual dataset period.
@@ -196,7 +196,7 @@ def upload_status():
     try:
         data_set_id = app.current_request.json_body['dataSetId']
         upload_id = app.current_request.json_body['uploadId']
-        destination_endpoint = app.current_request.json_body['destination_endpoint']
+        destination_endpoint = app.current_request.json_body['body']['destination_endpoint']
         path = data + data_set_id + '/uploads/' + upload_id
         response = sigv4.get(destination_endpoint, path)
         return Response(body=response.text,
@@ -221,7 +221,7 @@ def list_uploads():
     log_request_parameters()
     try:
         data_set_id = app.current_request.json_body['dataSetId']
-        destination_endpoint = app.current_request.json_body['destination_endpoint']
+        destination_endpoint = app.current_request.json_body['body']['destination_endpoint']
         next_token = ''
         if "nextToken" in app.current_request.json_body:
             next_token = app.current_request.json_body['nextToken']
@@ -249,7 +249,7 @@ def delete_dataset():
     log_request_parameters()
     try:
         data_set_id = app.current_request.json_body['dataSetId']
-        destination_endpoint = app.current_request.json_body['destination_endpoint']
+        destination_endpoint = app.current_request.json_body['body']['destination_endpoint']
         # Step 1/2: delete uploaded data
         # This should delete any data files that customers uploaded for either FACT or DIMENSION datasets
         current_datetime = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
