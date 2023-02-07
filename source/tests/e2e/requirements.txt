@@ -1,6 +1,5 @@
-pytest
-requests
+-r ../../requirements-dev.txt
 requests_aws4auth
 webdriver-manager
 selenium
-boto3
+phonenumbers
