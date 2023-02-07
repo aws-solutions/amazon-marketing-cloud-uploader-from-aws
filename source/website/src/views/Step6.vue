@@ -484,6 +484,7 @@ SPDX-License-Identifier: Apache-2.0
       selectEndpoint(endpoint) {
         this.selected_endpoint = endpoint
         this.selected_dataset = ''
+        this.$store.commit('updateAmcMonitor', this.selected_endpoint)
       },
       unselectEndpoint(endpoint) {
         this.selected_endpoint = ''
@@ -612,9 +613,8 @@ SPDX-License-Identifier: Apache-2.0
           if (response.length > 0 && "Value" in response[0]) {
             this.available_amc_instances = response[0]["Value"]
             // If there is only one registered AMC Instance, then select that one by default: 
-            if (response.length === 1) {
+            if (this.available_amc_instances.length === 1) {
               this.selected_endpoint = this.available_amc_instances[0].endpoint
-              this.$store.commit('updateAmcMonitor', this.selected_endpoint)
             }
           } else {
             this.$router.push({path: '/settings'})
