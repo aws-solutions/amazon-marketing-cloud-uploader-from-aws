@@ -154,7 +154,7 @@ exit 1
 fi
 
 # Get reference for all important folders
-build_dir="$PWD"
+build_dir="$PWD/deployment"
 source_dir="$build_dir/../source"
 consumer_dir="$build_dir/../source/consumer"
 global_dist_dir="$build_dir/global-s3-assets"
@@ -205,7 +205,7 @@ mkdir -p "$regional_dist_dir"/website/
 echo "------------------------------------------------------------------------------"
 echo "Building Lambda Layers"
 echo "------------------------------------------------------------------------------"
-cd "$build_dir"/lambda_layer_factory/ || exit 1
+cd "$"/lambda_layer_factory/ || exit 1
 echo "Running build-lambda-layer.sh"
 rm -rf lambda_layer-python-* lambda_layer-python*.zip
 if `./build-lambda-layer.sh requirements.txt > /dev/null`; then
