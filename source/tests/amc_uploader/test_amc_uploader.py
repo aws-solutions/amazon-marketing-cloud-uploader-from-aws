@@ -21,8 +21,8 @@ def test_is_dataset(mock_env_variables):
 
 def test_is_timeseries(mock_env_variables):
     from amc_uploader.amc_uploader import _is_timeseries
-    assert _is_timeseries("amc/dataset_id/timeseries_partition_size/filename") == False
-    assert _is_timeseries("amc/dataset_id/PT1M/filename") == True
-    assert _is_timeseries("amc/dataset_id/PT1H/filename") == True
-    assert _is_timeseries("amc/dataset_id/P1D/filename") == True
-    assert _is_timeseries("amc/dataset_id/P7D/filename") == True
+    assert _is_timeseries("amc/dataset_id/timeseries_partition_size/"+os.environ['AMC_ENDPOINT_URL']+"/filename") == False
+    assert _is_timeseries("amc/dataset_id/PT1M/"+os.environ['AMC_ENDPOINT_URL']+"/filename") == True
+    assert _is_timeseries("amc/dataset_id/PT1H/"+os.environ['AMC_ENDPOINT_URL']+"/filename") == True
+    assert _is_timeseries("amc/dataset_id/P1D/"+os.environ['AMC_ENDPOINT_URL']+"/filename") == True
+    assert _is_timeseries("amc/dataset_id/P7D/"+os.environ['AMC_ENDPOINT_URL']+"/filename") == True
