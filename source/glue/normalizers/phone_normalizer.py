@@ -38,5 +38,4 @@ class PhoneNormalizer:
                 ).replace("+", "")
             else:
                 self.normalizedPhone = ""
-        finally:
-            return self
+        return self

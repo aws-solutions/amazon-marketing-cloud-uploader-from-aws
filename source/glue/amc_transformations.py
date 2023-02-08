@@ -32,13 +32,13 @@
 #    export DELETED_FIELDS='[\"customer_id\",\"purchase_id\"]'
 #    export DATASET_ID='mytest123'
 #    export REGION=us-east-1
-#    aws glue start-job-run --job-name $JOB_NAME --arguments '{"--source_bucket": "'$SOURCE_BUCKET'", "--output_bucket": "'$OUTPUT_BUCKET'", "--source_key": "'$SOURCE_KEY'", "--pii_fields": "'$PII_FIELDS'", "--deleted_fields": "'$DELETED_FIELDS'", "--timestamp_column": "'$TIMESTAMP_COLUMN'", "--dataset_id": "'$DATASET_ID'", "--period": "autodetect"}' --region $REGION
+#    aws glue start-job-run --job-name $JOB_NAME --arguments '{"--source_bucket": "'$SOURCE_BUCKET'", "--output_bucket": "'$OUTPUT_BUCKET'", "--source_key": "'$SOURCE_KEY'", "--pii_fields": "'$PII_FIELDS'",
+#    "--deleted_fields": "'$DELETED_FIELDS'", "--timestamp_column": "'$TIMESTAMP_COLUMN'", "--dataset_id": "'$DATASET_ID'", "--period": "autodetect"}' --region $REGION
 #
 ###############################################################################
 
 import hashlib
 import json
-import re
 import sys
 from datetime import datetime
 
@@ -133,7 +133,7 @@ try:
     timestamp_column = getResolvedOptions(sys.argv, ["timestamp_column"])[
         "timestamp_column"
     ].strip()
-except GlueArgumentError as e:
+except GlueArgumentError:
     timestamp_column = None
 
 ###############################
@@ -285,7 +285,7 @@ for field in pii_fields:
         )
     elif field["pii_type"] == "EMAIL":
         df2[column_name] = df2[column_name].copy().apply(lambda x: x.lower())
-        df2[column_name].replace("[^\w.@-]", "", inplace=True, regex=True)
+        df2[column_name].replace(r"[^\w.@-]", "", inplace=True, regex=True)
         df2[column_name] = (
             df2[column_name].copy().apply(lambda x: normalize_email(x))
         )

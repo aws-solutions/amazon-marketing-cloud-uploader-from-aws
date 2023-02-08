@@ -1,17 +1,11 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-import json
 import logging
 import os
-import re
-import time
 
 import boto3
 import pytest
-import requests
-import urllib3
-from requests_aws4auth import AWS4Auth
 
 # Fixture for retrieving env variables
 

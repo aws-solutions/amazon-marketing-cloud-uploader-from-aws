@@ -7,10 +7,10 @@ import logging
 import os
 
 import boto3
+from aws_xray_sdk.core import patch_all
 from botocore import config
 from chalice import Chalice, IAMAuthorizer, Response
 from chalicelib import sigv4
-from dateutil.tz import tzlocal
 
 solution_config = json.loads(os.environ["botoConfig"])
 config = config.Config(**solution_config)
@@ -30,8 +30,6 @@ logger.setLevel(logging.INFO)
 logger.addHandler(handler)
 
 # Patch libraries to instrument downstream calls
-from aws_xray_sdk.core import patch_all
-
 patch_all()
 
 # Initialization

@@ -18,8 +18,8 @@ def mock_env_variables():
 def test_is_dataset(mock_env_variables):
     from amc_uploader.amc_uploader import _is_dataset
 
-    assert _is_dataset("text.gz") == True
-    assert _is_dataset("text.zip") == False
+    assert _is_dataset("text.gz") is True
+    assert _is_dataset("text.zip") is False
 
 
 def test_is_timeseries(mock_env_variables):
@@ -27,9 +27,9 @@ def test_is_timeseries(mock_env_variables):
 
     assert (
         _is_timeseries("amc/dataset_id/timeseries_partition_size/filename")
-        == False
+        is False
     )
-    assert _is_timeseries("amc/dataset_id/PT1M/filename") == True
-    assert _is_timeseries("amc/dataset_id/PT1H/filename") == True
-    assert _is_timeseries("amc/dataset_id/P1D/filename") == True
-    assert _is_timeseries("amc/dataset_id/P7D/filename") == True
+    assert _is_timeseries("amc/dataset_id/PT1M/filename") is True
+    assert _is_timeseries("amc/dataset_id/PT1H/filename") is True
+    assert _is_timeseries("amc/dataset_id/P1D/filename") is True
+    assert _is_timeseries("amc/dataset_id/P7D/filename") is True

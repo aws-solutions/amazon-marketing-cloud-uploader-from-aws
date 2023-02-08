@@ -1376,7 +1376,7 @@ class Delimiter:
         self.type = type
 
     def Parse(self, text, start=None):
-        if start == None:
+        if start is None:
             start = 0
         delimiters = []
         a = list(DELIMITER_PATTERN_MAP.keys())
@@ -1454,7 +1454,7 @@ class NormalizedAddress:
     def updateAddressTokens(self, index, deleteCount, **kwargs):
         rest = []
 
-        for key, value in kwargs.items():
+        for _, value in kwargs.items():
             rest.append(value)
 
         self.addressTokens.pop(index)

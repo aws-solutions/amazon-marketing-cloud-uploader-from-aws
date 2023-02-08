@@ -154,7 +154,7 @@ sh deployment/run-unit-tests.sh
 ---
 
 ```
-./run-pre-commit.sh
+./run-pre-commit.sh --help
 ```
 
 
