@@ -218,7 +218,7 @@ jobs:
           echo "AMC_GLUE_JOB_ROLE_NAME=$AMC_GLUE_JOB_ROLE_NAME" >> $GITHUB_OUTPUT
           export AMC_GLUE_JOB_NAME=$AMC_GLUE_JOB_NAME
           export SYSTEM_TABLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id "SystemTable" --query "StackResources[0].PhysicalResourceId")
-          export AMC_API_ROLE_ARN="arn:aws:iam::$TEST_ACCOUNT_ID:role/$ROLE_NAME"
+          export AMC_API_ROLE_ARN="arn:aws:iam::${TEST_ACCOUNT_ID}:role/$ROLE_NAME"
           export TEST_S3_BUCKET_NAME=${{ secrets.DATA_BUCKET_NAME }}
           export AMC_API_ENDPOINT=${{ secrets.AMC_API_ENDPOINT }}
           export TEST_OUTPUT_BUCKET=$ARTIFACT_BUCKET
