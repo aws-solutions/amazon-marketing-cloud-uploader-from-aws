@@ -150,6 +150,13 @@ sh deployment/run-unit-tests.sh
 3. A new virtual environment should now be created with the script with test environment variables. The tests will also execute.
 4. A coverage report will be generated for SonarQube and can be viewed in the `tests/coverage-reports` directory.
 
+### Pre-Commit
+---
+
+```
+./run-pre-commit.sh
+```
+
 
 ## Collection of operational metrics
 

@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Invalid email addresses should normalize to empty string and added unit tests to github pr-workflow. [#63]
 - Add Import/Export to Step 3 (Define columns), so user can import or export column schema for AMC ingestion. [#48]
 - Use custom lambda layer for aws-xray-sdk [#68]
+- Add Pre-commit [#16]
 
 ### Changed
 
