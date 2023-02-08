@@ -60,6 +60,15 @@ SPDX-License-Identifier: Apache-2.0
         >
           DIMENSION datasets must not include a MainEventTime field.
         </b-alert>
+        <b-alert
+          variant="danger"
+          dismissible
+          fade
+          :show="showImportErrors"
+          @dismissed="showImportErrors=false"
+        >
+          {{ errorImportMessage }}
+        </b-alert>
         <b-row style="text-align: left">
           <b-col cols="2">
             <Sidebar :is-step3-active="true" />
@@ -86,7 +95,7 @@ SPDX-License-Identifier: Apache-2.0
                 </button>
               </b-col>
             </b-row>
-            <b-table 
+            <b-table
               :items="items"
               :fields="fields" 
               :busy="isBusy"
@@ -154,10 +163,17 @@ SPDX-License-Identifier: Apache-2.0
             </b-table>
             <b-row>
               <b-col></b-col>
-              <b-col sm="2" align="right" class="row align-items-end">
+              <b-col sm="4" align="right" class="row align-items-end">
+                <b-button v-b-tooltip.hover type="submit" title="Export column schema" variant="outline-primary" @click="onExport">
+                  Export
+                </b-button> &nbsp;
+                <b-button v-b-tooltip.hover type="submit" title="Import column schema" variant="outline-primary" @click="onBrowseImports">
+                  Import
+                </b-button>&nbsp;
                 <b-button type="submit" variant="outline-secondary" @click="onReset">
                   Reset
                 </b-button>
+                <b-form-file id="importFile" ref="file" accept="application/json" type="file" style="visibility: hidden" @change="onImport" />
               </b-col>
             </b-row>
           </b-col>
@@ -192,6 +208,8 @@ SPDX-License-Identifier: Apache-2.0
         items: [],
         columns: [],
         content_type: "",
+        showImportErrors: false,
+        errorImportMessage: "",
         fields: [
           { key: 'name', sortable: true },
           { key: 'description', sortable: false },
@@ -291,6 +309,92 @@ SPDX-License-Identifier: Apache-2.0
         this.send_request('POST', 'get_data_columns', {'s3bucket': this.DATA_BUCKET_NAME, 's3key':this.s3key})
         this.column_type_options.forEach(x => x.disabled = false)
         this.pii_type_options.forEach(x => x.disabled = false)
+      },
+      onExport() {
+        if (!this.validateForm()) return
+        const a = document.createElement("a");
+        const file = new Blob([JSON.stringify({"columns": this.items })], { type:  "application/json"});
+        a.href = URL.createObjectURL(file);
+        a.download = "amcufa_exported_schema_" + Date.now() + ".json";
+        a.click();
+        console.log("Schema Exported: ".concat(JSON.stringify({"columns": this.items })))
+      },
+      onBrowseImports(){
+        if (confirm("WARNING: This will reset the columns!")) {
+          document.getElementById('importFile').click()
+        }
+      },
+      showImportAlert(errorMessage){
+        this.errorImportMessage = errorMessage
+        this.showImportErrors = true
+      },
+      onImport(e){
+          let files = e.target.files || e.dataTransfer.files;
+          if (!files.length) return;
+          let reader = new FileReader();
+          reader.onload = e => {
+            console.log("Imported schema: ".concat(e.target.result))
+            let importJson = null;
+            try {
+              importJson = JSON.parse(e.target.result);
+            } catch(e) { 
+              console.log(e)
+              this.showImportAlert("Invalid Schema: Json file is invalid");
+              return 
+            } finally {
+              this.$refs['file'].reset()
+            }
+
+            if(importJson.constructor != Object){
+              this.showImportAlert("Invalid Schema: Expecting a dictionary.");
+              return
+            }
+            if (!Object.keys(importJson).length){
+              this.showImportAlert("Invalid Schema: Json file is empty.");
+              return
+            }
+            if (!("columns" in importJson)){
+              this.showImportAlert("Invalid Schema: columns key is required in imported schema.");
+              return
+            }
+            if (importJson.columns.constructor.name != "Array"){
+              this.showImportAlert("Invalid Schema: Expecting an array type for columns key.");
+              return
+            }
+            if (!importJson.columns.length){
+              this.showImportAlert("Invalid Schema: columns key is empty.");
+              return
+            }
+
+            let valid_keys = ["name", "description", "data_type", "column_type", "pii_type", "nullable"]
+            for (var column_index in importJson.columns){
+                let column = importJson.columns[column_index]
+                for (var key in column){
+                if (!valid_keys.includes(key)){
+                  this.showImportAlert("Invalid Schema: Only these valid column keys ".concat(valid_keys).concat(" are required."));
+                  return
+                } 
+              }
+            }
+           
+            this.isBusy = true;
+            this.column_type_options.forEach(x => x.disabled = false)
+            this.pii_type_options.forEach(x => x.disabled = false)
+            this.items = importJson.columns.map(x => {return {
+                "name": x.name,
+                "description": x.description.charAt(0).toUpperCase() + x.description.replace(/[^a-zA-Z0-9]/g, ' ').slice(1),
+                "data_type": x.data_type,
+                "column_type": x.column_type,
+                "pii_type": x.pii_type,
+                "nullable": x.nullable
+              }
+            })
+            this.$store.commit('saveStep3FormInput', this.items)
+            this.isBusy = false;
+            this.showImportErrors = false
+            console.log("Schema Imported.")
+          };
+          reader.readAsText(files[0]);
       },
       validateForm() {
         // All fields must have values.
