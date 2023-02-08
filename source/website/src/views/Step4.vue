@@ -112,6 +112,8 @@ SPDX-License-Identifier: Apache-2.0
               :filter="filter"
               :filter-included-fields="filterOn"
               :busy="isBusy"
+              :current-page="currentPage"
+              :per-page="perPage"
               stacked="md"
               show-empty
               small
@@ -132,6 +134,14 @@ SPDX-License-Identifier: Apache-2.0
                 </b-button>
               </template>
             </b-table>
+            <b-pagination
+                v-if="formattedItems.length > perPage"
+                v-model="currentPage"
+                align="center"
+                :per-page="perPage"
+                :total-rows="formattedItems.length"
+                aria-controls="shotTable"
+            ></b-pagination>
             <div v-if="isBusy === false">
               <b-button size="sm" @click="selectAll">
                 Select all
@@ -159,6 +169,8 @@ SPDX-License-Identifier: Apache-2.0
     },
     data() {
       return {
+        currentPage: 1,
+        perPage: 5,
         isBusy: false,
         isStep4Active: true,
         available_amc_instances: [{"endpoint": "","data_upload_account_id": "", "tags": []}],

@@ -59,6 +59,8 @@ SPDX-License-Identifier: Apache-2.0
                 :items="amcInstances"
                 :fields="fields"
                 :busy="isBusy"
+                :current-page="currentPage"
+                :per-page="perPage"
                 responsive="sm"
                 small
                 fixed
@@ -108,6 +110,14 @@ SPDX-License-Identifier: Apache-2.0
                   </b-link>
                 </template>
               </b-table>
+              <b-pagination
+                  v-if="amcInstances.length > perPage"
+                  v-model="currentPage"
+                  align="center"
+                  :per-page="perPage"
+                  :total-rows="amcInstances.length"
+                  aria-controls="shotTable"
+              ></b-pagination>
               <b-row>
                 <b-col align="left">
                   <b-button id="import_button" type="button" variant="outline-secondary" class="mb-2" @click="onImport">
@@ -156,6 +166,8 @@ SPDX-License-Identifier: Apache-2.0
         dismissSecs: 5,
         showSuccessCountDown: 0,
         isBusy: false,
+        currentPage: 1,
+        perPage: 5,
         amcInstances: [{"endpoint": "","data_upload_account_id": "", "tags": []}],
         fields: [
           {key: 'endpoint', label: 'AMC Endpoint', sortable: true, thStyle: { width: '50%'}},
@@ -264,6 +276,8 @@ SPDX-License-Identifier: Apache-2.0
         this.read_system_configuration('GET', 'system/configuration')
       },
       onSubmit() {
+        // Reset the list of selected instances used on step 4
+        this.$store.commit('updateDestinations', [])
         this.save_system_configuration('POST', 'system/configuration', {"Name": "AmcInstances", "Value": this.amcInstances})
       },
       async save_system_configuration(method, resource, data) {

@@ -38,7 +38,7 @@ SPDX-License-Identifier: Apache-2.0
                 <h5>Input files:</h5>
                 <div v-if="s3key !== ''">
                   <ul>
-                    <li v-for="(item, index) in s3key.split(',')" :key=item>
+                    <li v-for="item in s3key.split(',')" :key=item>
                       {{ "s3://" + DATA_BUCKET_NAME + "/" + item }}
                     </li>
                   </ul>
@@ -47,7 +47,7 @@ SPDX-License-Identifier: Apache-2.0
                   <br>
                 </div>
                 <h5>Destinations:</h5>
-                <ul><li v-for="item in s3key.split(',')" :key=item>
+                <ul>
                   <li v-for="endpoint in destination_endpoints" :key="endpoint">
                     <div v-if="endpoint_request(endpoint).is_busy">
                       {{ endpoint }} <b-spinner small></b-spinner>
