@@ -12,10 +12,10 @@ SPDX-License-Identifier: Apache-2.0
           <p><strong>CSV</strong> files must include a header, be UTF-8 encoded, and comma delimited.</p>
           <p><strong>JSON</strong> files must contain one object per row of data. Each row must be a top-level object. No parent object or array may be present in the JSON file. An example of the accepted JSON format is shown below:</p>
           <pre>
-{"name": "Product A", "sku": 11352987, "quantity": 2, "pur_time": "2021-06-23T19:53:58Z"} 
-{"name": "Product B", "sku": 18467234, "quantity": 2, "pur_time": "2021-06-24T19:53:58Z"} 
-{"name": "Product C", "sku": 27264393, "quantity": 2, "pur_time": "2021-06-25T19:53:58Z"} 
-{"name": "Product A", "sku": 48572094, "quantity": 2, "pur_time": "2021-06-25T19:53:58Z"} 
+{"name": "Product A", "sku": 11352987, "quantity": 2, "pur_time": "2021-06-23T19:53:58Z"}
+{"name": "Product B", "sku": 18467234, "quantity": 2, "pur_time": "2021-06-24T19:53:58Z"}
+{"name": "Product C", "sku": 27264393, "quantity": 2, "pur_time": "2021-06-25T19:53:58Z"}
+{"name": "Product A", "sku": 48572094, "quantity": 2, "pur_time": "2021-06-25T19:53:58Z"}
 {"name": "Product B", "sku": 18278476, "quantity": 1, "pur_time": "2021-06-26T13:33:58Z"}
             </pre>
         </b-modal>
@@ -62,9 +62,9 @@ SPDX-License-Identifier: Apache-2.0
                 </b-col>
               </b-row>
             </div>
-            
+
             <div>
-              <b-table 
+              <b-table
                 ref="selectableTable"
                 :items="results"
                 :fields="fields"
@@ -104,7 +104,7 @@ SPDX-License-Identifier: Apache-2.0
   import Header from '@/components/Header.vue'
   import Sidebar from '@/components/Sidebar.vue'
   import { mapState } from 'vuex'
-  
+
   export default {
     name: "Step1",
     components: {
@@ -115,8 +115,8 @@ SPDX-License-Identifier: Apache-2.0
         isBusy: false,
         fields: [
           {key: 'selected'},
-          {key: 'key', sortable: true}, 
-          {key: 'last_modified', sortable: true}, 
+          {key: 'key', sortable: true},
+          {key: 'last_modified', sortable: true},
           {key: 'size', sortable: true}],
         new_s3key: '',
         isStep1Active: true,

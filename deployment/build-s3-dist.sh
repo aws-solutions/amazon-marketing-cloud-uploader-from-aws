@@ -8,7 +8,7 @@
 #
 # USAGE:
 #  ./build-s3-dist.sh [-h] [-v] --template-bucket {TEMPLATE_BUCKET} --code-bucket {CODE_BUCKET} --solution-name {SOLUTION_NAME} --version {VERSION} --region {REGION} [--profile {PROFILE}]
-#    TEMPLATE_BUCKET should be the name for the S3 bucket location where 
+#    TEMPLATE_BUCKET should be the name for the S3 bucket location where
 #      cloud formation templates should be saved.
 #    CODE_BUCKET should be the name for the S3 bucket location where cloud
 #      formation templates should find Lambda source code packages.
@@ -213,7 +213,7 @@ if `./build-lambda-layer.sh requirements.txt > /dev/null`; then
   echo "Lambda layer build script completed.";
 else
   echo "ERROR: Lambda layer build script failed."
-  exit 1 
+  exit 1
 fi
 mv lambda_layer_python3.9.zip "$regional_dist_dir"
 echo "Lambda layer file:"
@@ -320,7 +320,7 @@ echo "--------------------------------------------------------------------------
 # files from $regional_dist_dir/website to the WebsiteBucket (see web.yaml).  Since the manifest file is computed during build
 # time, the website_helper.py Lambda can use that to figure out what files to copy
 # instead of doing a list bucket operation, which would require ListBucket permission.
-# Furthermore, the S3 bucket used to host AWS solutions disallows ListBucket 
+# Furthermore, the S3 bucket used to host AWS solutions disallows ListBucket
 # access, so the only way to copy the website files from that bucket from
 # to WebsiteBucket is to use said manifest file.
 #
@@ -393,7 +393,7 @@ fi
 popd || exit 1
 zip -q -g ./dist/anonymous-data-logger.zip ./anonymous-data-logger.py
 cp "./dist/anonymous-data-logger.zip" "$regional_dist_dir/anonymous-data-logger.zip"
-# Finished building anonymous data logger 
+# Finished building anonymous data logger
 rm -rf ./dist ./package
 
 # Skip copy dist to S3 if building for solution builder because

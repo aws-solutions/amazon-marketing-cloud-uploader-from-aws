@@ -8,21 +8,21 @@ SPDX-License-Identifier: Apache-2.0
     <div class="headerTextBackground">
       <Header />
       <b-container fluid>
-        <b-alert 
-          v-model="showServerError" 
+        <b-alert
+          v-model="showServerError"
           variant="danger"
           dismissible
         >
-          Error reading file. See Cloudwatch logs for API resource, /api/get_data_columns. 
+          Error reading file. See Cloudwatch logs for API resource, /api/get_data_columns.
         </b-alert>
-        <b-alert 
-          v-model="showMissingDataAlert" 
+        <b-alert
+          v-model="showMissingDataAlert"
           variant="danger"
           dismissible
         >
-          Missing s3key. Go back and select a file. 
+          Missing s3key. Go back and select a file.
         </b-alert>
-        <b-alert 
+        <b-alert
           v-model="showSchemaError"
           variant="danger"
           dismissible
@@ -97,7 +97,7 @@ SPDX-License-Identifier: Apache-2.0
             </b-row>
             <b-table
               :items="items"
-              :fields="fields" 
+              :fields="fields"
               :busy="isBusy"
               head-variant="light"
               small
@@ -112,17 +112,17 @@ SPDX-License-Identifier: Apache-2.0
                 </b-link>
               </template>
               <template #cell(description)="data">
-                <b-form-input 
+                <b-form-input
                   :value="data.item.description"
                   @change="x => changeDescription(x, data.index)"
                 >
                 </b-form-input>
               </template>
               <template #cell(data_type)="data">
-                <b-form-select 
-                  id="dropdown-1" 
+                <b-form-select
+                  id="dropdown-1"
                   :options="data_type_options"
-                  :value="data.item.data_type" 
+                  :value="data.item.data_type"
                   @change="x => changeDataType(x, data.index)"
                 >
                 </b-form-select>
@@ -136,10 +136,10 @@ SPDX-License-Identifier: Apache-2.0
                 </b-form-checkbox>
               </template>
               <template #cell(column_type)="data">
-                <b-form-select 
-                  id="dropdown-column-type" 
+                <b-form-select
+                  id="dropdown-column-type"
                   :options="column_type_options"
-                  :value="data.item.column_type" 
+                  :value="data.item.column_type"
                   @change="x => changeColumnType(x, data.index)"
                 >
                 </b-form-select>
@@ -266,7 +266,7 @@ SPDX-License-Identifier: Apache-2.0
             errorItems: this.items.filter(x => x.column_type === '').map(x => x.name),
             errorType: 'Column Type'
           }
-        
+
         // return empty if no errors
         return {
             errorItems: [],
@@ -337,10 +337,10 @@ SPDX-License-Identifier: Apache-2.0
             let importJson = null;
             try {
               importJson = JSON.parse(e.target.result);
-            } catch(e) { 
+            } catch(e) {
               console.log(e)
               this.showImportAlert("Invalid Schema: Json file is invalid");
-              return 
+              return
             } finally {
               this.$refs['file'].reset()
             }
@@ -373,10 +373,10 @@ SPDX-License-Identifier: Apache-2.0
                 if (!valid_keys.includes(key)){
                   this.showImportAlert("Invalid Schema: Only these valid column keys ".concat(valid_keys).concat(" are required."));
                   return
-                } 
+                }
               }
             }
-           
+
             this.isBusy = true;
             this.column_type_options.forEach(x => x.disabled = false)
             this.pii_type_options.forEach(x => x.disabled = false)
@@ -434,14 +434,14 @@ SPDX-License-Identifier: Apache-2.0
         if (this.contains_hashed_identifier) {
           this.columns.push({
             "name": "user_id",
-            "description": "The customer resolved id", 
+            "description": "The customer resolved id",
             "dataType": "STRING",
             "nullable": true,
             "isMainUserId": true
           })
           this.columns.push({
             "name": "user_type",
-            "description": "The customer resolved type", 
+            "description": "The customer resolved type",
             "dataType": "STRING",
             "nullable": true,
             "isMainUserIdType": true
@@ -473,9 +473,9 @@ SPDX-License-Identifier: Apache-2.0
               "isMainEventTime": true
             }
             this.columns.push(column_definition)
-            
+
           })
-        
+
         // add identifiers for non-PII columns
         this.items.filter(x => (x.pii_type === "" && x.column_type !== 'isMainEventTime'))
           .forEach(x => {
@@ -490,14 +490,14 @@ SPDX-License-Identifier: Apache-2.0
           }
           )
         this.new_dataset_definition['columns'] = this.columns
-        if (this.content_type === "application/json") 
+        if (this.content_type === "application/json")
           this.new_dataset_definition['fileFormat'] = 'JSON'
         else if (this.content_type === "text/csv")
           this.new_dataset_definition['fileFormat'] = 'CSV'
         else
           console.log("ERROR: unrecognized content_type, " + this.content_type)
           this.showServerError = true;
-          
+
         this.$store.commit('updateDatasetDefinition', this.new_dataset_definition)
         this.$router.push('Step4')
       },
@@ -558,13 +558,13 @@ SPDX-License-Identifier: Apache-2.0
             response = await this.$Amplify.API.post(apiName, resource, requestOpts);
           }
           this.items = response.columns.map(x => {return {
-            "name": x, 
-            "description": x.charAt(0).toUpperCase() + x.replace(/[^a-zA-Z0-9]/g, ' ').slice(1), 
-            "data_type": "STRING", 
-            "column_type": "", 
+            "name": x,
+            "description": x.charAt(0).toUpperCase() + x.replace(/[^a-zA-Z0-9]/g, ' ').slice(1),
+            "data_type": "STRING",
+            "column_type": "",
             "pii_type": ""}
           }).filter(x => !this.deleted_columns.includes(x.name) )
-          
+
           // warn if table contains hashed identifiers and user_id or user_type columns
           const idx = this.items.findIndex((x => x.name === "user_id"))
           if (idx >= 0) {

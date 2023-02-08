@@ -79,38 +79,67 @@ FRStateAbbreviation = {
 }
 
 CAStateAbbreviation = {
-    "ALBERTA", "AB",
-    "BRITISHCOLUMBIA", "BC",
-    "MANITOBA", "MB",
-    "NEWBRUNSWICK", "NB",
-    "NEWFOUNDLANDANDLABRADOR", "NL",
-    "NORTHWESTTERRITORIES", "NT",
-    "NOVASCOTIA", "NS",
-    "NUNAVUT", "NU",
-    "ONTARIO", "ON",
-    "PRINCEEDWARDISLAND", "PE",
-    "QUEBEC", "QC",
-    "SASKATCHEWAN", "SK",
-    "YUKON", "YT",
+    "ALBERTA",
+    "AB",
+    "BRITISHCOLUMBIA",
+    "BC",
+    "MANITOBA",
+    "MB",
+    "NEWBRUNSWICK",
+    "NB",
+    "NEWFOUNDLANDANDLABRADOR",
+    "NL",
+    "NORTHWESTTERRITORIES",
+    "NT",
+    "NOVASCOTIA",
+    "NS",
+    "NUNAVUT",
+    "NU",
+    "ONTARIO",
+    "ON",
+    "PRINCEEDWARDISLAND",
+    "PE",
+    "QUEBEC",
+    "QC",
+    "SASKATCHEWAN",
+    "SK",
+    "YUKON",
+    "YT",
 }
 
 DEStateAbbreviation = {
-    "BADENWUERTTEMBERG", "BW",
-    "BAVARIA", "BY",
-    "BERLIN", "BE",
-    "BRANDENBURG", "BB",
-    "BREMEN", "HB",
-    "HAMBURG", "HH",
-    "HESSE", "HE",
-    "LOWERSAXONY", "NI",
-    "MECKLENBURGVORPOMMERN", "MV",
-    "NORTHRHINEWESTPHALIA", "NW",
-    "RHINELANDPALATINATE", "RP",
-    "SAARLAND", "SL",
-    "SAXONY", "SN",
-    "SAXONYANHALT", "ST",
-    "SCHLESWIGHOLSTEIN", "SH",
-    "THURINGIA", "TH",
+    "BADENWUERTTEMBERG",
+    "BW",
+    "BAVARIA",
+    "BY",
+    "BERLIN",
+    "BE",
+    "BRANDENBURG",
+    "BB",
+    "BREMEN",
+    "HB",
+    "HAMBURG",
+    "HH",
+    "HESSE",
+    "HE",
+    "LOWERSAXONY",
+    "NI",
+    "MECKLENBURGVORPOMMERN",
+    "MV",
+    "NORTHRHINEWESTPHALIA",
+    "NW",
+    "RHINELANDPALATINATE",
+    "RP",
+    "SAARLAND",
+    "SL",
+    "SAXONY",
+    "SN",
+    "SAXONYANHALT",
+    "ST",
+    "SCHLESWIGHOLSTEIN",
+    "SH",
+    "THURINGIA",
+    "TH",
 }
 
 ITStateAbbreviation = {
@@ -292,7 +321,8 @@ ESStateAbbreviation = {
     "ZAMORA": "ZA",
 }
 
-class StateNormalizer():
+
+class StateNormalizer:
     def __init__(self, countryCode):
         if countryCode == "US":
             self.stateAbbreviationMap = USStateAbbreviation
@@ -309,15 +339,16 @@ class StateNormalizer():
         # Countries without specific state abbreviations
         else:
             self.stateAbbreviationMap = dict()
-        
+
     def normalize(self, record):
         self.normalizedState = record.upper()
-        self.normalizedState = re.sub(r'[^A-Z]', '', self.normalizedState)
-        
+        self.normalizedState = re.sub(r"[^A-Z]", "", self.normalizedState)
+
         if self.normalizedState in self.stateAbbreviationMap:
-            self.normalizedState = self.stateAbbreviationMap.get(self.normalizedState)
+            self.normalizedState = self.stateAbbreviationMap.get(
+                self.normalizedState
+            )
         elif len(record) > 2:
             self.normalizedState = self.normalizedState[:2]
 
         return self
-

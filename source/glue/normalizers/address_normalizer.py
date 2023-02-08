@@ -17,9 +17,9 @@
 #   https://github.com/amzn/amazon-ads-advertiser-audience-normalization-sdk-py
 #
 ###############################################################################
+import hashlib
 import re
 from re import finditer
-import hashlib
 
 NumberIndicators = [
     {"NUM": "NUMBER"},
@@ -1367,8 +1367,8 @@ DELIMITER_PATTERN_MAP = {
     "SPACE": "\\s+",
 }
 
-class Delimiter():
 
+class Delimiter:
     def __init__(self, text="", start=0, type=None) -> None:
         self.text = text
         self.start = start
@@ -1382,32 +1382,38 @@ class Delimiter():
         a = list(DELIMITER_PATTERN_MAP.keys())
         for i in range(0, len(a)):
             delimiterType = a[i]
-            newFoundDelimiters = self.findDelimiters(text, start, delimiters, delimiterType)
+            newFoundDelimiters = self.findDelimiters(
+                text, start, delimiters, delimiterType
+            )
             delimiters.extend(newFoundDelimiters)
             delimiters.sort(key=lambda x: x.start, reverse=False)
         return delimiters
 
-    def findDelimiters(self,text, start, delimiters, type):
+    def findDelimiters(self, text, start, delimiters, type):
         result = []
         textStart = start
         delimiters_1 = delimiters
 
-        for i in range(0,len(delimiters_1)):
+        for i in range(0, len(delimiters_1)):
             curDelimiter = delimiters_1[i]
             textEnd = curDelimiter.start
-            if (textEnd == textStart):
+            if textEnd == textStart:
                 textStart = curDelimiter.end
                 continue
-            searchString = text[textStart - start:textEnd - start]
+            searchString = text[textStart - start : textEnd - start]
             regexp = re.compile(DELIMITER_PATTERN_MAP[type], re.IGNORECASE)
             matchResult = 0
             for matchResult in finditer(regexp, searchString):
-                delimiter = Delimiter(matchResult.group(), textStart + matchResult.span()[0], type)
+                delimiter = Delimiter(
+                    matchResult.group(),
+                    textStart + matchResult.span()[0],
+                    type,
+                )
                 result.append(delimiter)
             textStart = curDelimiter.end
 
         if textStart < start + len(text):
-            searchString = text[textStart - start:]
+            searchString = text[textStart - start :]
             regexp = re.compile(DELIMITER_PATTERN_MAP[type], re.IGNORECASE)
             matchResult = 0
             for matchResult in finditer(regexp, searchString):
@@ -1418,14 +1424,13 @@ class Delimiter():
         return result
 
 
-class NormalizedAddress():
-
-    def __init__(self,fullAddress):
+class NormalizedAddress:
+    def __init__(self, fullAddress):
         self.fullAddress = fullAddress
         self.addressTokens = []
 
     def generateTokens(self):
-        delimiters = Delimiter().Parse(text= self.fullAddress)
+        delimiters = Delimiter().Parse(text=self.fullAddress)
         tokens = []
         start = 0
         address = self.fullAddress
@@ -1437,42 +1442,43 @@ class NormalizedAddress():
             delimiter = delimiters_1[i]
             textEnd = delimiter.start
             if textEnd != textStart:
-                addressToken = address[textStart - start:textEnd - start]
+                addressToken = address[textStart - start : textEnd - start]
                 tokens.append(addressToken)
             textStart = delimiter.end
-        if (textStart < start + len(address)):
-            addressToken = address[textStart - start:]
+        if textStart < start + len(address):
+            addressToken = address[textStart - start :]
             tokens.append(addressToken)
 
         self.addressTokens = tokens
 
-    def updateAddressTokens(self,index,deleteCount, **kwargs):
+    def updateAddressTokens(self, index, deleteCount, **kwargs):
         rest = []
 
         for key, value in kwargs.items():
             rest.append(value)
 
         self.addressTokens.pop(index)
-        for i in range(0,len(rest)):
-            self.addressTokens.insert(index+i,rest[i])
+        for i in range(0, len(rest)):
+            self.addressTokens.insert(index + i, rest[i])
 
-class Dash():
 
+class Dash:
     def apply(self, normalizedAddress):
-
-        for i in range (0, len(normalizedAddress.addressTokens)):
+        for i in range(0, len(normalizedAddress.addressTokens)):
             word = normalizedAddress.addressTokens[i]
             index = word.rfind(DASH_STRING)
-            if index > 0 and index < len(word)- 1:
+            if index > 0 and index < len(word) - 1:
                 firstPart = word[0:index]
-                secondPart = word[index + 1:]
+                secondPart = word[index + 1 :]
                 if not secondPart.isnumeric() and firstPart.isnumeric():
-                    normalizedAddress.updateAddressTokens(i, 1, first_part = firstPart, second_part = secondPart)
+                    normalizedAddress.updateAddressTokens(
+                        i, 1, first_part=firstPart, second_part=secondPart
+                    )
 
-class Pound():
 
+class Pound:
     def apply(self, normalizedAddress):
-        for i in range(0,len(normalizedAddress.addressTokens)):
+        for i in range(0, len(normalizedAddress.addressTokens)):
             word = normalizedAddress.addressTokens[i]
             regexp = re.compile(POUND_REGEX)
             matchResult = 0
@@ -1480,24 +1486,35 @@ class Pound():
                 firstPart = matchResult.group(1)
                 secondPart = matchResult.group(2)
 
-                if (firstPart == "" and secondPart == ""):
+                if firstPart == "" and secondPart == "":
                     continue
 
                 if firstPart == "":
-                    normalizedAddress.updateAddressTokens(i, 1, pound_string = POUND_STRING, second_part = secondPart)
-                    i +=1
-                elif (secondPart == ""):
-                    normalizedAddress.updateAddressTokens(i, 1, first_part = firstPart, pound_string = POUND_STRING)
-                    i +=1
+                    normalizedAddress.updateAddressTokens(
+                        i, 1, pound_string=POUND_STRING, second_part=secondPart
+                    )
+                    i += 1
+                elif secondPart == "":
+                    normalizedAddress.updateAddressTokens(
+                        i, 1, first_part=firstPart, pound_string=POUND_STRING
+                    )
+                    i += 1
                 else:
-                    normalizedAddress.updateAddressTokens(i, 1, first_part = firstPart, pound_string = POUND_STRING, second_part = secondPart)
+                    normalizedAddress.updateAddressTokens(
+                        i,
+                        1,
+                        first_part=firstPart,
+                        pound_string=POUND_STRING,
+                        second_part=secondPart,
+                    )
                     i += 2
 
 
 preproccessRules = [Dash(), Pound()]
-class AddressNormalizer():
 
-    def __init__(self,countryCode):
+
+class AddressNormalizer:
+    def __init__(self, countryCode):
         self.streetWordMaps = []
         self.streetWordMaps.extend(NumberIndicators)
         self.streetWordMaps.extend(DirectionalWords)
@@ -1542,25 +1559,29 @@ class AddressNormalizer():
 
         self.preproccessRules = preproccessRules
 
-
-    def normalize(self,record):
+    def normalize(self, record):
         record = record.strip().upper()
 
-        normalizedAddress =  NormalizedAddress(record)
+        normalizedAddress = NormalizedAddress(record)
         normalizedAddress.generateTokens()
 
         a = self.preproccessRules
-        for i in range (0,len(a)):
+        for i in range(0, len(a)):
             rule = a[i]
             rule.apply(normalizedAddress)
 
-        for i in range(0,len(normalizedAddress.addressTokens)):
+        for i in range(0, len(normalizedAddress.addressTokens)):
             word = normalizedAddress.addressTokens[i]
-            for j in range (0,len(self.streetWordMaps)):
-                if (word in self.streetWordMaps[j]):
-                   normalizedAddress.updateAddressTokens(i, 1, first_part = self.streetWordMaps[j].get(word))
+            for j in range(0, len(self.streetWordMaps)):
+                if word in self.streetWordMaps[j]:
+                    normalizedAddress.updateAddressTokens(
+                        i, 1, first_part=self.streetWordMaps[j].get(word)
+                    )
 
-        self.normalizedAddress = "".join(normalizedAddress.addressTokens).lower()
-        self.sha256normalizedAddress = hashlib.sha256(self.normalizedAddress.encode()).hexdigest()
+        self.normalizedAddress = "".join(
+            normalizedAddress.addressTokens
+        ).lower()
+        self.sha256normalizedAddress = hashlib.sha256(
+            self.normalizedAddress.encode()
+        ).hexdigest()
         return self
-

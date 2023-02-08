@@ -1,8 +1,9 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-import pytest
 import os
+
+import pytest
 
 
 @pytest.fixture(autouse=True)
@@ -11,11 +12,13 @@ def mock_env_variables():
     os.environ["AMC_API_ROLE_ARN"] = "AmcApiRoleArn"
     os.environ["botoConfig"] = '{"region_name": "us-east-1"}'
 
+
 def test_is_valid_email_address():
     from glue.normalizers.email_normalizer import isValidEmailAddress
 
     assert isValidEmailAddress("test@test.com") is True
     assert isValidEmailAddress("this is an invalid email") is False
+
 
 def test_email_normalizer():
     from glue.normalizers.email_normalizer import EmailNormalizer

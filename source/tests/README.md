@@ -4,7 +4,7 @@
 The following steps can be done to run the unit tests contained in the `tests` directory:
 
 1. Open a terminal window and navigate to the project root directory.
-2. Run this command in the terminal: 
+2. Run this command in the terminal:
 ```shell
 sh deployment/run-unit-tests.sh
 ```

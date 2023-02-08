@@ -81,6 +81,6 @@ deactivate
 rm -rf ./amc_uploader/amc_uploader.egg-info
 rm -rf $VENV
 rm -rf  __pycache__
-rm -rf .pytest_cache  
+rm -rf .pytest_cache
 
 cd $template_dir
