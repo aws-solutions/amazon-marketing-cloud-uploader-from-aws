@@ -180,8 +180,8 @@ def test_data_set_type():
                     headers={'Content-Type': 'application/json'},
                     body=json.dumps(
                         {
+                            "destination_endpoint": _test_configs["amcEndpoint"],
                             "body": {
-                                "destination_endpoint": _test_configs["amcEndpoint"],
                                 "dataSetId": data_set_id,
                                 "fileFormat": file_format,
                                 "period": "P1D",
