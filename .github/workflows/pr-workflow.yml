@@ -43,6 +43,7 @@ jobs:
 
   pre-commit:
     needs:
+      - viperlight-scan
       - cfn-scan
     runs-on: ubuntu-latest
     steps:
@@ -61,7 +62,6 @@ jobs:
 
   unit-test:
     needs:
-      - cfn-scan
       - pre-commit
     runs-on: ubuntu-latest
     steps:
