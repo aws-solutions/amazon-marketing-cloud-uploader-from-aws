@@ -124,7 +124,7 @@ SPDX-License-Identifier: Apache-2.0
                     v-model="currentPageAmcInstances"
                     align="center"
                     :per-page="perPageAmcInstances"
-                    :total-rows="rowsAmcInstances"
+                    :total-rows="available_amc_instances.length"
                     aria-controls="shotTable"
                   ></b-pagination>
                 </b-card-body>
@@ -465,9 +465,6 @@ SPDX-License-Identifier: Apache-2.0
       },
       rows2() {
         return this.uploads.length
-      },
-      rowsAmcInstances() {
-        return this.available_amc_instances.length
       },
     },
     watch: {
