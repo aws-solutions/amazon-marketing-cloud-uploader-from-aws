@@ -257,13 +257,21 @@ def test_data_set_type():
 
                 time.sleep(5) # give dataset time to be created
 
-                # check if it exists in AMC
-                amc_data_set_resp = sigv4.get(f"/dataSets/{data_set_id}")
-                assert amc_data_set_resp.status_code == 200
+                # check if it exists in AMC                
+                response = client.http.post(
+                    '/describe_dataset',
+                    headers={'Content-Type': 'application/json'},
+                    body=json.dumps(
+                        {
+                            "dataSetId": data_set_id,
+                        }
+                    )
+                )
+                assert response.status_code == 200
                 is_data_set_created = True
-                assert amc_data_set_resp.json()["dataSetId"] == data_set_id
-                assert amc_data_set_resp.json()["dataSetType"] == data_set_type
-                assert amc_data_set_resp.json()["fileFormat"] == file_format
+                assert response.json_body["dataSetId"] == data_set_id
+                assert response.json_body["dataSetType"] == data_set_type
+                assert response.json_body["fileFormat"] == file_format
 
                 # start_amc_transformation
                 response = client.http.post(
@@ -302,7 +310,7 @@ def test_data_set_type():
                 assert response.status_code == 200
                 assert len(response.json_body["JobRuns"]) > 0
                 assert response.json_body["JobRuns"][0]["JobName"] == os.environ["AMC_GLUE_JOB_NAME"]
-               
+
                 response = client.http.get(
                     '/list_datasets',
                     headers={'Content-Type': 'application/json'},
