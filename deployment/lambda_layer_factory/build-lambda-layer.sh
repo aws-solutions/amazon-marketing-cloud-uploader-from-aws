@@ -1,5 +1,4 @@
 #!/bin/bash
-set -x
 #############################################################################
 # PURPOSE: Build a Lambda layer for specified Python libraries.
 #
