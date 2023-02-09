@@ -135,12 +135,12 @@ SPDX-License-Identifier: Apache-2.0
               </template>
             </b-table>
             <b-pagination
-                v-if="formattedItems.length > perPage"
-                v-model="currentPage"
-                align="center"
-                :per-page="perPage"
-                :total-rows="formattedItems.length"
-                aria-controls="shotTable"
+              v-if="formattedItems.length > perPage"
+              v-model="currentPage"
+              align="center"
+              :per-page="perPage"
+              :total-rows="formattedItems.length"
+              aria-controls="shotTable"
             ></b-pagination>
             <div v-if="isBusy === false">
               <b-button size="sm" @click="selectAll">

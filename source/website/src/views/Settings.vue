@@ -111,12 +111,12 @@ SPDX-License-Identifier: Apache-2.0
                 </template>
               </b-table>
               <b-pagination
-                  v-if="amcInstances.length > perPage"
-                  v-model="currentPage"
-                  align="center"
-                  :per-page="perPage"
-                  :total-rows="amcInstances.length"
-                  aria-controls="shotTable"
+                v-if="amcInstances.length > perPage"
+                v-model="currentPage"
+                align="center"
+                :per-page="perPage"
+                :total-rows="amcInstances.length"
+                aria-controls="shotTable"
               ></b-pagination>
               <b-row>
                 <b-col align="left">
