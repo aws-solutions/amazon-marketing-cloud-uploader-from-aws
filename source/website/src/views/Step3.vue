@@ -233,7 +233,7 @@ SPDX-License-Identifier: Apache-2.0
           { value: 'DIMENSION', text: 'Dimension', disabled: false},
           { value: 'METRIC', text: 'Metric', disabled: false},
           { value: 'isMainEventTime', text: 'MainEventTime', disabled: false},
-          { value: 'LiveRamp', text: 'LiveRamp', disabled: false},
+          { value: 'LiveRamp ID', text: 'ramp_id', disabled: false},
         ],
         pii_type_options: [
           { value: 'EMAIL', text: 'EMAIL', disabled: false},
@@ -465,7 +465,7 @@ SPDX-License-Identifier: Apache-2.0
           }
         )
         // add liveramp identifier
-        this.items.filter(x => x.column_type === 'LiveRamp')
+        this.items.filter(x => x.column_type === 'ramp_id')
           .forEach(x => {
             const column_definition = {
               "name": x.name,
@@ -493,7 +493,7 @@ SPDX-License-Identifier: Apache-2.0
           })
         
         // add identifiers for non-PII columns
-        this.items.filter(x => (x.pii_type === "" && (x.column_type !== 'isMainEventTime' && x.column_type !== 'LiveRamp')))
+        this.items.filter(x => (x.pii_type === "" && (x.column_type !== 'isMainEventTime' && x.column_type !== 'ramp_id')))
           .forEach(x => {
             const column_definition = {
               "name": x.name,
