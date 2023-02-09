@@ -1,0 +1,12 @@
+[run]
+omit =
+    tests/*
+
+source =
+    api
+    glue
+    helper
+    amc_uploader
+
+[report]
+fail_under = 80.0

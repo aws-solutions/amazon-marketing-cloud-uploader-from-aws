@@ -230,7 +230,7 @@ Resources:
           CloudFrontDefaultCertificate: true
         Enabled: true
         HttpVersion: 'http2'
-        
+
   WebsiteResponseHeaders:
     Type: AWS::CloudFront::ResponseHeadersPolicy
     Properties:
@@ -241,7 +241,7 @@ Resources:
           ContentSecurityPolicy:
             ContentSecurityPolicy: !Sub "default-src 'self' ${RestAPIId}.execute-api.${AWS::Region}.amazonaws.com cognito-idp.${AWS::Region}.amazonaws.com cognito-identity.${AWS::Region}.amazonaws.com; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:;"
             Override: false
-          ContentTypeOptions: 
+          ContentTypeOptions:
             # You don't need to specify a value for 'X-Content-Type-Options'.
             # Simply including it in the template sets its value to 'nosniff'.
             Override: false
@@ -257,7 +257,7 @@ Resources:
             Preload: true
             Override: false
           XSSProtection:
-            ModeBlock: true 
+            ModeBlock: true
             # You can set ModeBlock to 'true' OR set a value for ReportUri, but not both
             Protection: true
             Override: false
@@ -344,7 +344,7 @@ Resources:
           AwsRegion: !Ref AWS::Region
           PoolClientId: !Ref PoolClientId
           ApiEndpoint: !Ref ApiEndpoint
-          DataBucketName: !Ref DataBucketName 
+          DataBucketName: !Ref DataBucketName
           ArtifactBucketName: !Ref ArtifactBucketName
           EncryptionMode: !If [EnableCmkEncryptionCondition, "aws-kms", "default"]
 
@@ -362,4 +362,3 @@ Resources:
 Outputs:
   CloudfrontUrl:
     Value: !Join ["", ["https://", !GetAtt WebsiteDistribution.DomainName]]
-
