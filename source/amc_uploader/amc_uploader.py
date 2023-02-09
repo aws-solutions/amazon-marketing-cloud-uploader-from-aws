@@ -151,9 +151,9 @@ def _start_fact_upload(bucket, key):
         response = sigv4.post(path, json.dumps(data))
         logger.info("Response: " + response.text)
         return response.text
-    except Exception as e:
-        logger.error(e)
-        return {"Status": "Error", "Message": e}
+    except Exception as ex:
+        logger.error(ex)
+        return {"Status": "Error", "Message": ex}
 
 
 def _start_dimension_upload(bucket, key):
@@ -172,6 +172,6 @@ def _start_dimension_upload(bucket, key):
         logger.info("POST " + path + " " + json.dumps(data))
         response = sigv4.post(path, json.dumps(data))
         return response.text
-    except Exception as e:
-        logger.error(e)
-        return {"Status": "Error", "Message": e}
+    except Exception as ex:
+        logger.error(ex)
+        return {"Status": "Error", "Message": ex}

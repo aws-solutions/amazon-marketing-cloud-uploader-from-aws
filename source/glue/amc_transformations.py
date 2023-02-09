@@ -74,6 +74,7 @@ phoneNormalizer = PhoneNormalizer(country_code)
 ###############################
 
 # Read required parameters
+args = None
 try:
     args = getResolvedOptions(
         sys.argv,
@@ -94,7 +95,7 @@ try:
     )
 except GlueArgumentError as e:
     print(e)
-    exit(1)
+    sys.exit(1)
 finally:
     print("Runtime args:")
     print(args)
@@ -108,7 +109,7 @@ if "dataset_id" in args:
     dataset_id = args["dataset_id"].strip()
 else:
     print("Missing required arg: dataset_id")
-    exit(1)
+    sys.exit(1)
 pii_fields = []
 if "pii_fields" in args:
     pii_fields = json.loads(args["pii_fields"])
@@ -126,7 +127,7 @@ if "period" in args:
     ):
         print("ERROR: Invalid user-defined value for dataset period:")
         print(user_defined_partition_size)
-        exit(1)
+        sys.exit(1)
 
 # Read optional parameters
 try:
@@ -171,7 +172,7 @@ elif content_type == csv_content_type:
     )
 else:
     print("Unsupported content type: " + content_type)
-    exit(1)
+    sys.exit(1)
 
 for chunk in dfs:
     # Save each chunk
@@ -212,12 +213,12 @@ df2 = df.select_dtypes(include=[object])
 
 
 def address_transformations(text):
-    text = addressNormalizer.normalize(text).normalizedAddress
+    text = addressNormalizer.normalize(text).normalized_address
     return text
 
 
 def state_transformations(text):
-    text = stateNormalizer.normalize(text).normalizedState.lower()
+    text = stateNormalizer.normalize(text).normalized_state.lower()
     return text
 
 
@@ -227,12 +228,12 @@ def normalize_email(text):
 
 
 def zip_transformations(text):
-    text = zipNormalizer.normalize(text).normalizedZip
+    text = zipNormalizer.normalize(text).normalized_zip
     return text
 
 
 def phone_transformations(text):
-    text = phoneNormalizer.normalize(text).normalizedPhone
+    text = phoneNormalizer.normalize(text).normalized_phone
     return text
 
 
@@ -402,16 +403,9 @@ if timestamp_column:
         #   00 for minutes and seconds in the case of PT1H, P1D, P7D,
         #   and 00 for hours, minutes, and seconds in the case of P1D, P7D.
         timestamp_str = timestamp.strftime("%Y_%m_%d-%H:%M:00")
-        if (
-            timeseries_partition_size == "PT1H"
-            or timeseries_partition_size == "P1D"
-            or timeseries_partition_size == "P7D"
-        ):
+        if timeseries_partition_size in ("PT1H", "P1D", "P7D"):
             timestamp_str = timestamp.strftime("%Y_%m_%d-%H:00:00")
-        if (
-            timeseries_partition_size == "P1D"
-            or timeseries_partition_size == "P7D"
-        ):
+        if timeseries_partition_size in ("P1D", "P7D"):
             timestamp_str = timestamp.strftime("%Y_%m_%d-00:00:00")
 
         # Since unique_timestamps is sorted, we can iterate thru

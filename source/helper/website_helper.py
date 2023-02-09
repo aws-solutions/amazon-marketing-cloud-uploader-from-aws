@@ -24,8 +24,6 @@ LOGGER.setLevel(logging.INFO)
 
 s3 = boto3.resource("s3")
 s3_client = boto3.client("s3")
-
-replace_env_variables = False
 error_response_str = "Unexpected event received from CloudFormation"
 
 
@@ -121,6 +119,8 @@ def copy_source(event, context):
         try:
             LOGGER.info("Checking if custom environment variables are present")
 
+            replace_env_variables = None
+
             try:
                 user_pool_id = os.environ["UserPoolId"]
                 region = os.environ["AwsRegion"]
@@ -145,7 +145,7 @@ def copy_source(event, context):
                 }
                 replace_env_variables = True
                 LOGGER.info("New variables: {v}".format(v=new_variables))
-                with open("./webapp-manifest.json") as file:
+                with open("./webapp-manifest.json", encoding="utf-8") as file:
                     manifest = json.load(file)
                     print("UPLOADING FILES::")
                     for key in manifest:
@@ -157,11 +157,13 @@ def copy_source(event, context):
                             + "/"
                             + key
                         )
-                        copy_source = {
+                        copy_source_dict = {
                             "Bucket": source_bucket,
                             "Key": source_key + "/" + key,
                         }
-                        s3.meta.client.copy(copy_source, website_bucket, key)
+                        s3.meta.client.copy(
+                            copy_source_dict, website_bucket, key
+                        )
                         if (
                             replace_env_variables is True
                             and key == "runtimeConfig.json"
@@ -175,10 +177,10 @@ def copy_source(event, context):
                                 json.dumps(new_variables),
                             )
 
-        except Exception as e:
+        except Exception as ex:
             LOGGER.info(
-                "Unable to copy website source code into the website bucket: {e}".format(
-                    e=e
+                "Unable to copy website source code into the website bucket: {ex}".format(
+                    ex=ex
                 )
             )
             send_response(
@@ -211,10 +213,10 @@ def purge_bucket(event, context):
         LOGGER.info("Purging bucket " + bucket_name)
         bucket = s3.Bucket(bucket_name)
         bucket.objects.all().delete()
-    except Exception as e:
+    except Exception as ex:
         LOGGER.info(
-            "Unable to purge artifact bucket while deleting stack: {e}".format(
-                e=e
+            "Unable to purge artifact bucket while deleting stack: {ex}".format(
+                ex=ex
             )
         )
         send_response(
@@ -256,11 +258,11 @@ def lambda_handler(event, context):
             send_response(
                 event, context, "FAILED", {"Message": error_response_str}
             )
-    except Exception as e:
+    except Exception as ex:
         LOGGER.info("FAILED!")
         send_response(
             event,
             context,
             "FAILED",
-            {"Message": "Exception during processing: {e}".format(e=e)},
+            {"Message": "Exception during processing: {ex}".format(ex=ex)},
         )

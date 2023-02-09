@@ -6,6 +6,7 @@ import json
 import logging
 import os
 
+import awswrangler as wr
 import boto3
 from aws_xray_sdk.core import patch_all
 from botocore import config
@@ -42,8 +43,8 @@ AMC_GLUE_JOB_NAME = os.environ["AMC_GLUE_JOB_NAME"]
 CUSTOMER_MANAGED_KEY = os.environ["CUSTOMER_MANAGED_KEY"]
 
 # Resolve sonarqube code smells
-application_json = "application/json"
-data = "/data/"
+APPLICATION_JSON = "application/json"
+DATA = "/data/"
 
 
 @app.route("/list_datasets", cors=True, methods=["GET"], authorizer=authorizer)
@@ -64,11 +65,11 @@ def list_datasets():
         return Response(
             body=response.text,
             status_code=response.status_code,
-            headers={"Content-Type": application_json},
+            headers={"Content-Type": APPLICATION_JSON},
         )
-    except Exception as e:
-        logger.error(e)
-        return {"Status": "Error", "Message": e}
+    except Exception as ex:
+        logger.error(ex)
+        return {"Status": "Error", "Message": ex}
 
 
 @app.route(
@@ -99,7 +100,7 @@ def create_dataset():
         return Response(
             body=response.text,
             status_code=response.status_code,
-            headers={"Content-Type": application_json},
+            headers={"Content-Type": APPLICATION_JSON},
         )
     except Exception as e:
         logger.error(e)
@@ -161,9 +162,9 @@ def start_amc_transformation():
             JobName=AMC_GLUE_JOB_NAME, Arguments=args
         )
         return {"JobRunId": response["JobRunId"]}
-    except Exception as e:
-        logger.error(e)
-        return {"Status": "Error", "Message": e}
+    except Exception as ex:
+        logger.error(ex)
+        return {"Status": "Error", "Message": ex}
 
 
 @app.route("/get_etl_jobs", cors=True, methods=["GET"], authorizer=authorizer)
@@ -188,9 +189,9 @@ def get_etl_jobs():
                         i
                     ]["Arguments"]["--dataset_id"]
         return json.loads(json.dumps(response, default=str))
-    except Exception as e:
-        logger.error(e)
-        return {"Status": "Error", "Message": e}
+    except Exception as ex:
+        logger.error(ex)
+        return {"Status": "Error", "Message": ex}
 
 
 @app.route(
@@ -211,12 +212,12 @@ def upload_status():
     try:
         data_set_id = app.current_request.json_body["dataSetId"]
         upload_id = app.current_request.json_body["uploadId"]
-        path = data + data_set_id + "/uploads/" + upload_id
+        path = DATA + data_set_id + "/uploads/" + upload_id
         response = sigv4.get(path)
         return Response(
             body=response.text,
             status_code=response.status_code,
-            headers={"Content-Type": application_json},
+            headers={"Content-Type": APPLICATION_JSON},
         )
     except Exception as e:
         logger.error(e)
@@ -241,18 +242,18 @@ def list_uploads():
         next_token = ""
         if "nextToken" in app.current_request.json_body:
             next_token = app.current_request.json_body["nextToken"]
-        path = data + data_set_id + "/uploads/"
+        path = DATA + data_set_id + "/uploads/"
         response = sigv4.get(
             path, request_parameters="nextToken=" + next_token
         )
         return Response(
             body=response.text,
             status_code=response.status_code,
-            headers={"Content-Type": application_json},
+            headers={"Content-Type": APPLICATION_JSON},
         )
-    except Exception as e:
-        logger.error(e)
-        return {"Status": "Error", "Message": e}
+    except Exception as ex:
+        logger.error(ex)
+        return {"Status": "Error", "Message": ex}
 
 
 @app.route(
@@ -278,7 +279,7 @@ def delete_dataset():
             "%Y-%m-%dT%H:%M:%SZ"
         )
         path = (
-            data
+            DATA
             + data_set_id
             + "?timeWindowStart=1970-01-01T00:00:00Z&timeWindowEnd="
             + current_datetime
@@ -290,11 +291,11 @@ def delete_dataset():
         return Response(
             body=response.text,
             status_code=response.status_code,
-            headers={"Content-Type": application_json},
+            headers={"Content-Type": APPLICATION_JSON},
         )
-    except Exception as e:
-        logger.error(e)
-        return {"Status": "Error", "Message": e}
+    except Exception as ex:
+        logger.error(ex)
+        return {"Status": "Error", "Message": ex}
 
 
 @app.route("/version", cors=True, methods=["GET"], authorizer=authorizer)
@@ -317,7 +318,7 @@ def version():
     "/list_bucket",
     cors=True,
     methods=["POST"],
-    content_types=[application_json],
+    content_types=[APPLICATION_JSON],
     authorizer=authorizer,
 )
 def list_bucket():
@@ -349,10 +350,10 @@ def list_bucket():
     """
     log_request_parameters()
     try:
-        s3 = boto3.resource("s3", config=config)
+        s3_obj = boto3.resource("s3", config=config)
         bucket = json.loads(app.current_request.raw_body.decode())["s3bucket"]
         results = []
-        for s3object in s3.Bucket(bucket).objects.all():
+        for s3object in s3_obj.Bucket(bucket).objects.all():
             results.append(
                 {
                     "key": s3object.key,
@@ -361,16 +362,16 @@ def list_bucket():
                 }
             )
         return json.dumps(results)
-    except Exception as e:
-        logger.error(e)
-        return {"Status": "Error", "Message": e}
+    except Exception as ex:
+        logger.error(ex)
+        return {"Status": "Error", "Message": ex}
 
 
 @app.route(
     "/get_data_columns",
     cors=True,
     methods=["POST"],
-    content_types=[application_json],
+    content_types=[APPLICATION_JSON],
     authorizer=authorizer,
 )
 def get_data_columns():
@@ -401,7 +402,6 @@ def get_data_columns():
     Raises:
         500: ChaliceViewError - internal server error
     """
-    import awswrangler as wr
 
     log_request_parameters()
     try:
@@ -424,8 +424,8 @@ def get_data_columns():
         csv_content_type = "text/csv"
         content_type = ""
         for key in keys_to_validate:
-            s3 = boto3.client("s3", config=config)
-            response = s3.head_object(Bucket=bucket, Key=key)
+            s3_obj = boto3.client("s3", config=config)
+            response = s3_obj.head_object(Bucket=bucket, Key=key)
             # Return an error if user selected a combination
             # of CSV and JSON files.
             if content_type == "":
@@ -437,13 +437,13 @@ def get_data_columns():
             # Read first row
             logger.info("Reading " + "s3://" + bucket + "/" + key)
             if content_type == json_content_type:
-                dfs = wr.s3.read_json(
+                dfs = wr.s3_obj.read_json(
                     path=["s3://" + bucket + "/" + key],
                     chunksize=1,
                     lines=True,
                 )
             elif content_type == csv_content_type:
-                dfs = wr.s3.read_csv(
+                dfs = wr.s3_obj.read_csv(
                     path=["s3://" + bucket + "/" + key], chunksize=1
                 )
             else:
@@ -473,9 +473,9 @@ def get_data_columns():
                 )
 
         return result
-    except Exception as e:
-        logger.error(e)
-        return {"Status": "Error", "Message": e}
+    except Exception as ex:
+        logger.error(ex)
+        return {"Status": "Error", "Message": ex}
 
 
 def log_request_parameters():

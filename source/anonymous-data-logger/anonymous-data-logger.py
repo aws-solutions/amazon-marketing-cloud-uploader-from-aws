@@ -44,11 +44,11 @@ logger.addHandler(handler)
 
 
 def handler(event, context):
-    logger.info("We got this event:\n", event)
+    logger.info(f"We got this event: {event}\n")
     # Each resource returns a promise with a json object to return cloudformation.
     try:
         request_type = event["RequestType"]
-        if request_type == "Create" or request_type == "Update":
+        if request_type in ("Create", "Update"):
             # Here we handle the CloudFormation CREATE and UPDATE events
             # sent by the AnonymousMetric custom resource.
             resource = event["ResourceProperties"]["Resource"]

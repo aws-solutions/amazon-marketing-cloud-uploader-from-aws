@@ -14,10 +14,10 @@ def mock_env_variables():
 
 
 def test_is_valid_email_address():
-    from glue.normalizers.email_normalizer import isValidEmailAddress
+    from glue.normalizers.email_normalizer import is_valid_email_address
 
-    assert isValidEmailAddress("test@test.com") is True
-    assert isValidEmailAddress("this is an invalid email") is False
+    assert is_valid_email_address("test@test.com") is True
+    assert is_valid_email_address("this is an invalid email") is False
 
 
 def test_email_normalizer():

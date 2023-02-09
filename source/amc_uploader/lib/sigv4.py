@@ -44,10 +44,11 @@ SOLUTION_NAME = os.environ["SOLUTION_NAME"]
 SOLUTION_VERSION = os.environ["SOLUTION_VERSION"]
 solution_config = json.loads(os.environ["botoConfig"])
 config = config.Config(**solution_config)
+NO_ACCESS_KEY_ERROR = "No access key is available."
 
 
 # This function gets authentication tokens for the AMC API
-def getAmcApiTokens():
+def get_amc_api_tokens():
     sts_client = boto3.client("sts", config=config)
     role_session_name = "amcufa_api_handler"
     logger.info("assuming role " + AMC_API_ROLE)
@@ -64,17 +65,28 @@ def sign(key, msg):
     return hmac.new(key, msg.encode("utf-8"), hashlib.sha256).digest()
 
 
-def getSignatureKey(key, dateStamp, regionName, serviceName):
-    kDate = sign(("AWS4" + key).encode("utf-8"), dateStamp)
-    kRegion = sign(kDate, regionName)
-    kService = sign(kRegion, serviceName)
-    kSigning = sign(kService, "aws4_request")
-    return kSigning
+def get_signature_key(key, date_stamp, region_name, service_name):
+    kdate = sign(("AWS4" + key).encode("utf-8"), date_stamp)
+    kregion = sign(kdate, region_name)
+    kservice = sign(kregion, service_name)
+    ksigning = sign(kservice, "aws4_request")
+    return ksigning
 
 
-def delete(path) -> dict:
+def send_request(request_url, headers, http_method):
+    logger.info("\nBEGIN REQUEST+++++++++++++++++++++++++++++++++++")
+    logger.info(f"Request URL = {request_url}")
+    response = getattr(requests, http_method)(request_url, headers=headers)
+
+    logger.info("\nRESPONSE+++++++++++++++++++++++++++++++++++")
+    logger.info(f"Response code: {response.status_code}\n")
+    logger.info(response.text)
+    return response
+
+
+def delete(path):
     # ************* REQUEST VALUES *************
-    access_key, secret_key, session_token = getAmcApiTokens()
+    access_key, secret_key, session_token = get_amc_api_tokens()
     method = "DELETE"
     service = "execute-api"
     region = os.environ["AWS_REGION"]
@@ -84,13 +96,15 @@ def delete(path) -> dict:
     # Read AWS access key from env. variables or configuration file. Best practice is NOT
     # to embed credentials in code.
     if access_key is None or secret_key is None:
-        logger.error("No access key is available.")
+        logger.error(NO_ACCESS_KEY_ERROR)
         sys.exit()
 
     # Create a date for headers and the credential string
-    t = datetime.utcnow()
-    amzdate = t.strftime("%Y%m%dT%H%M%SZ")
-    datestamp = t.strftime("%Y%m%d")  # Date w/o time, used in credential scope
+    t_date = datetime.utcnow()
+    amzdate = t_date.strftime("%Y%m%dT%H%M%SZ")
+    datestamp = t_date.strftime(
+        "%Y%m%d"
+    )  # Date w/o time, used in credential scope
 
     # ************* TASK 1: CREATE A CANONICAL REQUEST *************
     # http://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
@@ -167,7 +181,7 @@ def delete(path) -> dict:
 
     # ************* TASK 3: CALCULATE THE SIGNATURE *************
     # Create the signing key using the function defined above.
-    signing_key = getSignatureKey(secret_key, datestamp, region, service)
+    signing_key = get_signature_key(secret_key, datestamp, region, service)
 
     # Sign the string_to_sign using the signing_key
     signature = hmac.new(
@@ -207,21 +221,15 @@ def delete(path) -> dict:
     }
 
     # ************* SEND THE REQUEST *************
-    request_url = endpoint
 
-    logger.info("\nBEGIN REQUEST++++++++++++++++++++++++++++++++++++")
-    logger.info("Request URL = " + request_url)
-    r = requests.delete(request_url, headers=headers)
-
-    logger.info("\nRESPONSE++++++++++++++++++++++++++++++++++++")
-    logger.info("Response code: %d\n" % r.status_code)
-    logger.info(r.text)
-    return r
+    return send_request(
+        request_url=endpoint, headers=headers, http_method="delete"
+    )
 
 
 def get(path) -> dict:
     # ************* REQUEST VALUES *************
-    access_key, secret_key, session_token = getAmcApiTokens()
+    access_key, secret_key, session_token = get_amc_api_tokens()
     method = "GET"
     service = "execute-api"
     region = os.environ["AWS_REGION"]
@@ -231,7 +239,7 @@ def get(path) -> dict:
     # Read AWS access key from env. variables or configuration file. Best practice is NOT
     # to embed credentials in code.
     if access_key is None or secret_key is None:
-        logger.error("No access key is available.")
+        logger.error(NO_ACCESS_KEY_ERROR)
         sys.exit()
 
     # Create a date for headers and the credential string
@@ -314,7 +322,7 @@ def get(path) -> dict:
 
     # ************* TASK 3: CALCULATE THE SIGNATURE *************
     # Create the signing key using the function defined above.
-    signing_key = getSignatureKey(secret_key, datestamp, region, service)
+    signing_key = get_signature_key(secret_key, datestamp, region, service)
 
     # Sign the string_to_sign using the signing_key
     signature = hmac.new(
@@ -354,21 +362,14 @@ def get(path) -> dict:
     }
 
     # ************* SEND THE REQUEST *************
-    request_url = endpoint
-
-    logger.info("\nBEGIN REQUEST++++++++++++++++++++++++++++++++++++")
-    logger.info("Request URL = " + request_url)
-    r = requests.get(request_url, headers=headers)
-
-    logger.info("\nRESPONSE++++++++++++++++++++++++++++++++++++")
-    logger.info("Response code: %d\n" % r.status_code)
-    logger.info(r.text)
-    return r
+    return send_request(
+        request_url=endpoint, headers=headers, http_method="get"
+    )
 
 
 def put(path, body_data) -> dict:
     # ************* REQUEST VALUES *************
-    access_key, secret_key, session_token = getAmcApiTokens()
+    access_key, secret_key, session_token = get_amc_api_tokens()
     method = "PUT"
     service = "execute-api"
     region = os.environ["AWS_REGION"]
@@ -378,7 +379,7 @@ def put(path, body_data) -> dict:
     # Read AWS access key from env. variables or configuration file. Best practice is NOT
     # to embed credentials in code.
     if access_key is None or secret_key is None:
-        logger.error("No access key is available.")
+        logger.error(NO_ACCESS_KEY_ERROR)
         sys.exit()
 
     # Create a date for headers and the credential string
@@ -461,7 +462,7 @@ def put(path, body_data) -> dict:
 
     # ************* TASK 3: CALCULATE THE SIGNATURE *************
     # Create the signing key using the function defined above.
-    signing_key = getSignatureKey(secret_key, datestamp, region, service)
+    signing_key = get_signature_key(secret_key, datestamp, region, service)
 
     # Sign the string_to_sign using the signing_key
     signature = hmac.new(
@@ -515,7 +516,7 @@ def put(path, body_data) -> dict:
 
 def post(path, body_data) -> dict:
     # ************* REQUEST VALUES *************
-    access_key, secret_key, session_token = getAmcApiTokens()
+    access_key, secret_key, session_token = get_amc_api_tokens()
     method = "POST"
     service = "execute-api"
     region = os.environ["AWS_REGION"]
@@ -525,7 +526,7 @@ def post(path, body_data) -> dict:
     # Read AWS access key from env. variables or configuration file. Best practice is NOT
     # to embed credentials in code.
     if access_key is None or secret_key is None:
-        logger.error("No access key is available.")
+        logger.error(NO_ACCESS_KEY_ERROR)
         sys.exit()
 
     # Create a date for headers and the credential string
@@ -608,7 +609,7 @@ def post(path, body_data) -> dict:
 
     # ************* TASK 3: CALCULATE THE SIGNATURE *************
     # Create the signing key using the function defined above.
-    signing_key = getSignatureKey(secret_key, datestamp, region, service)
+    signing_key = get_signature_key(secret_key, datestamp, region, service)
 
     # Sign the string_to_sign using the signing_key
     signature = hmac.new(
@@ -648,13 +649,6 @@ def post(path, body_data) -> dict:
     }
 
     # ************* SEND THE REQUEST *************
-    request_url = endpoint
-
-    logger.info("\nBEGIN REQUEST++++++++++++++++++++++++++++++++++++")
-    logger.info("Request URL = " + request_url)
-    r = requests.post(endpoint, data=body_data, headers=headers)
-
-    logger.info("\nRESPONSE++++++++++++++++++++++++++++++++++++")
-    logger.info("Response code: %d\n" % r.status_code)
-    logger.info(r.text)
-    return r
+    return send_request(
+        request_url=endpoint, headers=headers, http_method="post"
+    )

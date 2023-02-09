@@ -32,6 +32,6 @@ def send_metrics(config):
     headers = {"content-type": "application/json"}
     req = urllib.request.Request(url, data, headers)
     # nosec B310 is needed to avoid a false alarm in python-bandit
-    response = urllib.request.urlopen(req)  # nosec B310
-    print("RESPONSE CODE:: {}".format(response.getcode()))
-    print("METRICS SENT:: {}".format(data))
+    with urllib.request.urlopen(req) as response:  # nosec B310
+        print("RESPONSE CODE:: {}".format(response.getcode()))
+        print("METRICS SENT:: {}".format(data))

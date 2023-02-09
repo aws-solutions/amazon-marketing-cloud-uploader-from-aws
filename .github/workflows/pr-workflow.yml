@@ -103,6 +103,10 @@ jobs:
           cd tests
           pytest amc_transformation/test_amc_transformation.py -vv
           pytest amc_uploader/test_amc_uploader.py -vv
+      - name: Run Coverage Report
+        run: |
+          cd deployment
+          ./run-unit-tests.sh
 
 
   build:
