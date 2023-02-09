@@ -38,7 +38,7 @@ SPDX-License-Identifier: Apache-2.0
                 <h5>Input files:</h5>
                 <div v-if="s3key !== ''">
                   <ul>
-                    <li v-for="item in s3key.split(',')" :key=item>
+                    <li v-for="item in s3key.split(',')" :key="item">
                       {{ "s3://" + DATA_BUCKET_NAME + "/" + item }}
                     </li>
                   </ul>
