@@ -202,7 +202,7 @@ SPDX-License-Identifier: Apache-2.0
         // Wait for all those requests to complete, then start the glue job.
         this.start_amc_transformation('POST', 'start_amc_transformation', {
           'sourceBucket': this.DATA_BUCKET_NAME,
-          // 'sourceKey': key,
+          // 'sourceKey' is added in the start_amc_transformation function.
           'outputBucket': this.ARTIFACT_BUCKET_NAME,
           'piiFields': JSON.stringify(this.pii_fields),
           'deletedFields': JSON.stringify(this.deleted_columns),
