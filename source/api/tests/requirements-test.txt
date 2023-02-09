@@ -1,6 +1,0 @@
-chalice
-pytest
-aws_xray_sdk
-boto3
-requests
-awswrangler
