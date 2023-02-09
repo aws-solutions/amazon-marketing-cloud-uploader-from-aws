@@ -37,3 +37,29 @@ def test_email_normalizer():
 
     email_normalizer = EmailNormalizer("te-st@tEsT.CoM")
     assert email_normalizer.normalize() == "te-st@test.com"
+
+
+def test_load_address_map_helper():
+    from glue.normalizers.address_normalizer import load_address_map_helper
+
+    address_map = load_address_map_helper()
+
+    assert address_map["NumberIndicators"]
+    assert address_map["DirectionalWords"]
+
+    assert address_map["DefaultStreetSuffixes"]
+
+    assert address_map["USStreetSuffixes"]
+
+    assert address_map["USSubBuildingDesignator"]
+
+    assert address_map["ITStreetPrefixes"]
+
+    assert address_map["FRStreetDesignator"]
+
+    assert address_map["ESStreetPrefixes"]
+
+    assert address_map["UKOrganizationSuffixes"]
+
+    assert address_map["UKStreetSuffixes"]
+    assert address_map["UKSubBuildingDesignator"]

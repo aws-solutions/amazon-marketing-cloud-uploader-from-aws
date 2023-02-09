@@ -367,9 +367,9 @@ SPDX-License-Identifier: Apache-2.0
             }
 
             let valid_keys = ["name", "description", "data_type", "column_type", "pii_type", "nullable"]
-            for (var column_index in importJson.columns){
+            for (let column_index in importJson.columns){
                 let column = importJson.columns[column_index]
-                for (var key in column){
+                for (let key in column){
                 if (!valid_keys.includes(key)){
                   this.showImportAlert("Invalid Schema: Only these valid column keys ".concat(valid_keys).concat(" are required."));
                   return

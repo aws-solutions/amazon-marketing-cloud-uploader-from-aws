@@ -3,7 +3,9 @@ import re
 
 def is_valid_email_address(email):
     try:
-        return bool(email and re.match(r"([\w._-]+@[\w._-]+)", email))
+        wrd_str = r"\w"
+        re_str = f"([{wrd_str}._-]+@[{wrd_str}._-]+)"
+        return bool(email and re.match(re_str, email))
     except Exception:
         return False
 

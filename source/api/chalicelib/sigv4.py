@@ -45,6 +45,7 @@ SOLUTION_VERSION = os.environ["VERSION"]
 solution_config = json.loads(os.environ["botoConfig"])
 config = config.Config(**solution_config)
 NO_ACCESS_KEY_ERROR = "No access key is available."
+SIGNED_HEADERS = "host;x-amz-date;x-amz-security-token"
 
 
 # This function gets authentication tokens for the AMC API
@@ -82,6 +83,16 @@ def send_request(request_url, headers, http_method):
     logger.info(f"Response code: {response.status_code}\n")
     logger.info(response.text)
     return response
+
+
+def get_canonical_headers(domain_name, amzdate, session_token):
+    return f"host: {domain_name}\nx-amz-date: {amzdate}\nx-amz-security-token: {session_token}\n"
+
+
+def get_authorization_header(
+    algorithm, access_key, credential_scope, signed_headers, signature
+):
+    return f"{algorithm} Credential={access_key}/{credential_scope}, SignedHeaders={signed_headers}, Signature={signature}"
 
 
 def delete(path):
@@ -122,16 +133,8 @@ def delete(path):
     # Step 4: Create the canonical headers and signed headers. Header names
     # must be trimmed and lowercase, and sorted in code point order from
     # low to high. Note that there is a trailing \n.
-    canonical_headers = (
-        "host:"
-        + domain_name
-        + "\n"
-        + "x-amz-date:"
-        + amzdate
-        + "\n"
-        + "x-amz-security-token:"
-        + session_token
-        + "\n"
+    canonical_headers = get_canonical_headers(
+        domain_name, amzdate, session_token
     )
 
     # Step 5: Create the list of signed headers. This lists the headers
@@ -139,7 +142,7 @@ def delete(path):
     # Note: The request can include any headers; canonical_headers and
     # signed_headers lists those that you want to be included in the
     # hash of the request. "Host" and "x-amz-date" are always required.
-    signed_headers = "host;x-amz-date;x-amz-security-token"
+    signed_headers = SIGNED_HEADERS
 
     # Step 6: Create payload hash (hash of the request body content). For GET
     # requests, the payload is an empty string ("").
@@ -190,19 +193,8 @@ def delete(path):
     # The signing information can be either in a query string value or in
     # a header named Authorization. This code shows how to use a header.
     # Create authorization header and add to request headers
-    authorization_header = (
-        algorithm
-        + " "
-        + "Credential="
-        + access_key
-        + "/"
-        + credential_scope
-        + ", "
-        + "SignedHeaders="
-        + signed_headers
-        + ", "
-        + "Signature="
-        + signature
+    authorization_header = get_authorization_header(
+        algorithm, access_key, credential_scope, signed_headers, signature
     )
 
     # The request can include any headers, but MUST include "host", "x-amz-date",
@@ -263,16 +255,8 @@ def get(path, request_parameters=""):
     # Step 4: Create the canonical headers and signed headers. Header names
     # must be trimmed and lowercase, and sorted in code point order from
     # low to high. Note that there is a trailing \n.
-    canonical_headers = (
-        "host:"
-        + domain_name
-        + "\n"
-        + "x-amz-date:"
-        + amzdate
-        + "\n"
-        + "x-amz-security-token:"
-        + session_token
-        + "\n"
+    canonical_headers = get_canonical_headers(
+        domain_name, amzdate, session_token
     )
 
     # Step 5: Create the list of signed headers. This lists the headers
@@ -280,7 +264,7 @@ def get(path, request_parameters=""):
     # Note: The request can include any headers; canonical_headers and
     # signed_headers lists those that you want to be included in the
     # hash of the request. "Host" and "x-amz-date" are always required.
-    signed_headers = "host;x-amz-date;x-amz-security-token"
+    signed_headers = SIGNED_HEADERS
 
     # Step 6: Create payload hash (hash of the request body content). For GET
     # requests, the payload is an empty string ("").
@@ -331,21 +315,9 @@ def get(path, request_parameters=""):
     # The signing information can be either in a query string value or in
     # a header named Authorization. This code shows how to use a header.
     # Create authorization header and add to request headers
-    authorization_header = (
-        algorithm
-        + " "
-        + "Credential="
-        + access_key
-        + "/"
-        + credential_scope
-        + ", "
-        + "SignedHeaders="
-        + signed_headers
-        + ", "
-        + "Signature="
-        + signature
+    authorization_header = get_authorization_header(
+        algorithm, access_key, credential_scope, signed_headers, signature
     )
-
     # The request can include any headers, but MUST include "host", "x-amz-date",
     # and (for this scenario) "Authorization". "host" and "x-amz-date" must
     # be included in the canonical_headers and signed_headers, as noted
@@ -406,16 +378,8 @@ def post(path, body_data):
     # Step 4: Create the canonical headers and signed headers. Header names
     # must be trimmed and lowercase, and sorted in code point order from
     # low to high. Note that there is a trailing \n.
-    canonical_headers = (
-        "host:"
-        + domain_name
-        + "\n"
-        + "x-amz-date:"
-        + amzdate
-        + "\n"
-        + "x-amz-security-token:"
-        + session_token
-        + "\n"
+    canonical_headers = get_canonical_headers(
+        domain_name, amzdate, session_token
     )
 
     # Step 5: Create the list of signed headers. This lists the headers
@@ -423,7 +387,7 @@ def post(path, body_data):
     # Note: The request can include any headers; canonical_headers and
     # signed_headers lists those that you want to be included in the
     # hash of the request. "Host" and "x-amz-date" are always required.
-    signed_headers = "host;x-amz-date;x-amz-security-token"
+    signed_headers = SIGNED_HEADERS
 
     # Step 6: Create payload hash (hash of the request body content). For GET
     # requests, the payload is an empty string ("").
@@ -474,19 +438,8 @@ def post(path, body_data):
     # The signing information can be either in a query string value or in
     # a header named Authorization. This code shows how to use a header.
     # Create authorization header and add to request headers
-    authorization_header = (
-        algorithm
-        + " "
-        + "Credential="
-        + access_key
-        + "/"
-        + credential_scope
-        + ", "
-        + "SignedHeaders="
-        + signed_headers
-        + ", "
-        + "Signature="
-        + signature
+    authorization_header = get_authorization_header(
+        algorithm, access_key, credential_scope, signed_headers, signature
     )
 
     # The request can include any headers, but MUST include "host", "x-amz-date",
