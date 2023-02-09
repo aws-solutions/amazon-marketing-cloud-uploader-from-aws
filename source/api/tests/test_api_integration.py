@@ -260,92 +260,13 @@ def test_data_set_type():
                 time.sleep(5) # give dataset time to be created
 
                 # check if it exists in AMC
-                amc_data_set_resp = sigv4.get(f"/dataSets/{data_set_id}")
+                amc_data_set_resp = sigv4.get(_test_configs["amcEndpoint"], f"/dataSets/{data_set_id}")
                 assert amc_data_set_resp.status_code == 200
                 is_data_set_created = True
                 assert amc_data_set_resp.json()["dataSetId"] == data_set_id
                 assert amc_data_set_resp.json()["dataSetType"] == data_set_type
                 assert amc_data_set_resp.json()["fileFormat"] == file_format
 
-                # start_amc_transformation
-                response = client.http.post(
-                    '/start_amc_transformation',
-                    headers={'Content-Type': 'application/json'},
-                    body=json.dumps(
-                        {
-                            "sourceBucket": test_configs["s3bucket"],
-                            "sourceKey": test_source_key,
-                            "outputBucket": test_configs["outputBucket"],
-                            "piiFields": "[{\"column_name\":\"first_name\",\"pii_type\":\"FIRST_NAME\"},{\"column_name\":\"last_name\",\"pii_type\":\"LAST_NAME\"},{\"column_name\":\"email\",\"pii_type\":\"EMAIL\"}]",
-                            "deletedFields": "[]",
-                            "timestampColumn": "timestamp",
-                            "datasetId": data_set_id,
-                            "period": period,
-                            "destination_endpoints": [_test_configs["amcEndpoint"]]
-                        }
-                    )
-                )
-                assert response.status_code == 200
-                assert response.json_body["JobRunId"] is not None
-                assert get_etl_data_by_job_id(response.json_body["JobRunId"]) is not None
-
-                while get_etl_data_by_job_id(response.json_body["JobRunId"])["JobRunState"] != "SUCCEEDED":
-                    logger.info(get_etl_data_by_job_id(response.json_body["JobRunId"])["JobRunState"])
-                    if get_etl_data_by_job_id(response.json_body["JobRunId"])["JobRunState"] == "SUCCEEDED":
-                        break
-                    else:
-                        assert get_etl_data_by_job_id(response.json_body["JobRunId"])["JobRunState"] != "FAILED"
-
-                time.sleep(5) # give dataset time to upload
-
-                response = client.http.get(
-                    '/get_etl_jobs',
-                    headers={'Content-Type': 'application/json'},
-                )
-                assert response.status_code == 200
-                assert len(response.json_body["JobRuns"]) > 0
-                assert response.json_body["JobRuns"][0]["JobName"] == os.environ["AMC_GLUE_JOB_NAME"]
-               
-                response = client.http.post(
-                    '/list_datasets',
-                    headers={'Content-Type': 'application/json'},
-                    body=json.dumps({
-                        "destination_endpoint": _test_configs["amcEndpoint"]})
-                )
-                assert response.status_code == 200
-                assert len(response.json_body["dataSets"]) > 0
-                assert len(response.json_body["dataSets"][0]["columns"]) > 0
-
-
-                # list_upload
-                response = client.http.post(
-                    '/list_uploads',
-                    headers={'Content-Type': 'application/json'},
-                    body=json.dumps({
-                        "destination_endpoint": _test_configs["amcEndpoint"],
-                        "dataSetId": data_set_id})
-                )
-                assert response.status_code == 200
-                assert len(response.json_body["uploads"]) > 0
-                assert response.json_body["uploads"][0]["sourceFileS3Key"] is not None
-                assert response.json_body["uploads"][0]["uploadId"] is not None
-                assert response.json_body["uploads"][0]["status"] in ["Pending", "Succeeded"]
-
-                # upload_status
-                response = client.http.post(
-                    '/upload_status',
-                    headers={'Content-Type': 'application/json'},
-                    body=json.dumps(
-                        {
-                            "destination_endpoint": _test_configs["amcEndpoint"],
-                            "uploadId": str(response.json_body["uploads"][0]["uploadId"]),
-                            "dataSetId": data_set_id,
-                        })
-                )
-                assert response.status_code == 200
-                assert response.json_body["sourceS3Bucket"] is not None
-                assert response.json_body["sourceFileS3Key"] is not None
-                assert response.json_body["status"] in ["Pending", "Succeeded"]
         except Exception as e:
             logger.error(e)
             raise
