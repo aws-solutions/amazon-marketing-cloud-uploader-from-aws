@@ -4,4 +4,5 @@ pytest>=4.5.0
 pytest-cov>=2.12.1
 aws-xray-sdk>=2.10.0
 requests
+requests-aws4auth
 -e amc_uploader
