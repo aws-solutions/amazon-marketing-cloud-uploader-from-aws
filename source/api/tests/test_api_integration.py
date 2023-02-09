@@ -410,9 +410,10 @@ def test_create_upload_delete_dataset_DIMENSION_JSON_LIVE_RAMP(test_configs, tes
             "nullable": True
         },
         {
-            "name": "product_name",
-            "description": "Product name",
+            "name": "ramp_id",
+            "description": "The user's LiveRamp ID",
             "dataType": "STRING",
+            "nullable": True,
             "externalUserIdType": {
                 "type": "LiveRamp"
             }
@@ -453,12 +454,13 @@ def test_create_upload_delete_dataset_FACT_JSON_LIVE_RAMP(test_configs, test_dat
             "isMainEventTime": True
         },
         {
-            "name": "product_quantity",
-            "description": "Product quantity",
+            "name": "ramp_id",
+            "description": "The user's LiveRamp ID",
             "dataType": "STRING",
+            "nullable": True,
             "externalUserIdType": {
                 "type": "LiveRamp"
             }
-        },
+        }
     ]
     test_data_set_type("FACT", "JSON", test_configs, get_etl_data_by_job_id, generate_random_test_files_to_s3_bucket, test_columns=test_columns)

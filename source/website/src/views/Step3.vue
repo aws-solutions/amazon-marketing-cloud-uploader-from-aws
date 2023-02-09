@@ -367,7 +367,7 @@ SPDX-License-Identifier: Apache-2.0
               return
             }
 
-            let valid_keys = ["name", "description", "data_type", "dataType", "columnType", "column_type", "pii_type", "nullable", "externalUserIdType", "isMainEventTime"]
+            let valid_keys = ["name", "description", "data_type", "column_type", "pii_type", "nullable"]
             for (var column_index in importJson.columns){
                 let column = importJson.columns[column_index]
                 for (var key in column){
@@ -381,12 +381,11 @@ SPDX-License-Identifier: Apache-2.0
             this.isBusy = true;
             this.column_type_options.forEach(x => x.disabled = false)
             this.pii_type_options.forEach(x => x.disabled = false)
-            importJson = this.resolveKeys(importJson)
             this.items = importJson.columns.map(x => {return {
                 "name": x.name,
                 "description": x.description.charAt(0).toUpperCase() + x.description.replace(/[^a-zA-Z0-9]/g, ' ').slice(1),
-                "data_type": x.data_type || x.dataType,
-                "column_type": x.column_type || x.columnType,
+                "data_type": x.data_type,
+                "column_type": x.column_type,
                 "pii_type": x.pii_type,
                 "nullable": x.nullable
               }
@@ -397,25 +396,6 @@ SPDX-License-Identifier: Apache-2.0
             console.log("Schema Imported.")
           };
           reader.readAsText(files[0]);
-      },
-      resolveKeys(data) {
-        for (var column_index in data.columns){
-          let column = data.columns[column_index]
-          if ("isMainEventTime" in column){
-            data.columns[column_index]["column_type"] = "isMainEventTime"
-          }else if ("externalUserIdType" in column){
-            if (column.externalUserIdType.type === "LiveRamp"){
-              data.columns[column_index]["column_type"] = column.externalUserIdType.type
-            }else if (column.externalUserIdType.type === "HashedIdentifier" && "identifierType" in column.externalUserIdType){
-              data.columns[column_index]["column_type"] = "PII"
-              data.columns[column_index]["pii_type"] = column.externalUserIdType.identifierType
-            }else{
-              console.log("Cannot resolve externalUserIdType: ".concat(JSON.stringify(column.externalUserIdType)))
-            }
-          }
-        }
-        console.log("Resolve Schema: ".concat(JSON.stringify(data)))
-        return data
       },
       validateForm() {
         // All fields must have values.
