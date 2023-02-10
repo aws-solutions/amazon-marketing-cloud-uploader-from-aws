@@ -184,7 +184,7 @@ fi
 python3.10 -m venv "$VENV"
 source "$VENV"/bin/activate
 pip3 install wheel
-pip3 install --quiet boto3 chalice requests aws_xray_sdk
+pip3 install --quiet boto3 chalice requests aws_xray_sdk awswrangler
 
 echo "------------------------------------------------------------------------------"
 echo "Create distribution directory"
