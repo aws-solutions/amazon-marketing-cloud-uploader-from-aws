@@ -106,7 +106,7 @@ jobs:
       - name: Run Coverage Report
         run: |
           cd deployment
-          ./run-unit-tests.sh
+          ./check_test_coverage.sh
 
 
   build:
