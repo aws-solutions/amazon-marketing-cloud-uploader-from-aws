@@ -235,61 +235,61 @@ SPDX-License-Identifier: Apache-2.0
                     Refresh
                   </b-button>
                 </b-col>
-                <div v-if="selected_dataset">
-                  <b-table
-                    :items="uploads"
-                    :fields="upload_fields"
-                    :busy="isBusy3"
-                    :per-page="perPage2"
-                    :current-page="currentPage2"
-                    sort-by="dateCreated"
-                    :sort-desc="true"
-                    show-empty
-                    small
-                    responsive="sm"
-                  >
-                    <template #empty>
-                      This dataset has not been uploaded.
-                    </template>
-                    <template #table-busy>
-                      <div class="text-center my-2">
-                        <b-spinner class="align-middle"></b-spinner>
-                        <strong>&nbsp;&nbsp;Loading...</strong>
-                      </div>
-                    </template>
-                    <template #cell(dateCreated)="row">
-                      {{ new Date(row.item.dateCreated).toLocaleString() }}
-                    </template>
-                    <template #cell(sourceFileS3Key)="row">
-                      {{ row.item.sourceFileS3Key.split('/').slice(-1)[0] }}
-                    </template>
-                    <template #cell(show_details)="row">
-                      <b-form-checkbox @change="row.toggleDetails">
-                      </b-form-checkbox>
-                    </template>
-                    <template #row-details="data">
-                      <b-card>
-                        <b-row v-for="(item, key) in data.item" :key="key" class="mb-2">
-                          <b-col sm="3" class="text-sm-right">
-                            <strong>{{ key }}:</strong>
-                          </b-col>
-                          <b-col>
-                            {{ item }}
-                          </b-col>
-                        </b-row>
-                      </b-card>
-                    </template>
-                  </b-table>
-                  <b-pagination
-                    v-if="uploads.length > perPage2"
-                    v-model="currentPage2"
-                    align="center"
-                    :per-page="perPage2"
-                    :total-rows="rows2"
-                    aria-controls="shotTable"
-                  ></b-pagination>
-                </div>
               </b-row>
+              <div v-if="selected_dataset">
+                <b-table
+                  :items="uploads"
+                  :fields="upload_fields"
+                  :busy="isBusy3"
+                  :per-page="perPage2"
+                  :current-page="currentPage2"
+                  sort-by="dateCreated"
+                  :sort-desc="true"
+                  show-empty
+                  small
+                  responsive="sm"
+                >
+                  <template #empty>
+                    This dataset has not been uploaded.
+                  </template>
+                  <template #table-busy>
+                    <div class="text-center my-2">
+                      <b-spinner class="align-middle"></b-spinner>
+                      <strong>&nbsp;&nbsp;Loading...</strong>
+                    </div>
+                  </template>
+                  <template #cell(dateCreated)="row">
+                    {{ new Date(row.item.dateCreated).toLocaleString() }}
+                  </template>
+                  <template #cell(sourceFileS3Key)="row">
+                    {{ row.item.sourceFileS3Key.split('/').slice(-1)[0] }}
+                  </template>
+                  <template #cell(show_details)="row">
+                    <b-form-checkbox @change="row.toggleDetails">
+                    </b-form-checkbox>
+                  </template>
+                  <template #row-details="data">
+                    <b-card>
+                      <b-row v-for="(item, key) in data.item" :key="key" class="mb-2">
+                        <b-col sm="3" class="text-sm-right">
+                          <strong>{{ key }}:</strong>
+                        </b-col>
+                        <b-col>
+                          {{ item }}
+                        </b-col>
+                      </b-row>
+                    </b-card>
+                  </template>
+                </b-table>
+                <b-pagination
+                  v-if="uploads.length > perPage2"
+                  v-model="currentPage2"
+                  align="center"
+                  :per-page="perPage2"
+                  :total-rows="rows2"
+                  aria-controls="shotTable"
+                ></b-pagination>
+                </div>
               <br>
               <b-row>
                 <b-col>
