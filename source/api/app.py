@@ -437,13 +437,13 @@ def get_data_columns():
             # Read first row
             logger.info("Reading " + "s3://" + bucket + "/" + key)
             if content_type == json_content_type:
-                dfs = wr.s3_obj.read_json(
+                dfs = wr.s3.read_json(
                     path=["s3://" + bucket + "/" + key],
                     chunksize=1,
                     lines=True,
                 )
             elif content_type == csv_content_type:
-                dfs = wr.s3_obj.read_csv(
+                dfs = wr.s3.read_csv(
                     path=["s3://" + bucket + "/" + key], chunksize=1
                 )
             else:

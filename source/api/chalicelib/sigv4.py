@@ -74,10 +74,15 @@ def get_signature_key(key, date_stamp, region_name, service_name):
     return ksigning
 
 
-def send_request(request_url, headers, http_method):
+def send_request(request_url, headers, http_method, data=None):
     logger.info("\nBEGIN REQUEST+++++++++++++++++++++++++++++++++++")
     logger.info(f"Request URL = {request_url}")
-    response = getattr(requests, http_method)(request_url, headers=headers)
+
+    response = None
+    if data:
+        response = getattr(requests, http_method)(request_url, headers=headers, data=data)
+    else:
+        response = getattr(requests, http_method)(request_url, headers=headers)
 
     logger.info("\nRESPONSE+++++++++++++++++++++++++++++++++++")
     logger.info(f"Response code: {response.status_code}\n")
@@ -86,7 +91,7 @@ def send_request(request_url, headers, http_method):
 
 
 def get_canonical_headers(domain_name, amzdate, session_token):
-    return f"host: {domain_name}\nx-amz-date: {amzdate}\nx-amz-security-token: {session_token}\n"
+    return f"host:{domain_name}\nx-amz-date:{amzdate}\nx-amz-security-token:{session_token}\n"
 
 
 def get_authorization_header(
@@ -457,5 +462,5 @@ def post(path, body_data):
 
     # ************* SEND THE REQUEST *************
     return send_request(
-        request_url=endpoint, headers=headers, http_method="post"
+        request_url=endpoint, headers=headers, http_method="post", data=body_data
     )
