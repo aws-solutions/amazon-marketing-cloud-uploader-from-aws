@@ -132,7 +132,7 @@ jobs:
           REGION="us-east-1"
           VERSION="0.0.0"
           SOLUTION_NAME="amazon-marketing-cloud-uploader-from-aws"
-          SHORT_SHA=$(git rev-parse --short HEAD)
+          SHORT_SHA=cf5e684
           DIST_OUTPUT_BUCKET=github-pr-workflow-$SHORT_SHA-dist
           TEMPLATE_OUTPUT_BUCKET=github-pr-workflow-$SHORT_SHA
           echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
@@ -169,39 +169,40 @@ jobs:
         # TEMPLATE=$(cat template | cut -f 2 -d "'")
         # echo "TEMPLATE=$TEMPLATE" >> $GITHUB_OUTPUT
 
-  # deploy:
-  #   needs:
-  #     - build
-  #   runs-on: ubuntu-latest
-  #   outputs:
-  #     STACK_NAME: ${{ steps.init.outputs.STACK_NAME }}
-  #   steps:
-  #     - name: Initialize AWS credentials
-  #       uses: aws-actions/configure-aws-credentials@v1
-  #       with:
-  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  #         aws-region: ${{needs.build.outputs.REGION}}
-  #     - name: Setup deploy environment
-  #       id: init
-  #       run: |
-  #         STACK_NAME=github-pr-worklfow-${{needs.build.outputs.SHORT_SHA}}
-  #         echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
-  #         echo "STACK_NAME=$STACK_NAME" >> $GITHUB_OUTPUT
-  #         echo "EMAIL=${{secrets.EMAIL_ADDRESS}}" >> $GITHUB_ENV
-  #         echo "TEMPLATE=${{needs.build.outputs.TEMPLATE}}" >> $GITHUB_ENV
-  #         echo "DATA_BUCKET_NAME=${{secrets.DATA_BUCKET_NAME}}" >> $GITHUB_ENV
-  #         echo "AMC_API_ENDPOINT=${{secrets.AMC_API_ENDPOINT}}" >> $GITHUB_ENV
-  #         echo "DATA_UPLOAD_ACCOUNT_ID=${{secrets.DATA_UPLOAD_ACCOUNT_ID}}" >> $GITHUB_ENV
-  #     - name: Deploy
-  #       run: |
-  #         echo "Creating the stack"
-  #         aws cloudformation create-stack --stack-name $STACK_NAME --template-url $TEMPLATE --parameters ParameterKey=AdminEmail,ParameterValue=$EMAIL ParameterKey=DataBucketName,ParameterValue=$DATA_BUCKET_NAME ParameterKey=AmcEndpointUrl,ParameterValue=$AMC_API_ENDPOINT ParameterKey=DataUploadAccountId,ParameterValue=$DATA_UPLOAD_ACCOUNT_ID --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --disable-rollback
-  #         aws cloudformation wait stack-create-complete --stack-name $STACK_NAME
+  deploy:
+    needs:
+      - build
+    runs-on: ubuntu-latest
+    outputs:
+      STACK_NAME: ${{ steps.init.outputs.STACK_NAME }}
+    steps:
+      - name: Initialize AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{needs.build.outputs.REGION}}
+      - name: Setup deploy environment
+        id: init
+        run: |
+          STACK_NAME=github-pr-worklfow-${{needs.build.outputs.SHORT_SHA}}
+          echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
+          echo "STACK_NAME=$STACK_NAME" >> $GITHUB_OUTPUT
+          echo "EMAIL=${{secrets.EMAIL_ADDRESS}}" >> $GITHUB_ENV
+          echo "TEMPLATE=${{needs.build.outputs.TEMPLATE}}" >> $GITHUB_ENV
+          echo "DATA_BUCKET_NAME=${{secrets.DATA_BUCKET_NAME}}" >> $GITHUB_ENV
+          echo "AMC_API_ENDPOINT=${{secrets.AMC_API_ENDPOINT}}" >> $GITHUB_ENV
+          echo "DATA_UPLOAD_ACCOUNT_ID=${{secrets.DATA_UPLOAD_ACCOUNT_ID}}" >> $GITHUB_ENV
+      - name: Deploy
+        run: |
+          echo "Creating the stack"
+        # aws cloudformation create-stack --stack-name $STACK_NAME --template-url $TEMPLATE --parameters ParameterKey=AdminEmail,ParameterValue=$EMAIL ParameterKey=DataBucketName,ParameterValue=$DATA_BUCKET_NAME ParameterKey=AmcEndpointUrl,ParameterValue=$AMC_API_ENDPOINT ParameterKey=DataUploadAccountId,ParameterValue=$DATA_UPLOAD_ACCOUNT_ID --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --disable-rollback
+        # aws cloudformation wait stack-create-complete --stack-name $STACK_NAME
 
   integration_test:
     needs:
       - build
+      - deploy
     runs-on: ubuntu-latest
     outputs:
       AMC_GLUE_JOB_ROLE_NAME: ${{ steps.api_test.outputs.AMC_GLUE_JOB_ROLE_NAME }}
