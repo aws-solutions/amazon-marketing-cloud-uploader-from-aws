@@ -7,7 +7,7 @@
 #
 # USAGE:
 #   VENV=$(mktemp -d) && echo "$VENV"
-#   python3.9 -m venv "$VENV"
+#   python3.10 -m venv "$VENV"
 #   source "$VENV"/bin/activate
 #   cd tests
 #   pip install -r requirements-test.txt
