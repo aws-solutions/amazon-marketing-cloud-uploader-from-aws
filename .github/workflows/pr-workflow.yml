@@ -51,14 +51,14 @@ jobs:
         with:
           ref: ${{ github.sha }}
 
-      - name: Set up Python 3.9
+      - name: Set up Python 3.10
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.10'
       - name: Run Unit Test
         run: |
           VENV=$(mktemp -d) && echo "$VENV"
-          python3.9 -m venv "$VENV"
+          python3.10 -m venv "$VENV"
           source "$VENV"/bin/activate
           ls -l
           cd source
@@ -115,10 +115,10 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ steps.init.outputs.REGION }}
 
-      - name: Set up Python 3.9
+      - name: Set up Python 3.10
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.10'
       - name: Run build script
         id: builder
         run: |
