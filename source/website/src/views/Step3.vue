@@ -534,12 +534,23 @@ SPDX-License-Identifier: Apache-2.0
           let idx = this.column_type_options.findIndex((x => x.value === 'isMainEventTime'))
           this.column_type_options[idx].disabled = false
         }
+        // enable live ramp option if that was just deselected
+        if (this.items[index].column_type === 'LiveRamp ID') {
+          let idx = this.column_type_options.findIndex((x => x.value === 'LiveRamp ID'))
+          this.column_type_options[idx].disabled = false
+        }
         // disable timestamp option if that was just selected
         if (value === 'isMainEventTime') {
           let idx = this.column_type_options.findIndex((x => x.value === 'isMainEventTime'))
           this.column_type_options[idx].disabled = true
-          // automatically set data type to timestamp if column type is timestamp
+          // automatically set data type to timestamp if column type is MainEventTime
           this.items[index].data_type = "TIMESTAMP"
+        }
+        if (value === 'LiveRamp ID') {
+          let idx = this.column_type_options.findIndex((x => x.value === 'LiveRamp ID'))
+          this.column_type_options[idx].disabled = true
+           // automatically set data type to string if column type is ramp_id
+          this.items[index].data_type = "STRING"
         }
         this.items[index].column_type = value;
         this.$store.commit('saveStep3FormInput', this.items)
