@@ -164,24 +164,24 @@ regional_dist_dir="$build_dir/regional-s3-assets"
 echo "------------------------------------------------------------------------------"
 echo "Creating a temporary Python virtualenv for this script"
 echo "------------------------------------------------------------------------------"
-python3.9 -c "import os; print (os.getenv('VIRTUAL_ENV'))" | grep -q None
+python3.10 -c "import os; print (os.getenv('VIRTUAL_ENV'))" | grep -q None
 if [ $? -ne 0 ]; then
     echo "ERROR: Do not run this script inside Virtualenv. Type \`deactivate\` and run again.";
     exit 1;
 fi
-command -v python3.9
+command -v python3.10
 if [ $? -ne 0 ]; then
-    echo "ERROR: install python3.9 before running this script"
+    echo "ERROR: install python3.10 before running this script"
     exit 1
 fi
 echo "Using virtual python environment:"
 VENV=$(mktemp -d) && echo "$VENV"
-command -v python3.9 > /dev/null
+command -v python3.10 > /dev/null
 if [ $? -ne 0 ]; then
-    echo "ERROR: install python3.9 before running this script"
+    echo "ERROR: install python3.10 before running this script"
     exit 1
 fi
-python3.9 -m venv "$VENV"
+python3.10 -m venv "$VENV"
 source "$VENV"/bin/activate
 pip3 install wheel
 pip3 install --quiet boto3 chalice requests aws_xray_sdk awswrangler
