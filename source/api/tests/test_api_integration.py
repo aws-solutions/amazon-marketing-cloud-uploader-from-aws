@@ -166,8 +166,8 @@ def generate_random_test_files_to_s3_bucket():
             )
 
         s3 = boto3.resource("s3")
-        object = s3.Object(_test_configs["s3bucket"], s3_key)
-        object.put(Body=output, ContentType=content_type)
+        s3_object = s3.Object(_test_configs["s3bucket"], s3_key)
+        s3_object.put(Body=output, ContentType=content_type)
 
         payload_default = {
             "s3bucket": _test_configs["s3bucket"],
