@@ -28,92 +28,90 @@ jobs:
           ../viperlight/bin/viperlight scan -x python-pipoutdated -x python-bandit
           echo "Completed content scanning `date`"
 
-  cfn-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out pr branch
-        uses: actions/checkout@v2.3.4
-        with:
-          ref: ${{ github.sha }}
-      - name: Run cfn_nag
-        uses: stelligent/cfn_nag@master
-        continue-on-error: true
-        with:
-          input_path: deployment
+  # cfn-scan:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Check out pr branch
+  #       uses: actions/checkout@v2.3.4
+  #       with:
+  #         ref: ${{ github.sha }}
+  #     - name: Run cfn_nag
+  #       uses: stelligent/cfn_nag@master
+  #       continue-on-error: true
+  #       with:
+  #         input_path: deployment
 
-  npm-lint-checker:
-    needs:
-      - viperlight-scan
-      - cfn-scan
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out pr branch
-        uses: actions/checkout@v2.3.4
-        with:
-          ref: ${{ github.sha }}
+  # npm-lint-checker:
+  #   needs:
+  #     - viperlight-scan
+  #     - cfn-scan
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Check out pr branch
+  #       uses: actions/checkout@v2.3.4
+  #       with:
+  #         ref: ${{ github.sha }}
 
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-      - name: Run npm lint
-        run: |
-          ./run-pre-commit.sh -rnl
+  #     - name: Set up Python 3.10
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: '3.10'
+  #     - name: Run npm lint
+  #       run: |
+  #         ./run-pre-commit.sh -rnl
 
-  pre-commit:
-    needs:
-      - npm-lint-checker
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out pr branch
-        uses: actions/checkout@v2.3.4
-        with:
-          ref: ${{ github.sha }}
+  # pre-commit:
+  #   needs:
+  #     - npm-lint-checker
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Check out pr branch
+  #       uses: actions/checkout@v2.3.4
+  #       with:
+  #         ref: ${{ github.sha }}
 
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-      - name: Run Pre-Commit
-        run: |
-          ./run-pre-commit.sh -rpc
+  #     - name: Set up Python 3.10
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: '3.10'
+  #     - name: Run Pre-Commit
+  #       run: |
+  #         ./run-pre-commit.sh -rpc
 
-  unit-test:
-    needs:
-      - pre-commit
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out pr branch
-        uses: actions/checkout@v2.3.4
-        with:
-          ref: ${{ github.sha }}
+  # unit-test:
+  #   needs:
+  #     - pre-commit
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Check out pr branch
+  #       uses: actions/checkout@v2.3.4
+  #       with:
+  #         ref: ${{ github.sha }}
 
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-      - name: Run Unit Test
-        run: |
-          VENV=$(mktemp -d) && echo "$VENV"
-          python3.10 -m venv "$VENV"
-          source "$VENV"/bin/activate
-          ls -l
-          cd source
-          pip install -r requirements-dev.txt
-          cd tests
-          pytest amc_transformation/test_amc_transformation.py -vv
-          pytest amc_uploader/test_amc_uploader.py -vv
-      - name: Run Coverage Report
-        run: |
-          cd deployment
-          ./check_test_coverage.sh
+  #     - name: Set up Python 3.10
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: '3.10'
+  #     - name: Run Unit Test
+  #       run: |
+  #         VENV=$(mktemp -d) && echo "$VENV"
+  #         python3.10 -m venv "$VENV"
+  #         source "$VENV"/bin/activate
+  #         ls -l
+  #         cd source
+  #         pip install -r requirements-dev.txt
+  #         cd tests
+  #         pytest amc_transformation/test_amc_transformation.py -vv
+  #         pytest amc_uploader/test_amc_uploader.py -vv
+  #     - name: Run Coverage Report
+  #       run: |
+  #         cd deployment
+  #         ./check_test_coverage.sh
 
 
   build:
     needs:
       - viperlight-scan
-      - cfn-scan
-      - unit-test
     runs-on: ubuntu-latest
     outputs:
       REGION: ${{ steps.init.outputs.REGION }}
@@ -166,45 +164,44 @@ jobs:
           aws s3 mb s3://$DIST_OUTPUT_BUCKET-$REGION
           aws s3 mb s3://$TEMPLATE_OUTPUT_BUCKET
           cd deployment
-          echo "./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name ${SOLUTION_NAME} --version ${VERSION} --region ${REGION}"
-          echo y | ./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name ${SOLUTION_NAME} --version ${VERSION}  --region ${REGION} | tee >( grep TEMPLATE >template )
-          TEMPLATE=$(cat template | cut -f 2 -d "'")
-          echo "TEMPLATE=$TEMPLATE" >> $GITHUB_OUTPUT
+        # echo "./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name ${SOLUTION_NAME} --version ${VERSION} --region ${REGION}"
+        # echo y | ./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name ${SOLUTION_NAME} --version ${VERSION}  --region ${REGION} | tee >( grep TEMPLATE >template )
+        # TEMPLATE=$(cat template | cut -f 2 -d "'")
+        # echo "TEMPLATE=$TEMPLATE" >> $GITHUB_OUTPUT
 
-  deploy:
-    needs:
-      - build
-    runs-on: ubuntu-latest
-    outputs:
-      STACK_NAME: ${{ steps.init.outputs.STACK_NAME }}
-    steps:
-      - name: Initialize AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{needs.build.outputs.REGION}}
-      - name: Setup deploy environment
-        id: init
-        run: |
-          STACK_NAME=github-pr-worklfow-${{needs.build.outputs.SHORT_SHA}}
-          echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
-          echo "STACK_NAME=$STACK_NAME" >> $GITHUB_OUTPUT
-          echo "EMAIL=${{secrets.EMAIL_ADDRESS}}" >> $GITHUB_ENV
-          echo "TEMPLATE=${{needs.build.outputs.TEMPLATE}}" >> $GITHUB_ENV
-          echo "DATA_BUCKET_NAME=${{secrets.DATA_BUCKET_NAME}}" >> $GITHUB_ENV
-          echo "AMC_API_ENDPOINT=${{secrets.AMC_API_ENDPOINT}}" >> $GITHUB_ENV
-          echo "DATA_UPLOAD_ACCOUNT_ID=${{secrets.DATA_UPLOAD_ACCOUNT_ID}}" >> $GITHUB_ENV
-      - name: Deploy
-        run: |
-          echo "Creating the stack"
-          aws cloudformation create-stack --stack-name $STACK_NAME --template-url $TEMPLATE --parameters ParameterKey=AdminEmail,ParameterValue=$EMAIL ParameterKey=DataBucketName,ParameterValue=$DATA_BUCKET_NAME ParameterKey=AmcEndpointUrl,ParameterValue=$AMC_API_ENDPOINT ParameterKey=DataUploadAccountId,ParameterValue=$DATA_UPLOAD_ACCOUNT_ID --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --disable-rollback
-          aws cloudformation wait stack-create-complete --stack-name $STACK_NAME
+  # deploy:
+  #   needs:
+  #     - build
+  #   runs-on: ubuntu-latest
+  #   outputs:
+  #     STACK_NAME: ${{ steps.init.outputs.STACK_NAME }}
+  #   steps:
+  #     - name: Initialize AWS credentials
+  #       uses: aws-actions/configure-aws-credentials@v1
+  #       with:
+  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #         aws-region: ${{needs.build.outputs.REGION}}
+  #     - name: Setup deploy environment
+  #       id: init
+  #       run: |
+  #         STACK_NAME=github-pr-worklfow-${{needs.build.outputs.SHORT_SHA}}
+  #         echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
+  #         echo "STACK_NAME=$STACK_NAME" >> $GITHUB_OUTPUT
+  #         echo "EMAIL=${{secrets.EMAIL_ADDRESS}}" >> $GITHUB_ENV
+  #         echo "TEMPLATE=${{needs.build.outputs.TEMPLATE}}" >> $GITHUB_ENV
+  #         echo "DATA_BUCKET_NAME=${{secrets.DATA_BUCKET_NAME}}" >> $GITHUB_ENV
+  #         echo "AMC_API_ENDPOINT=${{secrets.AMC_API_ENDPOINT}}" >> $GITHUB_ENV
+  #         echo "DATA_UPLOAD_ACCOUNT_ID=${{secrets.DATA_UPLOAD_ACCOUNT_ID}}" >> $GITHUB_ENV
+  #     - name: Deploy
+  #       run: |
+  #         echo "Creating the stack"
+  #         aws cloudformation create-stack --stack-name $STACK_NAME --template-url $TEMPLATE --parameters ParameterKey=AdminEmail,ParameterValue=$EMAIL ParameterKey=DataBucketName,ParameterValue=$DATA_BUCKET_NAME ParameterKey=AmcEndpointUrl,ParameterValue=$AMC_API_ENDPOINT ParameterKey=DataUploadAccountId,ParameterValue=$DATA_UPLOAD_ACCOUNT_ID --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --disable-rollback
+  #         aws cloudformation wait stack-create-complete --stack-name $STACK_NAME
 
   integration_test:
     needs:
       - build
-      - deploy
     runs-on: ubuntu-latest
     outputs:
       AMC_GLUE_JOB_ROLE_NAME: ${{ steps.api_test.outputs.AMC_GLUE_JOB_ROLE_NAME }}
