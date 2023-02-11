@@ -25,11 +25,21 @@ from re import finditer
 
 
 def load_address_map_helper():
-    __location__ = os.path.dirname(__file__)
-    with open(
-        os.path.join(__location__, "address_map_helper.json"), encoding="utf-8"
-    ) as file:
-        return json.load(file)
+    try:
+        __location__ = os.path.realpath(
+            os.path.join(os.getcwd(), os.path.dirname(__file__))
+        )
+        with open(
+            os.path.join(__location__, "address_map_helper.json"),
+            encoding="utf-8",
+        ) as file:
+            return json.load(file)
+    except Exception:
+        # inside glue job
+        with open(
+            os.path.join("address_map_helper.json"), encoding="utf-8"
+        ) as file:
+            return json.load(file)
 
 
 address_map = load_address_map_helper()
