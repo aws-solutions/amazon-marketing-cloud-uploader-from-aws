@@ -16,7 +16,7 @@ Parameters:
 Conditions:
   EnableCmkEncryptionCondition: !Not [!Equals [!Ref CustomerManagedKey, ""]]
   EnableAnonymousData: !Equals [ !FindInMap [AnonymousData,SendAnonymousData,Data], Yes]
-  
+
 Mappings:
   Application:
     Solution:
@@ -115,7 +115,6 @@ Resources:
             Condition:
               Bool:
                 aws:SecureTransport: false
-                
 
   ArtifactLogsBucket:
     DeletionPolicy: "Delete"
@@ -158,7 +157,7 @@ Resources:
 
   ArtifactBucket:
     Type: AWS::S3::Bucket
-    DependsOn: 
+    DependsOn:
       - AmcUploadLambdaPermission
     DeletionPolicy: "Delete"
     Properties:
@@ -399,7 +398,7 @@ Resources:
       LogGroupName: !Join ['/', ['/aws/lambda', !Ref AmcUploadLambdaFunction]]
       RetentionInDays: 30
 
-  # Helper function 
+  # Helper function
   # - Generates a unique name for the ArtifactBucket
   # - Also purges ArtifactLogsBucket, so it can be removed when the stack is deleted.
   HelperFunction:
@@ -427,15 +426,15 @@ Resources:
           import os
           import logging
           from urllib.request import build_opener, HTTPHandler, Request
-          
+
           LOGGER = logging.getLogger()
           LOGGER.setLevel(logging.INFO)
-          
-          
+
+
           def id_generator(size=6, chars=string.ascii_lowercase + string.digits):
             return "".join(random.choices(chars, k=size))
-          
-          
+
+
           def handler(event, context):
             print("We got the following event:\n", event)
             try:
@@ -458,7 +457,7 @@ Resources:
               s3 = boto3.resource('s3')
               bucket_name = os.environ["DESIGNATED_LOGGING_BUCKET"]
               LOGGER.info("Purging bucket, " + bucket_name)
-              bucket = s3.Bucket(bucket_name) 
+              bucket = s3.Bucket(bucket_name)
               bucket.objects.all().delete()
             except Exception as e:
               LOGGER.info("Unable to purge artifact bucket while deleting stack: {e}".format(e=e))
@@ -638,7 +637,7 @@ Resources:
         UUID: !GetAtt AnonymousDataUuid.UUID
 
   # Web stack
-  
+
   WebStack:
     Type: "AWS::CloudFormation::Stack"
     Properties:
@@ -656,8 +655,8 @@ Resources:
             - TemplateKeyPrefix
           - "/web.template"
       Parameters:
-        DataBucketName: !Ref DataBucketName 
-        ArtifactBucketName: !Ref ArtifactBucket 
+        DataBucketName: !Ref DataBucketName
+        ArtifactBucketName: !Ref ArtifactBucket
         UserPoolId: !GetAtt AuthStack.Outputs.UserPoolId
         IdentityPoolId: !GetAtt AuthStack.Outputs.IdentityPoolId
         PoolClientId: !GetAtt AuthStack.Outputs.UserPoolClientId
@@ -742,9 +741,9 @@ Resources:
           - Application
           - Solution
           - Name
-        DeploymentPackageBucket: !Join 
+        DeploymentPackageBucket: !Join
           - "-"
-          - - !FindInMap 
+          - - !FindInMap
               - Application
               - SourceCode
               - RegionalS3Bucket
@@ -767,7 +766,7 @@ Resources:
         SystemKmsKeyId: !Ref SystemKey
 
   # Anonymous metrics
-    
+
   AnonymousDataCustomResourceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -866,8 +865,7 @@ Resources:
         'Solutions:SolutionVersion': !FindInMap [Application, Solution, "Version"],
         'Solutions:SolutionName': !FindInMap [Application, Solution, "Name"],
         'Solutions:ApplicationType': !FindInMap [Application, Solution, "ApplicationType"],
-        } 
-        
+        }
 
   AppRegistryApplicationStackAssociation:
     Type: AWS::ServiceCatalogAppRegistry::ResourceAssociation
@@ -914,7 +912,7 @@ Resources:
     Properties:
       Name: !Join ['-', [!Ref 'AWS::Region', !Ref 'AWS::StackName']]
       Description: Attribute group for solution information.
-      Attributes: {       
+      Attributes: {
         "ApplicationType" : !FindInMap [Application, Solution, "ApplicationType"],
         "Version": !FindInMap [Application, Solution, "Version"],
         "SolutionID": !FindInMap [Application, Solution, "Id"],

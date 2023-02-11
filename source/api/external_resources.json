@@ -1,6 +1,5 @@
 {
-  "Description" : "(SO0222) - amcufa. AWS CloudFormation template that defines resources for the REST API.",
-
+  "Description": "(SO0222) - amcufa. AWS CloudFormation template that defines resources for the REST API.",
   "Parameters": {
     "botoConfig": {
       "Type": "String",
@@ -61,10 +60,12 @@
   },
   "Conditions": {
     "EnableCmkEncryptionCondition": {
-      "Fn::Not" : [
+      "Fn::Not": [
         {
-          "Fn::Equals" : [
-            {"Ref": "CustomerManagedKey"},
+          "Fn::Equals": [
+            {
+              "Ref": "CustomerManagedKey"
+            },
             ""
           ]
         }
@@ -73,7 +74,12 @@
   },
   "Outputs": {
     "ApiHandlerRoleArn": {
-      "Value": { "Fn::GetAtt" : [ "ApiHandlerRole", "Arn" ] }
+      "Value": {
+        "Fn::GetAtt": [
+          "ApiHandlerRole",
+          "Arn"
+        ]
+      }
     }
   },
   "Resources": {
@@ -117,7 +123,7 @@
                   "Resource": {
                     "Fn::Sub": "arn:aws:s3:::${DataBucketName}/*"
                   }
-                },                
+                },
                 {
                   "Effect": "Allow",
                   "Action": [
@@ -175,7 +181,9 @@
                     "logs:CreateLogStream",
                     "logs:PutLogEvents"
                   ],
-                  "Resource": {"Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*"},
+                  "Resource": {
+                    "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*"
+                  },
                   "Effect": "Allow",
                   "Sid": "Logging"
                 },
@@ -197,19 +205,23 @@
                   }
                 },
                 {
-                "Fn::If" : [
-                  "EnableCmkEncryptionCondition",
-                  {
-                    "Action": [
-                      "kms:Decrypt",
-                      "kms:GenerateDataKey"
-                    ],
-                    "Resource": [
-                      {"Ref": "CustomerManagedKey"}
-                    ],
-                    "Effect": "Allow"
-                  },
-                  {"Ref": "AWS::NoValue"}
+                  "Fn::If": [
+                    "EnableCmkEncryptionCondition",
+                    {
+                      "Action": [
+                        "kms:Decrypt",
+                        "kms:GenerateDataKey"
+                      ],
+                      "Resource": [
+                        {
+                          "Ref": "CustomerManagedKey"
+                        }
+                      ],
+                      "Effect": "Allow"
+                    },
+                    {
+                      "Ref": "AWS::NoValue"
+                    }
                   ]
                 },
                 {
@@ -281,14 +293,23 @@
             "Fn::Sub": "arn:aws:lambda:${AWS::Region}:336392948345:layer:AWSSDKPandas-Python39:3"
           }
         ],
-        "Tracing": {"Ref": "TracingConfigMode"},
+        "Tracing": {
+          "Ref": "TracingConfigMode"
+        },
         "Role": {
           "Fn::GetAtt": [
             "ApiHandlerRole",
             "Arn"
           ]
         },
-        "CodeUri": {"Bucket":  {"Ref": "DeploymentPackageBucket"}, "Key":  {"Ref": "DeploymentPackageKey"}}
+        "CodeUri": {
+          "Bucket": {
+            "Ref": "DeploymentPackageBucket"
+          },
+          "Key": {
+            "Ref": "DeploymentPackageKey"
+          }
+        }
       }
     }
   }

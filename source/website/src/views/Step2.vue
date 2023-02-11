@@ -13,7 +13,7 @@ SPDX-License-Identifier: Apache-2.0
           variant="danger"
           dismissible
         >
-          Invalid dataset definition. {{ formErrorMessage }} 
+          Invalid dataset definition. {{ formErrorMessage }}
         </b-alert>
         <b-modal id="modal-dataset-type" title="Dataset Types" ok-only>
           <p><strong>Fact</strong> datasets represent time-series data and must include a timestamp column.</p>
@@ -138,7 +138,7 @@ SPDX-License-Identifier: Apache-2.0
   import Header from '@/components/Header.vue'
   import Sidebar from '@/components/Sidebar.vue'
   import { mapState } from 'vuex'
-  
+
   export default {
     name: "Step2",
     components: {
@@ -150,7 +150,7 @@ SPDX-License-Identifier: Apache-2.0
         dataset_id: '',
         description: '',
         dataset_type: '',
-        // time_period is autodetected in Glue ETL and updated in amc_uploader.py 
+        // time_period is autodetected in Glue ETL and updated in amc_uploader.py
         time_period: 'autodetect',
         time_period_options: [
           { value: "autodetect", text: "Autodetect" },
@@ -186,10 +186,10 @@ SPDX-License-Identifier: Apache-2.0
       // set default value for file format
       if (this.file_format === '') {
         if (this.s3key.split('.').pop().toLowerCase() === "csv") {
-          this.file_format = "CSV" 
+          this.file_format = "CSV"
         }
         else if (this.s3key.split('.').pop().toLowerCase() === "json") {
-          this.file_format = "JSON" 
+          this.file_format = "JSON"
         }
       }
       this.time_period = Object.keys(this.new_dataset_definition).includes('period')?this.new_dataset_definition['period']:this.time_period

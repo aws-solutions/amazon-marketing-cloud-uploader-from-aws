@@ -1,0 +1,6 @@
+aws_xray_sdk
+awswrangler
+boto3
+chalice
+pytest
+requests

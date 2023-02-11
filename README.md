@@ -1,6 +1,7 @@
+
 # Amazon Marketing Cloud (AMC) Uploader from AWS
 
-This solution enables users to upload first party datasets from Amazon S3 into the Amazon Marketing Cloud (AMC). It includes a web application in which users are guided through the process of defining datasets and their PII attributes. Once this information is submitted, the solution initiates an ETL workflow that performs data normalization, hashing of plain-text PII, time-series partitioning, and upload to AMC. 
+This solution enables users to upload first party datasets from Amazon S3 into the Amazon Marketing Cloud (AMC). It includes a web application in which users are guided through the process of defining datasets and their PII attributes. Once this information is submitted, the solution initiates an ETL workflow that performs data normalization, hashing of plain-text PII, time-series partitioning, and upload to AMC.
 
 ## Architecture
 
@@ -17,7 +18,7 @@ The architecture diagram for this solution is shown above. The process flow is d
 7. The AWS Glue job outputs results in an AMC compatible format to Amazon S3. This event automatically triggers a request to AMC to begin uploading those results.
 8. AMC asynchronously uploads the transformed data from Amazon S3.
 
-If first-party data files have been encrypted using KMS, then users must specify which KMS key can be used to decrypt them. The CloudFormation parameter called "CustomerManagedKey" is provided for this purpose (see [below](#input)). 
+If first-party data files have been encrypted using KMS, then users must specify which KMS key can be used to decrypt them. The CloudFormation parameter called "CustomerManagedKey" is provided for this purpose (see [below](#input)).
 
 The dotted lines leading from the KMS key object in the architecture diagram indicate where this key is used for decryption. When users specify a KMS key, that key will be used to encrypt or decrypt data wherever it is saved or read from disk throughout the ETL pipeline, as described below:
 
@@ -56,16 +57,16 @@ For more installation options, see the [Advanced Installation](#advanced-install
 * *DataBucketName:* Name of the S3 bucket from which source data will be uploaded.
 * *AmcEndpointUrl:* API endpoint of the AMC instance. This can be located in the Instance Info page in the AMC UI.
 * *DataUploadAccountId:* AWS account id that is connected to the AMC instance. This can be located in the Instance Info page in the AMC UI.
-* *CustomerManagedKey:* (Optional) Customer Managed Key to be used for decrypting source data, encrypting ETL results, and encrypting the corresponding datasets in AMC 
+* *CustomerManagedKey:* (Optional) Customer Managed Key to be used for decrypting source data, encrypting ETL results, and encrypting the corresponding datasets in AMC
 
-  * AMC provides the ability to encrypt customer datasets with encryption keys created in AWS Key Management Service (KMS). This step is optional. If an encryption key is not provided, AMC will perform default encryption on behalf of the customer. The benefit to using a customer generated encryption key is the ability to revoke AMC’s access to uploaded data at any point. In addition, customers can monitor encryption key access via AWS CloudTrail event logs. 
+  * AMC provides the ability to encrypt customer datasets with encryption keys created in AWS Key Management Service (KMS). This step is optional. If an encryption key is not provided, AMC will perform default encryption on behalf of the customer. The benefit to using a customer generated encryption key is the ability to revoke AMC’s access to uploaded data at any point. In addition, customers can monitor encryption key access via AWS CloudTrail event logs.
   * To enable this feature, specify a key in the *CustomerManagedKey* CloudFormation parameter and modify the key's policy to grant usage permissions to the AMC instance, as described in the "KMS Encryption Key Usage" section of the AMC Data Upload documentation.
 
 # Advanced Installation Options
 
 ## Building the solution from source code
 
-The following commands will build the solution from source code.  
+The following commands will build the solution from source code.
 
 ```
 EMAIL=[specify your email]
@@ -84,7 +85,7 @@ aws s3 mb s3://$TEMPLATE_OUTPUT_BUCKET --region $REGION
 TEMPLATE=$(cat template | cut -f 2 -d "'")
 ```
 
-Once you have built the demo app with the above commands, then it's time to deploy it. 
+Once you have built the demo app with the above commands, then it's time to deploy it.
 
 #### Deploy
 
@@ -109,11 +110,11 @@ aws cloudformation create-stack --stack-name $STACK_NAME --template-url $TEMPLAT
 
 This solution uses [Amazon Cognito](https://docs.aws.amazon.com/cognito/index.html) for user authentication. When a user logs into the web application, Cognito provides temporary tokens that front-end Javascript components use to authenticate to back-end APIs in API Gateway and Elasticsearch. To learn more about these tokens, see [Using Tokens with User Pools](https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-tokens-with-identity-providers.html) in the Amazon Cognito documentation.
 
-The front-end Javascript components in this application use the [Amplify Framework](https://docs.amplify.aws/) to perform back-end requests. You won't actually see any explicit handling of Cognito tokens in the source code for this application because that's all handled internally by the Amplify Framework. 
+The front-end Javascript components in this application use the [Amplify Framework](https://docs.amplify.aws/) to perform back-end requests. You won't actually see any explicit handling of Cognito tokens in the source code for this application because that's all handled internally by the Amplify Framework.
 
 ## User account management
 
-All the necessary Cognito resources for this solution are configured in the [deployment/auth.yaml](deployment/auth.yaml) CloudFormation template and it includes an initial administration account. A temporary password for this account will be sent to the email address specified during the CloudFormation deployment. This administration account can be used to create additional user accounts for the application. 
+All the necessary Cognito resources for this solution are configured in the [deployment/auth.yaml](deployment/auth.yaml) CloudFormation template and it includes an initial administration account. A temporary password for this account will be sent to the email address specified during the CloudFormation deployment. This administration account can be used to create additional user accounts for the application.
 
 Follow this procedure to create new user accounts:
 
@@ -151,6 +152,13 @@ sh deployment/run-unit-tests.sh
 3. A new virtual environment should now be created with the script with test environment variables. The tests will also execute.
 4. A coverage report will be generated for SonarQube and can be viewed in the `tests/coverage-reports` directory.
 
+### Pre-Commit
+---
+
+```
+./run-pre-commit.sh --help
+```
+
 
 ## Collection of operational metrics
 
@@ -163,7 +171,7 @@ this capability, please see the [implementation guide](https://docs.aws.amazon.c
 
 ## Why did so few identities resolve for my dataset?
 
-AMC resolves identities by matching the hashed PII fields in advertiser data with hashed PII fields in Amazon Advertising data. In order for identities to match, advertisers must normalize PII fields prior to hashing in a way that is consistent with how Amazon normalizes PII fields. This solution attempts to normalize clear-text PII fields in a way that is consistent with Amazon Advertising, however it is possible for inconsistencies to be present. 
+AMC resolves identities by matching the hashed PII fields in advertiser data with hashed PII fields in Amazon Advertising data. In order for identities to match, advertisers must normalize PII fields prior to hashing in a way that is consistent with how Amazon normalizes PII fields. This solution attempts to normalize clear-text PII fields in a way that is consistent with Amazon Advertising, however it is possible for inconsistencies to be present.
 
 If you see poor identity resolution results for data that you uploaded using this solution, then try using the AMC Data Uploader tool to normalize your data as described in the “AMC Data Upload Documentation [Beta].pdf” document and return to this solution to upload the hashed files output by that tool to AMC. You can download the “AMC Data Upload Documentation [Beta].pdf” document from the Documentation link shown on your AMC instance administration page.
 
@@ -197,4 +205,3 @@ See the [LICENSE](LICENSE.txt) file for our project's licensing.
 Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
 Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
