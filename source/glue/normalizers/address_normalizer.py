@@ -36,8 +36,12 @@ def load_address_map_helper():
             return json.load(file)
     except Exception:
         # inside glue job
+        print("GLUE CHECKER DEBUG")
+        print(os.listdir('.'))
+        glue_lib = list(filter(lambda c: c.startswith('glue-python-libs-'), os.listdir('.')))
+        print(os.listdir(glue_lib[0])) 
         with open(
-            os.path.join("address_map_helper.json"), encoding="utf-8"
+            os.path.join(f"/tmp/{glue_lib[0]}/address_map_helper.json", "r"), encoding="utf-8"
         ) as file:
             return json.load(file)
 
