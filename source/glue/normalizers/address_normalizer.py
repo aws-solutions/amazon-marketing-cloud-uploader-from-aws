@@ -21,6 +21,8 @@ import hashlib
 import json
 import os
 import re
+import tempfile
+from zipfile import ZipFile
 from re import finditer
 
 
@@ -30,20 +32,20 @@ def load_address_map_helper():
             os.path.join(os.getcwd(), os.path.dirname(__file__))
         )
         with open(
-            os.path.join(__location__, "address_map_helper.json"),
+            os.path.join(__location__, "address_map_helper.json", "r"),
             encoding="utf-8",
         ) as file:
             return json.load(file)
     except Exception:
-        # inside glue job
-        print("GLUE CHECKER DEBUG")
-        print(os.listdir('.'))
-        glue_lib = list(filter(lambda c: c.startswith('glue-python-libs-'), os.listdir('.')))
-        print(os.listdir(glue_lib[0])) 
-        with open(
-            os.path.join(f"/tmp/{glue_lib[0]}/address_map_helper.json", "r"), encoding="utf-8"
-        ) as file:
-            return json.load(file)
+        # Glue job put files in zip
+        with ZipFile('normalizers.zip', "r") as zipFile:
+            with tempfile.TemporaryDirectory() as tempdir:
+                zipFile.extractall(path=tempdir)
+                print(os.listdir(tempdir))
+                with open(
+                        os.path.join(f"{tempdir}/normalizers/address_map_helper.json", "r"), encoding="utf-8"
+                ) as file:
+                    return (json.load(file))
 
 
 address_map = load_address_map_helper()
