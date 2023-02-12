@@ -80,7 +80,9 @@ def send_request(request_url, headers, http_method, data=None):
 
     response = None
     if data:
-        response = getattr(requests, http_method)(request_url, headers=headers, data=data)
+        response = getattr(requests, http_method)(
+            request_url, headers=headers, data=data
+        )
     else:
         response = getattr(requests, http_method)(request_url, headers=headers)
 
@@ -462,5 +464,8 @@ def post(path, body_data):
 
     # ************* SEND THE REQUEST *************
     return send_request(
-        request_url=endpoint, headers=headers, http_method="post", data=body_data
+        request_url=endpoint,
+        headers=headers,
+        http_method="post",
+        data=body_data,
     )

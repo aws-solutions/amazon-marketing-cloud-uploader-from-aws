@@ -21,17 +21,36 @@ import hashlib
 import json
 import os
 import re
+import tempfile
 from re import finditer
+from zipfile import ZipFile
 
 
 def load_address_map_helper():
-    __location__ = os.path.realpath(
-        os.path.join(os.getcwd(), os.path.dirname(__file__))
-    )
-    with open(
-        os.path.join(__location__, "address_map_helper.json"), encoding="utf-8"
-    ) as file:
-        return json.load(file)
+    try:
+        __location__ = os.path.realpath(
+            os.path.join(os.getcwd(), os.path.dirname(__file__))
+        )
+        with open(
+            os.path.join(__location__, "address_map_helper.json"),
+            "r",
+            encoding="utf-8",
+        ) as file:
+            return json.load(file)
+    except Exception:
+        # Glue job put files in zip
+        with ZipFile("normalizers.zip", "r") as zipFile:
+            with tempfile.TemporaryDirectory() as tempdir:
+                zipFile.extractall(path=tempdir)
+                print(os.listdir(tempdir))
+                with open(
+                    os.path.join(
+                        f"{tempdir}/normalizers/address_map_helper.json"
+                    ),
+                    "r",
+                    encoding="utf-8",
+                ) as file:
+                    return json.load(file)
 
 
 address_map = load_address_map_helper()
