@@ -121,7 +121,7 @@ class Sigv4:
         method = self.http_method
         service = "execute-api"
         region = os.environ["AWS_REGION"]
-        endpoint = f"{AMC_ENDPOINT}self.path"
+        endpoint = f"{AMC_ENDPOINT}{self.path}"
         domain_name = endpoint.split("/")[2]
 
         # Read AWS access key from env. variables or configuration file. Best practice is NOT
@@ -179,36 +179,14 @@ class Sigv4:
         payload_hash = hashlib.sha256(self.payload.encode("utf-8")).hexdigest()
 
         # Step 7: Combine elements to create canonical request
-        canonical_request = (
-            method
-            + "\n"
-            + canonical_uri
-            + "\n"
-            + canonical_querystring
-            + "\n"
-            + canonical_headers
-            + "\n"
-            + signed_headers
-            + "\n"
-            + payload_hash
-        )
+        canonical_request = f"{method}\n{canonical_uri}\n{canonical_querystring}\n{canonical_headers}\n{signed_headers}\n{payload_hash}"
 
         # ************* TASK 2: CREATE THE STRING TO SIGN*************
         # Match the algorithm to the hashing algorithm you use, either SHA-1 or
         # SHA-256 (recommended)
         algorithm = "AWS4-HMAC-SHA256"
-        credential_scope = (
-            datestamp + "/" + region + "/" + service + "/" + "aws4_request"
-        )
-        string_to_sign = (
-            algorithm
-            + "\n"
-            + amzdate
-            + "\n"
-            + credential_scope
-            + "\n"
-            + hashlib.sha256(canonical_request.encode("utf-8")).hexdigest()
-        )
+        credential_scope = f"{datestamp}/{region}/{service}/aws4_request"
+        string_to_sign = f"{algorithm}\n{amzdate}\n{credential_scope}\n{hashlib.sha256(canonical_request.encode('utf-8')).hexdigest()}"
 
         # ************* TASK 3: CALCULATE THE SIGNATURE *************
         # Create the signing key using the function defined above.
@@ -243,7 +221,7 @@ class Sigv4:
         # ************* SEND THE REQUEST *************
 
         return send_request(
-            request_url=endpoint, headers=headers, http_method=method
+            request_url=endpoint, headers=headers, http_method=method, data=self.payload
         )
 
 
