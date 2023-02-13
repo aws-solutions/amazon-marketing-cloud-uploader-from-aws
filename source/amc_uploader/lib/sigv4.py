@@ -220,6 +220,9 @@ class Sigv4:
 
         # ************* SEND THE REQUEST *************
 
+        if canonical_querystring:
+            endpoint = f"{endpoint}?{canonical_querystring}"
+
         return send_request(
             request_url=endpoint, headers=headers, http_method=method, data=self.payload
         )
