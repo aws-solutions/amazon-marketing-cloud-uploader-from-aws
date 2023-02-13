@@ -195,7 +195,6 @@ export STACK_NAME=$stack_name
 export EMAIL=$EMAIL
 export PASSWORD=$PASSWORD 
 export DATA_BUCKET_NAME=$DATA_BUCKET_NAME
-export LOCALHOST_URL=$LOCALHOST_URL
 pytest -s -W ignore::DeprecationWarning -p no:cacheproviders
 
 if [ $? -ne 0 ]; then

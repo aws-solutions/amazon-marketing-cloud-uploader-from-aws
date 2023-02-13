@@ -27,8 +27,7 @@ def test_environment():
             'SECRET_KEY': os.environ['AWS_SECRET_ACCESS_KEY'],
             'EMAIL': os.environ['EMAIL'],
             'PASSWORD': os.environ['PASSWORD'],
-            'DATA_BUCKET_NAME': os.environ['DATA_BUCKET_NAME'],
-            'LOCALHOST_URL': os.environ.get('LOCALHOST_URL')
+            'DATA_BUCKET_NAME': os.environ['DATA_BUCKET_NAME']
         }
 
     except KeyError as e:
