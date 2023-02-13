@@ -264,6 +264,6 @@ def put(path, body_data):
     return sig_response.process_request()
 
 
-def post(path, body_data) -> dict:
+def post(path, body_data):
     sig_response = Sigv4(path=path, http_method="POST", payload=body_data)
     return sig_response.process_request()
