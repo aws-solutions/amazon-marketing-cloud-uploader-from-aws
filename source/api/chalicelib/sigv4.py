@@ -11,13 +11,13 @@
 #
 ##########################################################################
 
-import datetime
 import hashlib
 import hmac
 import json
 import logging
 import os
 import sys
+from datetime import datetime
 
 import boto3
 import requests
@@ -78,6 +78,9 @@ def send_request(request_url, headers, http_method, data=None):
     logger.info("\nBEGIN REQUEST+++++++++++++++++++++++++++++++++++")
     logger.info(f"Request URL = {request_url}")
 
+    http_method = http_method.lower()
+    logger.info(f"HTTP_METHOD: {http_method}")
+
     response = None
     if data:
         response = getattr(requests, http_method)(
@@ -102,12 +105,15 @@ def get_authorization_header(
     return f"{algorithm} Credential={access_key}/{credential_scope}, SignedHeaders={signed_headers}, Signature={signature}"
 
 
-class Sigv4():
-    def __init__(self, http_method, path, payload=None) -> None:
+class Sigv4:
+    def __init__(
+        self, http_method, path, request_parameters=None, payload=None
+    ) -> None:
         self.http_method = http_method.upper()
         self.payload = payload
         self.path = path
         self.payload = payload or ""
+        self.request_parameters = request_parameters or ""
 
     def process_request(self):
         # ************* REQUEST VALUES *************
@@ -152,7 +158,7 @@ class Sigv4():
         # request parameters are in the query string. Query string values must
         # be URL-encoded (space=%20). The parameters must be sorted by name.
         # For this example, the query string is pre-formatted in the request_parameters variable.
-        canonical_querystring = ""
+        canonical_querystring = self.request_parameters
 
         # Step 4: Create the canonical headers and signed headers. Header names
         # must be trimmed and lowercase, and sorted in code point order from
@@ -243,17 +249,21 @@ class Sigv4():
 
 def delete(path):
     sig_response = Sigv4(path=path, http_method="DELETE")
-    sig_response.process_request()
+    return sig_response.process_request()
 
-def get(path):
-    sig_response = Sigv4(path=path, http_method="GET")
-    sig_response.process_request()
+
+def get(path, request_parameters=None):
+    sig_response = Sigv4(
+        path=path, http_method="GET", request_parameters=request_parameters
+    )
+    return sig_response.process_request()
+
 
 def put(path, body_data):
-   sig_response = Sigv4(path=path, http_method="PUT", payload=body_data)
-   sig_response.process_request()
+    sig_response = Sigv4(path=path, http_method="PUT", payload=body_data)
+    return sig_response.process_request()
 
 
 def post(path, body_data) -> dict:
     sig_response = Sigv4(path=path, http_method="POST", payload=body_data)
-    sig_response.process_request()
+    return sig_response.process_request()
