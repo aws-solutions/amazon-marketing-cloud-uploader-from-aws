@@ -78,9 +78,9 @@ def list_datasets():
         return Response(body=response.text,
                         status_code=response.status_code,
                         headers={"Content-Type": APPLICATION_JSON})
-    except Exception as e:
-        logger.error(e)
-        return {"Status": "Error", "Message": e}
+    except Exception as ex:
+        logger.error(ex)
+        return {"Status": "Error", "Message": str(ex)}
         path = "/dataSets"
         response = sigv4.get(path)
         return Response(
@@ -90,7 +90,7 @@ def list_datasets():
         )
     except Exception as ex:
         logger.error(ex)
-        return {"Status": "Error", "Message": ex}
+        return {"Status": "Error", "Message": str(ex)}
 
 
 @app.route("/create_dataset", cors=True, methods=["POST"], authorizer=authorizer)
@@ -122,9 +122,9 @@ def create_dataset():
             status_code=response.status_code,
             headers={"Content-Type": APPLICATION_JSON},
         )
-    except Exception as e:
-        logger.error(e)
-        return {"Status": "Error", "Message": e}
+    except Exception as ex:
+        logger.error(ex)
+        return {"Status": "Error", "Message": str(ex)}
 
 
 @app.route(
@@ -185,7 +185,7 @@ def start_amc_transformation():
         return {"JobRunId": response["JobRunId"]}
     except Exception as ex:
         logger.error(ex)
-        return {"Status": "Error", "Message": ex}
+        return {"Status": "Error", "Message": str(ex)}
 
 
 @app.route("/get_etl_jobs", cors=True, methods=["GET"], authorizer=authorizer)
@@ -211,7 +211,7 @@ def get_etl_jobs():
         return json.loads(json.dumps(response, default=str))
     except Exception as ex:
         logger.error(ex)
-        return {"Status": "Error", "Message": ex}
+        return {"Status": "Error", "Message": str(ex)}
 
 
 @app.route(
@@ -240,9 +240,9 @@ def upload_status():
             status_code=response.status_code,
             headers={"Content-Type": APPLICATION_JSON}
         )
-    except Exception as e:
-        logger.error(e)
-        return {"Status": "Error", "Message": e}
+    except Exception as ex:
+        logger.error(ex)
+        return {"Status": "Error", "Message": str(ex)}
 
 
 @app.route("/list_uploads", cors=True, methods=["POST"], authorizer=authorizer)
@@ -275,7 +275,7 @@ def list_uploads():
         )
     except Exception as ex:
         logger.error(ex)
-        return {"Status": "Error", "Message": ex}
+        return {"Status": "Error", "Message": str(ex)}
 
 
 @app.route(
@@ -318,7 +318,7 @@ def delete_dataset():
         )
     except Exception as ex:
         logger.error(ex)
-        return {"Status": "Error", "Message": ex}
+        return {"Status": "Error", "Message": str(ex)}
 
 @app.route("/version", cors=True, methods=["GET"], authorizer=authorizer)
 def version():
@@ -374,7 +374,7 @@ def list_bucket():
     try:
         bucket = json.loads(app.current_request.raw_body.decode())["s3bucket"]
         results = []
-        for s3object in S3_CLIENT.Bucket(bucket).objects.all():
+        for s3object in S3_RESOURCE.Bucket(bucket).objects.all():
             results.append(
                 {
                     "key": s3object.key,
@@ -385,7 +385,7 @@ def list_bucket():
         return json.dumps(results)
     except Exception as ex:
         logger.error(ex)
-        return {"Status": "Error", "Message": ex}
+        return {"Status": "Error", "Message": str(ex)}
 
 
 @app.route(
@@ -459,13 +459,13 @@ def get_data_columns():
             # Read first row
             logger.info("Reading " + "s3://" + bucket + "/" + key)
             if content_type == json_content_type:
-                dfs = wr.S3_CLIENT.read_json(
+                dfs = wr.s3.read_json(
                     path=["s3://" + bucket + "/" + key],
                     chunksize=1,
                     lines=True,
                 )
             elif content_type == csv_content_type:
-                dfs = wr.S3_CLIENT.read_csv(
+                dfs = wr.s3.read_csv(
                     path=["s3://" + bucket + "/" + key], chunksize=1
                 )
             else:
@@ -497,7 +497,7 @@ def get_data_columns():
         return result
     except Exception as ex:
         logger.error(ex)
-        return {"Status": "Error", "Message": ex}
+        return {"Status": "Error", "Message": str(ex)}
 
 
 @app.route(
@@ -560,10 +560,10 @@ def save_settings():
                     raise BadRequestError("AmcInstance value must contain key, 'endpoint'")
                 if "data_upload_account_id" not in amc_instances[i]:
                     raise BadRequestError("AmcInstance value must contain key, 'data_upload_account_id'")
-    except Exception as e:
-        logger.error("Exception {}".format(e))
-        raise ChaliceViewError("Exception '%s'" % e)
-        return {"Status": "Error", "Message": e}
+    except Exception as ex:
+        logger.error("Exception {}".format(ex))
+        raise ChaliceViewError("Exception '%s'" % ex)
+        return {"Status": "Error", "Message": str(ex)}
     system_table.put_item(Item=system_parameter)
     try:
         logger.info("reading bucket policy")
@@ -624,10 +624,10 @@ def save_settings():
                 PolicyName="AmcApiAccess",
                 PolicyDocument=json.dumps(amc_endpoint_access_policy["PolicyDocument"])
             )
-    except Exception as e:
-        logger.error("Exception {}".format(e))
-        raise ChaliceViewError("Exception '%s'" % e)
-        return {"Status": "Error", "Message": e}
+    except Exception as ex:
+        logger.error("Exception {}".format(ex))
+        raise ChaliceViewError("Exception '%s'" % ex)
+        return {"Status": "Error", "Message": str(ex)}
     return {}
 
 
