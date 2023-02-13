@@ -23,11 +23,11 @@ SPDX-License-Identifier: Apache-2.0
           Missing s3key. Go back and select a file. 
         </b-alert>
         <b-alert 
-          v-model="showSchemaError"
+          v-model="showBadRequestError"
           variant="danger"
           dismissible
         >
-          Schemas must match for each file when multi-uploading.
+          Error: {{ results }}
         </b-alert>
         <b-alert
           v-model="showUserIdWarning"
@@ -198,7 +198,7 @@ SPDX-License-Identifier: Apache-2.0
         new_dataset_definition: {},
         isBusy: false,
         showServerError: false,
-        showSchemaError: false,
+        showBadRequestError: false,
         showMissingDataAlert: false,
         showIncompleteFieldsError: false,
         showIncompleteTimeFieldError: false,
@@ -329,6 +329,7 @@ SPDX-License-Identifier: Apache-2.0
         this.showImportErrors = true
       },
       onImport(e){
+          if (!this.validateForm()) return
           let files = e.target.files || e.dataTransfer.files;
           if (!files.length) return;
           let reader = new FileReader();
@@ -397,6 +398,8 @@ SPDX-License-Identifier: Apache-2.0
           reader.readAsText(files[0]);
       },
       validateForm() {
+        // Data sets should be valid
+        if (this.showBadRequestError || this.showServerError) return false
         // All fields must have values.
         if (this.incompleteFields.errorItems.length > 0) {
           this.showIncompleteFieldsError = true
@@ -580,7 +583,7 @@ SPDX-License-Identifier: Apache-2.0
           console.log(JSON.stringify(this.items))
         }
         catch (e) {
-          if(e.response.status === 400) this.showSchemaError = true;
+          if(e.response.status === 400) this.showBadRequestError = true;
           else this.showServerError = true;
 
           console.log("ERROR: " + e.response.data.message)
