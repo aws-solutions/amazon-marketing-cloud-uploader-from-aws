@@ -100,15 +100,20 @@ SPDX-License-Identifier: Apache-2.0
                   </slot>
                 </b-col>
                 <b-col sm="5">
-                <b-form-group
-                description="Select country - this tool applies country-specific normalization to all rows in the input file">
-                <b-form-select id="country-code-dropdown" v-model="country_code">
-                  <b-form-select-option value="US">US</b-form-select-option>
-                  <b-form-select-option value="UK">UK</b-form-select-option>
-                </b-form-select>
-              </b-form-group>
-            </b-col>
-            </b-row>
+                  <b-form-group
+                    description="Select country - this tool applies country-specific normalization to all rows in the input file"
+                  >
+                    <b-form-select id="country-code-dropdown" v-model="country_code">
+                      <b-form-select-option value="US">
+                        US
+                      </b-form-select-option>
+                      <b-form-select-option value="UK">
+                        UK
+                      </b-form-select-option>
+                    </b-form-select>
+                  </b-form-group>
+                </b-col>
+              </b-row>
             </div>
             <b-row>
               <b-col sm="3">
