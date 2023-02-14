@@ -15,13 +15,14 @@ def test_environment():
     print("Setting variables for tests")
     try:
         test_env_vars = {
-            'REGION': os.environ['REGION'],
-            'STACK_NAME': os.environ['STACK_NAME'],
-            'ACCESS_KEY': os.environ['AWS_ACCESS_KEY_ID'],
-            'SECRET_KEY': os.environ['AWS_SECRET_ACCESS_KEY'],
-            'EMAIL': os.environ['EMAIL'],
-            'PASSWORD': os.environ['PASSWORD'],
-            'DATA_BUCKET_NAME': os.environ['DATA_BUCKET_NAME']
+            "REGION": os.environ["REGION"],
+            "STACK_NAME": os.environ["STACK_NAME"],
+            "ACCESS_KEY": os.environ["AWS_ACCESS_KEY_ID"],
+            "SECRET_KEY": os.environ["AWS_SECRET_ACCESS_KEY"],
+            "EMAIL": os.environ["EMAIL"],
+            "PASSWORD": os.environ["PASSWORD"],
+            "DATA_BUCKET_NAME": os.environ["DATA_BUCKET_NAME"],
+            "LOCALHOST_URL": os.environ.get("LOCALHOST_URL"),
         }
 
     except KeyError as e:

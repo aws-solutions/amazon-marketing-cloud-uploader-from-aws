@@ -53,16 +53,6 @@ from normalizers.email_normalizer import EmailNormalizer
 from normalizers.phone_normalizer import PhoneNormalizer
 from normalizers.state_normalizer import StateNormalizer
 from normalizers.zip_normalizer import ZipNormalizer
-from normalizers.phone_normalizer import PhoneNormalizer
-from awsglue.utils import getResolvedOptions, GlueArgumentError
-import pandas as pd
-import awswrangler as wr
-import regex as re
-import hashlib
-import json
-import boto3
-import re
-from datetime import datetime
 
 # Resolve sonarqube code smells
 writing = "Writing "
@@ -90,7 +80,7 @@ try:
             "deleted_fields",
             "dataset_id",
             "period", 
-            "country_code",
+            "country_code"
         ],
     )
 except GlueArgumentError as e:
@@ -127,7 +117,7 @@ if "period" in args:
     ):
         print("ERROR: Invalid user-defined value for dataset period:")
         print(user_defined_partition_size)
-        exit(1)
+        sys.exit(1)
 if 'country_code' in args:
     country_code = args['country_code']
 else:
