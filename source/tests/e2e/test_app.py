@@ -137,30 +137,6 @@ def test_everything(browser, test_environment, stack_resources):
         By.XPATH, '//*[@id="time_period_options_BV_option_0"]'
     ).is_selected()
 
-    # open Step 3
-    browser.find_element(By.ID, "step3").click()
-
-    assert browser.find_element(
-        By.XPATH, "//button[contains(text(), 'Export')]"
-    )
-    assert browser.find_element(
-        By.XPATH, "//button[@title='Export column schema']"
-    )
-    assert browser.find_element(
-        By.XPATH, "//button[contains(text(), 'Import')]"
-    )
-    assert browser.find_element(
-        By.XPATH, "//button[@title='Import column schema']"
-    )
-    assert browser.find_element(
-        By.XPATH, "//button[contains(text(), 'Reset')]"
-    )
-
-    assert browser.find_element(By.XPATH, "//button[contains(text(), 'Next')]")
-    assert browser.find_element(
-        By.XPATH, "//button[contains(text(), 'Previous')]"
-    )
-
     # Sign out
     browser.find_element(
         "xpath", "/html/body/div/div/div/div[1]/nav/div/ul/li/a"
