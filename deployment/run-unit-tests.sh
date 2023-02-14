@@ -51,7 +51,7 @@ pip install -r api/tests/requirements-test.txt
 
 # env variables
 export PYTHONDONTWRITEBYTECODE=1
-export AMC_ENDPOINT_URL="AmcEndpointUrl"
+export AMC_ENDPOINT_URL="https://test_end_point_url.com/test"
 export AMC_API_ROLE_ARN="arn:aws:iam::999999999999:role/SomeTestRole"
 export SOLUTION_NAME="SOLUTION_NAME"
 export SOLUTION_VERSION="SOLUTION_VERSION"
