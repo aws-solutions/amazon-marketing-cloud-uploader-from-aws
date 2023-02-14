@@ -129,8 +129,8 @@ def test_get_data_columns(test_configs, get_amc_json, test_data):
 
 @mock_sts
 @patch("chalicelib.sigv4.requests.delete")
-def test_delete_dataset(mock_delete_response, test_configs):
-    mock_delete_response.return_value = MagicMock(status_code=200, text="{}")
+def test_delete_dataset(mock_response, test_configs):
+    mock_response.return_value = MagicMock(status_code=200, text="{}")
 
     content_type = test_configs["content_type"]
     with Client(app.app) as client:
@@ -145,13 +145,13 @@ def test_delete_dataset(mock_delete_response, test_configs):
 
 @mock_sts
 @patch("chalicelib.sigv4.requests.get")
-def test_upload_status(mock_delete_response, test_configs):
+def test_upload_status(mock_response, test_configs):
     expected_data = {
         "sourceS3Bucket": "some_bucket",
         "sourceFileS3Key": "some_key",
         "status": ["Succeeded"],
     }
-    mock_delete_response.return_value = MagicMock(
+    mock_response.return_value = MagicMock(
         status_code=200, text=json.dumps(expected_data)
     )
 
@@ -221,7 +221,7 @@ def test_get_etl_jobs(test_configs):
 
 @mock_sts
 @patch("chalicelib.sigv4.requests.post")
-def test_create_dataset(mock_delete_response, test_configs):
+def test_create_dataset(mock_response, test_configs):
     payload = {
         "body": {
             "period": "autodetect",
@@ -231,7 +231,7 @@ def test_create_dataset(mock_delete_response, test_configs):
             "columns": [],
         }
     }
-    mock_delete_response.return_value = MagicMock(
+    mock_response.return_value = MagicMock(
         status_code=200, text="{}", data=payload
     )
 
