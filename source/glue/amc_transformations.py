@@ -155,16 +155,25 @@ df = pd.DataFrame()
 json_content_type = "application/json"
 csv_content_type = "text/csv"
 
+# Configure all PII-designated fields to be read as strings
+# This avoids reading phone or zip values as floats and dropping data or requiring additional transformation before normalization
+pii_column_names = {}
+for field in pii_fields:
+    pii_column_names[field['column_name']] = str
+
 if content_type == json_content_type:
     dfs = wr.s3.read_json(
-        path=["s3://" + source_bucket + "/" + key],
-        chunksize=chunksize,
+        path=['s3://' + source_bucket + '/' + key], 
+        chunksize=chunksize, 
         lines=True,
-    )
+        dtype=pii_column_names
+        )
 elif content_type == csv_content_type:
     dfs = wr.s3.read_csv(
-        path=["s3://" + source_bucket + "/" + key], chunksize=chunksize
-    )
+        path=['s3://' + source_bucket + '/' + key], 
+        chunksize=chunksize,
+        dtype=pii_column_names
+        )
 else:
     print("Unsupported content type: " + content_type)
     sys.exit(1)
@@ -206,15 +215,11 @@ addressNormalizer = AddressNormalizer(country_code)
 stateNormalizer = StateNormalizer(country_code)
 zipNormalizer = ZipNormalizer(country_code)
 phoneNormalizer = PhoneNormalizer(country_code)
+emailNormalizer = EmailNormalizer()
 
 ###############################
 # DATA NORMALIZATION
 ###############################
-# df1 will contain integer, float, and datetime columns
-df1 = df.select_dtypes(exclude=[object])
-# df2 will contain string columns
-df2 = df.select_dtypes(include=[object])
-
 
 def address_transformations(text):
     text = addressNormalizer.normalize(text).normalized_address
@@ -225,10 +230,9 @@ def state_transformations(text):
     text = stateNormalizer.normalize(text).normalized_state.lower()
     return text
 
-
-def normalize_email(text):
-    email_normalize = EmailNormalizer(text)
-    return email_normalize.normalize()
+def email_transformations(text):
+    text = emailNormalizer.normalize(text).normalizedEmail
+    return text
 
 
 def zip_transformations(text):
@@ -240,91 +244,102 @@ def phone_transformations(text):
     text = phoneNormalizer.normalize(text).normalized_phone
     return text
 
-
-# This regex expression matches a sha256 hash value.
-# Sha256 hash codes are 64 consecutive hexadecimal digits, a-f and 0-9.
-# We'll use this pattern to avoid normalizing and hashing values that are already hashed.
-sha256_pattern = "^[a-f0-9]{64}$"
+# Use this function to flag records that are null or already hashed
+# These records will skip normalization/hashing
+def skip_record_flag(text):
+    # This regex expression matches a sha256 hash value.
+    # Sha256 hash codes are 64 consecutive hexadecimal digits, a-f and 0-9.
+    sha256_pattern = "^[a-f0-9]{64}$"
+    if pd.isnull(text) or re.match(sha256_pattern, text):
+        return True
 
 for field in pii_fields:
-    column_name = field["column_name"]
-    if field["pii_type"] == "ADDRESS":
-        df2[column_name] = (
-            df2[column_name]
+    column_name = field['column_name']
+    if field['pii_type'] == "ADDRESS":
+        df[column_name] = (
+            df[column_name]
             .copy()
             .apply(
-                lambda x: x
-                if re.match(sha256_pattern, x)
+                lambda x: x 
+                if skip_record_flag(x) 
                 else address_transformations(x)
             )
         )
-    elif field["pii_type"] == "STATE":
-        df2[column_name] = (
-            df2[column_name]
+    elif field['pii_type'] == "STATE":
+        df[column_name] = (
+            df[column_name]
             .copy()
             .apply(
-                lambda x: x
-                if re.match(sha256_pattern, x)
+                lambda x: x 
+                if skip_record_flag(x) 
                 else state_transformations(x)
             )
         )
-    elif field["pii_type"] == "ZIP":
-        df2[column_name] = (
-            df2[column_name]
+    elif field['pii_type'] == "ZIP":
+        df[column_name] = (
+            df[column_name]
             .copy()
             .apply(
-                lambda x: x
-                if re.match(sha256_pattern, x)
+                lambda x: x 
+                if skip_record_flag(x) 
                 else zip_transformations(x)
             )
         )
-    elif field["pii_type"] == "PHONE":
-        df2[column_name] = (
-            df2[column_name]
+    elif field['pii_type'] == "PHONE":
+        df[column_name] = (
+            df[column_name]
             .copy()
             .apply(
-                lambda x: x
-                if re.match(sha256_pattern, x)
+                lambda x: x 
+                if skip_record_flag(x) 
                 else phone_transformations(x)
             )
         )
-    elif field["pii_type"] == "EMAIL":
-        df2[column_name] = df2[column_name].copy().apply(lambda x: x.lower())
-        df2[column_name].replace(r"[^\w.@-]", "", inplace=True, regex=True)
-        df2[column_name] = (
-            df2[column_name].copy().apply(lambda x: normalize_email(x))
+    elif field['pii_type'] == "EMAIL":
+        df[column_name] = (
+            df[column_name]
+            .copy()
+            .apply(
+                lambda x: x 
+                if skip_record_flag(x) 
+                else email_transformations(x)
+            )
         )
     else:
-        df2[column_name] = df2[column_name].copy().apply(lambda x: x.lower())
-        # convert characters ß, ä, ö, ü, ø, æ
-        df2[column_name].replace("ß", "ss", inplace=True)
-        df2[column_name].replace("ä", "ae", inplace=True)
-        df2[column_name].replace("ö", "oe", inplace=True)
-        df2[column_name].replace("ü", "ue", inplace=True)
-        df2[column_name].replace("ø", "o", inplace=True)
-        df2[column_name].replace("æ", "ae", inplace=True)
+        df[column_name] = (
+            df[column_name]
+            .copy()
+            .apply(
+                lambda x: x 
+                if skip_record_flag(x) 
+                else x.lower()
+            )
+        )
+        # convert characters ß, ä, ö, ü, ø, æ 
+        df[column_name].replace("ß", "ss", inplace=True)
+        df[column_name].replace("ä", "ae", inplace=True)
+        df[column_name].replace("ö", "oe", inplace=True)
+        df[column_name].replace("ü", "ue", inplace=True)
+        df[column_name].replace("ø", "o", inplace=True)
+        df[column_name].replace("æ", "ae", inplace=True)
         # remove all symbols and whitespace
-        df2[column_name].replace("[^a-z0-9]", "", inplace=True, regex=True)
+        df[column_name].replace("[^a-z0-9]", "", inplace=True, regex=True)
 
 ###############################
 # PII HASHING
 ###############################
 
 for field in pii_fields:
-    column_name = field["column_name"]
-    # If the column value looks like a sha256 hash, then don't hash it again.
-    # This allows users to import datasets that have already been hashed.
-    df2[column_name] = (
-        df2[column_name]
+    column_name = field['column_name']
+    df[column_name] = (
+        df[column_name]
         .copy()
         .apply(
-            lambda x: x
-            if re.match(sha256_pattern, x)
+            lambda x: x 
+            if skip_record_flag(x) 
             else hashlib.sha256(x.encode()).hexdigest()
         )
     )
-
-df = pd.concat([df1, df2], axis=1)
 
 ###############################
 # TIME SERIES PARTITIONING

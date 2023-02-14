@@ -13,30 +13,31 @@ def mock_env_variables():
     os.environ["botoConfig"] = '{"region_name": "us-east-1"}'
 
 
-def test_is_valid_email_address():
-    from glue.normalizers.email_normalizer import is_valid_email_address
+def test_is_valid_email():
+    from glue.normalizers.email_normalizer import is_valid_email
 
-    assert is_valid_email_address("test@test.com") is True
-    assert is_valid_email_address("this is an invalid email") is False
+    assert is_valid_email("test@test.com") is True
+    assert is_valid_email("this is an invalid email") is False
 
 
 def test_email_normalizer():
     from glue.normalizers.email_normalizer import EmailNormalizer
+    email_normalizer = EmailNormalizer()
 
-    email_normalizer = EmailNormalizer("test@test.com")
-    assert email_normalizer.normalize() == "test@test.com"
+    test = email_normalizer.normalize("test@test.com")
+    assert test.normalized_email == "test@test.com"
 
-    email_normalizer = EmailNormalizer("this is an invalid email")
-    assert email_normalizer.normalize() == ""
+    test = email_normalizer.normalize("this is an invalid email")
+    assert test.normalized_email == ""
 
-    email_normalizer = EmailNormalizer("not.an_e-mail")
-    assert email_normalizer.normalize() == ""
+    test = email_normalizer.normalize("not.an_e-mail")
+    assert test.normalized_email == ""
 
-    email_normalizer = EmailNormalizer("te$s-t@te^st.c()om")
-    assert email_normalizer.normalize() == "tes-t@test.com"
+    test = email_normalizer.normalize("te$s-t@te^st.c()om")
+    assert test.normalized_email == "tes-t@test.com"
 
-    email_normalizer = EmailNormalizer("te-st@tEsT.CoM")
-    assert email_normalizer.normalize() == "te-st@test.com"
+    test = email_normalizer.normalize("te-st@tEsT.CoM")
+    assert test.normalized_email == "te-st@test.com"
 
 
 def test_load_address_map_helper():
