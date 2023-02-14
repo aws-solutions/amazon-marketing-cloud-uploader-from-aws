@@ -190,10 +190,10 @@ echo "--------------------------------------------------------------------------
 echo "Running pytest"
 echo "------------------------------------------------------------------------------"
 
-export REGION=$region 
+export REGION=$region
 export STACK_NAME=$stack_name
 export EMAIL=$EMAIL
-export PASSWORD=$PASSWORD 
+export PASSWORD=$PASSWORD
 export DATA_BUCKET_NAME=$DATA_BUCKET_NAME
 pytest -s -W ignore::DeprecationWarning -p no:cacheproviders
 

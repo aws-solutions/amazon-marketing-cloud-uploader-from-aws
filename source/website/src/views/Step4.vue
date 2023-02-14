@@ -59,7 +59,7 @@ SPDX-License-Identifier: Apache-2.0
             <b-row>
               <b-col cols="10">
                 <h5>Columns:</h5>
-                <b-table 
+                <b-table
                   v-if="dataset.columns && dataset.columns.length > 0"
                   small
                   outlined
@@ -118,7 +118,7 @@ SPDX-License-Identifier: Apache-2.0
       },
       timestamp_column_name() {
         const timestamp_column = this.dataset.columns.filter(x => x.isMainEventTime).map(x => x.name)
-        // The Glue ETL job requires timestamp_column_name to be an empty string 
+        // The Glue ETL job requires timestamp_column_name to be an empty string
         // for all DIMENSION datasets.
         const dataset_type = this.dataset_definition['dataSetType']
         if (dataset_type == 'FACT' && timestamp_column && timestamp_column.length > 0)
@@ -165,7 +165,7 @@ SPDX-License-Identifier: Apache-2.0
           }
           console.log(JSON.stringify(response))
           console.log("Dataset defined successfully")
-          
+
           // Start Glue ETL job now that the dataset has been accepted by AMC
           let s3keysList = this.s3key.split(',').map((item) => item.trim())
 
@@ -183,7 +183,7 @@ SPDX-License-Identifier: Apache-2.0
             console.log(JSON.stringify(response))
             console.log("Started Glue ETL job")
           }
-          
+
           // Navigate to next step
           this.$router.push('Step5')
         }
@@ -191,7 +191,7 @@ SPDX-License-Identifier: Apache-2.0
           this.modal_title = e.response.status + " " + e.response.statusText
           console.log("ERROR: " + this.modal_title)
           this.isBusy = false;
-          this.response = JSON.stringify(e.response.data)  
+          this.response = JSON.stringify(e.response.data)
           this.showModal = true
         }
         this.isBusy = false;

@@ -79,38 +79,67 @@ FRStateAbbreviation = {
 }
 
 CAStateAbbreviation = {
-    "ALBERTA", "AB",
-    "BRITISHCOLUMBIA", "BC",
-    "MANITOBA", "MB",
-    "NEWBRUNSWICK", "NB",
-    "NEWFOUNDLANDANDLABRADOR", "NL",
-    "NORTHWESTTERRITORIES", "NT",
-    "NOVASCOTIA", "NS",
-    "NUNAVUT", "NU",
-    "ONTARIO", "ON",
-    "PRINCEEDWARDISLAND", "PE",
-    "QUEBEC", "QC",
-    "SASKATCHEWAN", "SK",
-    "YUKON", "YT",
+    "ALBERTA",
+    "AB",
+    "BRITISHCOLUMBIA",
+    "BC",
+    "MANITOBA",
+    "MB",
+    "NEWBRUNSWICK",
+    "NB",
+    "NEWFOUNDLANDANDLABRADOR",
+    "NL",
+    "NORTHWESTTERRITORIES",
+    "NT",
+    "NOVASCOTIA",
+    "NS",
+    "NUNAVUT",
+    "NU",
+    "ONTARIO",
+    "ON",
+    "PRINCEEDWARDISLAND",
+    "PE",
+    "QUEBEC",
+    "QC",
+    "SASKATCHEWAN",
+    "SK",
+    "YUKON",
+    "YT",
 }
 
 DEStateAbbreviation = {
-    "BADENWUERTTEMBERG", "BW",
-    "BAVARIA", "BY",
-    "BERLIN", "BE",
-    "BRANDENBURG", "BB",
-    "BREMEN", "HB",
-    "HAMBURG", "HH",
-    "HESSE", "HE",
-    "LOWERSAXONY", "NI",
-    "MECKLENBURGVORPOMMERN", "MV",
-    "NORTHRHINEWESTPHALIA", "NW",
-    "RHINELANDPALATINATE", "RP",
-    "SAARLAND", "SL",
-    "SAXONY", "SN",
-    "SAXONYANHALT", "ST",
-    "SCHLESWIGHOLSTEIN", "SH",
-    "THURINGIA", "TH",
+    "BADENWUERTTEMBERG",
+    "BW",
+    "BAVARIA",
+    "BY",
+    "BERLIN",
+    "BE",
+    "BRANDENBURG",
+    "BB",
+    "BREMEN",
+    "HB",
+    "HAMBURG",
+    "HH",
+    "HESSE",
+    "HE",
+    "LOWERSAXONY",
+    "NI",
+    "MECKLENBURGVORPOMMERN",
+    "MV",
+    "NORTHRHINEWESTPHALIA",
+    "NW",
+    "RHINELANDPALATINATE",
+    "RP",
+    "SAARLAND",
+    "SL",
+    "SAXONY",
+    "SN",
+    "SAXONYANHALT",
+    "ST",
+    "SCHLESWIGHOLSTEIN",
+    "SH",
+    "THURINGIA",
+    "TH",
 }
 
 ITStateAbbreviation = {
@@ -292,32 +321,36 @@ ESStateAbbreviation = {
     "ZAMORA": "ZA",
 }
 
-class StateNormalizer():
-    def __init__(self, countryCode):
-        if countryCode == "US":
-            self.stateAbbreviationMap = USStateAbbreviation
-        elif countryCode == "FR":
-            self.stateAbbreviationMap = FRStateAbbreviation
-        elif countryCode == "CA":
-            self.stateAbbreviationMap = CAStateAbbreviation
-        elif countryCode == "DE":
-            self.stateAbbreviationMap = DEStateAbbreviation
-        elif countryCode == "ES":
-            self.stateAbbreviationMap = ESStateAbbreviation
-        elif countryCode == "IT":
-            self.stateAbbreviationMap = ITStateAbbreviation
+
+class StateNormalizer:
+    normalized_state = None
+
+    def __init__(self, country_code):
+        if country_code == "US":
+            self.state_abbreviation_map = USStateAbbreviation
+        elif country_code == "FR":
+            self.state_abbreviation_map = FRStateAbbreviation
+        elif country_code == "CA":
+            self.state_abbreviation_map = CAStateAbbreviation
+        elif country_code == "DE":
+            self.state_abbreviation_map = DEStateAbbreviation
+        elif country_code == "ES":
+            self.state_abbreviation_map = ESStateAbbreviation
+        elif country_code == "IT":
+            self.state_abbreviation_map = ITStateAbbreviation
         # Countries without specific state abbreviations
         else:
-            self.stateAbbreviationMap = dict()
-        
+            self.state_abbreviation_map = {}
+
     def normalize(self, record):
-        self.normalizedState = record.upper()
-        self.normalizedState = re.sub(r'[^A-Z]', '', self.normalizedState)
-        
-        if self.normalizedState in self.stateAbbreviationMap:
-            self.normalizedState = self.stateAbbreviationMap.get(self.normalizedState)
+        self.normalized_state = record.upper()
+        self.normalized_state = re.sub(r"[^A-Z]", "", self.normalized_state)
+
+        if self.normalized_state in self.state_abbreviation_map:
+            self.normalized_state = self.state_abbreviation_map.get(
+                self.normalized_state
+            )
         elif len(record) > 2:
-            self.normalizedState = self.normalizedState[:2]
+            self.normalized_state = self.normalized_state[:2]
 
         return self
-

@@ -23,7 +23,7 @@ SPDX-License-Identifier: Apache-2.0
                 </b-button>
               </b-col>
             </b-row>
-            <b-table 
+            <b-table
               ref="datasetTable"
               select-mode="single"
               selectable
@@ -136,7 +136,7 @@ SPDX-License-Identifier: Apache-2.0
                 </div>
               </template>
             </b-table>
-            <b-pagination 
+            <b-pagination
               v-if="etl_jobs.length > perPagePhase2"
               v-model="currentPagePhase2"
               align="center"
@@ -201,7 +201,7 @@ SPDX-License-Identifier: Apache-2.0
                   </b-card>
                 </template>
               </b-table>
-              <b-pagination 
+              <b-pagination
                 v-if="uploads.length > perPagePhase3"
                 v-model="currentPagePhase3"
                 align="center"
@@ -337,7 +337,7 @@ SPDX-License-Identifier: Apache-2.0
           console.log("sending " + method + " " + resource + " " + JSON.stringify(data))
           let requestOpts = {
             headers: {'Content-Type': 'application/json'},
-            body: data  
+            body: data
           };
           do {
             const response = await this.$Amplify.API.post(apiName, resource, requestOpts);
@@ -366,7 +366,7 @@ SPDX-License-Identifier: Apache-2.0
             response = await this.$Amplify.API.get(apiName, resource);
             console.log(response)
             this.datasets = response.dataSets
-          } 
+          }
         }
         catch (e) {
           console.log("ERROR: " + e.response.data.message)
@@ -388,7 +388,7 @@ SPDX-License-Identifier: Apache-2.0
             response = await this.$Amplify.API.get(apiName, resource);
             console.log(response)
             this.etl_jobs = response.JobRuns
-          } 
+          }
         }
         catch (e) {
           console.log("ERROR: " + e.response.data.message)
@@ -400,4 +400,3 @@ SPDX-License-Identifier: Apache-2.0
     }
   }
 </script>
-
