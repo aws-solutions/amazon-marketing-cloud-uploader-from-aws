@@ -5,6 +5,7 @@ on:
     types: [opened, synchronize]
     branches:
       - development
+      - github_first
   workflow_dispatch:
 
 jobs:
