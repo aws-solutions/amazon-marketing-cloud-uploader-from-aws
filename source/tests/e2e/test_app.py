@@ -6,7 +6,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait, Select
+from selenium.webdriver.support.ui import Select, WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
 
@@ -137,7 +137,9 @@ def test_everything(browser, test_environment, stack_resources):
         By.XPATH, '//*[@id="time_period_options_BV_option_0"]'
     ).is_selected()
     # Country dropdown should be visible
-    assert browser.find_element(By.XPATH, '//*[@id="time_period_options_BV_option_0"]').is_selected()
+    assert browser.find_element(
+        By.XPATH, '//*[@id="time_period_options_BV_option_0"]'
+    ).is_selected()
     # select US as country and check that the value updates
     cc_dropdown = browser.find_element(By.ID, "country-code-dropdown")
     Select(cc_dropdown).select_by_value("US")

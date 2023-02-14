@@ -145,7 +145,7 @@ def start_amc_transformation():
             "--timestamp_column": timestamp_column,
             "--dataset_id": dataset_id,
             "--period": period,
-            "--country_code": country_code
+            "--country_code": country_code,
         }
         logger.info("Starting Glue job:")
         logger.info("Equivalent AWS CLI command: ")

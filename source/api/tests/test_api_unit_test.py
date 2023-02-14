@@ -279,6 +279,7 @@ def test_start_amc_transformation(test_configs):
                         "timestampColumn": "timestamp",
                         "datasetId": test_configs["data_set_id"],
                         "period": test_configs["period"],
+                        "countryCode": "USA",
                     }
                 ),
             )
