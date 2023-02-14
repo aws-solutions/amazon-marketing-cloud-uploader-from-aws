@@ -1,4 +1,5 @@
 #!/bin/bash
+set +x
 #
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
@@ -64,7 +65,7 @@ cd $source_dir
 coverage_report_path=$source_dir/tests/coverage-reports/source.coverage.xml
 echo "coverage report path set to $coverage_report_path"
 
-pytest --cov --cov-report term-missing --cov-report term --cov-report "xml:$coverage_report_path"
+pytest --cov --cov-report term-missing --cov-report term --cov-report "xml:$coverage_report_path" --cov-config=$source_dir/.coveragerc --ignore="tests/e2e"
 
 # The pytest --cov with its parameters and .coveragerc generates a xml cov-report with `coverage/sources` list
 # with absolute path for the source directories. To avoid dependencies of tools (such as SonarQube) on different
@@ -81,6 +82,6 @@ deactivate
 rm -rf ./amc_uploader/amc_uploader.egg-info
 rm -rf $VENV
 rm -rf  __pycache__
-rm -rf .pytest_cache  
+rm -rf .pytest_cache
 
 cd $template_dir

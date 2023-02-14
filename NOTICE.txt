@@ -32,4 +32,3 @@ vue-router under the Massachusetts Institute of Technology license
 vuex under the Massachusetts Institute of Technology license
 vuex-persistedstate under the Massachusetts Institute of Technology license
 webpack-subresource-integrity under the Massachusetts Institute of Technology license
-

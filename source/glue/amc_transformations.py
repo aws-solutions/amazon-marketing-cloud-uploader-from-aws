@@ -16,6 +16,7 @@
 #   --deleted_fields: array of strings indicating the names of columns which the user requested to be dropped from the dataset prior to uploading to AMC.
 #   --dataset_id: name of dataset, used as the prefix folder for the output s3key.
 #   --period: time period of dataset, one of ["autodetect","PT1M","PT1H","P1D","P7D"]. Autodetect enabled by default. (optional)
+#   --country: country-specific normalization to apply to all rows in the dataset (2-digit ISO country code).
 #
 # OUTPUT:
 #   - Transformed data files in user-specified output bucket,
@@ -32,99 +33,119 @@
 #    export DELETED_FIELDS='[\"customer_id\",\"purchase_id\"]'
 #    export DATASET_ID='mytest123'
 #    export REGION=us-east-1
-#    aws glue start-job-run --job-name $JOB_NAME --arguments '{"--source_bucket": "'$SOURCE_BUCKET'", "--output_bucket": "'$OUTPUT_BUCKET'", "--source_key": "'$SOURCE_KEY'", "--pii_fields": "'$PII_FIELDS'", "--deleted_fields": "'$DELETED_FIELDS'", "--timestamp_column": "'$TIMESTAMP_COLUMN'", "--dataset_id": "'$DATASET_ID'", "--period": "autodetect"}' --region $REGION
+#    aws glue start-job-run --job-name $JOB_NAME --arguments '{"--source_bucket": "'$SOURCE_BUCKET'", "--output_bucket": "'$OUTPUT_BUCKET'", "--source_key": "'$SOURCE_KEY'", "--pii_fields": "'$PII_FIELDS'",
+#    "--deleted_fields": "'$DELETED_FIELDS'", "--timestamp_column": "'$TIMESTAMP_COLUMN'", "--dataset_id": "'$DATASET_ID'", "--period": "autodetect", "--country": "US"}' --region $REGION
 #
 ###############################################################################
 
-import sys
-from normalizers.address_normalizer import AddressNormalizer
-from normalizers.email_normalizer import EmailNormalizer
-from normalizers.state_normalizer import StateNormalizer
-from normalizers.zip_normalizer import ZipNormalizer
-from normalizers.phone_normalizer import PhoneNormalizer
-from awsglue.utils import getResolvedOptions, GlueArgumentError
-import pandas as pd
-import awswrangler as wr
-import regex as re
 import hashlib
 import json
-import boto3
-import re
+import sys
 from datetime import datetime
 
-# Hardcode country code for now.
-country_code = 'US'
+import awswrangler as wr
+import boto3
+import pandas as pd
+import regex as re
+from awsglue.utils import GlueArgumentError, getResolvedOptions
+from normalizers.address_normalizer import AddressNormalizer
+from normalizers.email_normalizer import EmailNormalizer
+from normalizers.phone_normalizer import PhoneNormalizer
+from normalizers.state_normalizer import StateNormalizer
+from normalizers.zip_normalizer import ZipNormalizer
 
 # Resolve sonarqube code smells
 writing = "Writing "
 rows_to = " rows to "
 
 ###############################
-# DATA NORMALIZATION PATTERNS
-###############################
-
-addressNormalizer = AddressNormalizer(country_code)
-stateNormalizer = StateNormalizer(country_code)
-zipNormalizer = ZipNormalizer(country_code)
-phoneNormalizer = PhoneNormalizer(country_code)
-
-###############################
 # PARSE ARGS
 ###############################
 
 # Read required parameters
+args = None
 try:
-    args = getResolvedOptions(sys.argv, ['JOB_NAME', 'solution_id', 'uuid', 'enable_anonymous_data', 'anonymous_data_logger', 'source_bucket', 'source_key', 'output_bucket', 'pii_fields', 'deleted_fields', 'dataset_id', 'period'])
+    args = getResolvedOptions(
+        sys.argv,
+        [
+            "JOB_NAME",
+            "solution_id",
+            "uuid",
+            "enable_anonymous_data",
+            "anonymous_data_logger",
+            "source_bucket",
+            "source_key",
+            "output_bucket",
+            "pii_fields",
+            "deleted_fields",
+            "dataset_id",
+            "period", 
+            "country_code"
+        ],
+    )
 except GlueArgumentError as e:
     print(e)
-    exit(1)
+    sys.exit(1)
 finally:
     print("Runtime args:")
     print(args)
-job_name = args['JOB_NAME']
-job_run_id = args['JOB_RUN_ID']
-enable_anonymous_data = args['enable_anonymous_data']
-anonymous_data_logger = args['anonymous_data_logger']
-solution_id = args['solution_id']
-uuid = args['uuid']
-if 'dataset_id' in args:
-    dataset_id = args['dataset_id'].strip()
+job_name = args["JOB_NAME"]
+job_run_id = args["JOB_RUN_ID"]
+enable_anonymous_data = args["enable_anonymous_data"]
+anonymous_data_logger = args["anonymous_data_logger"]
+solution_id = args["solution_id"]
+uuid = args["uuid"]
+if "dataset_id" in args:
+    dataset_id = args["dataset_id"].strip()
 else:
     print("Missing required arg: dataset_id")
-    exit(1)
+    sys.exit(1)
 pii_fields = []
-if 'pii_fields' in args:
-    pii_fields = json.loads(args['pii_fields'])
+if "pii_fields" in args:
+    pii_fields = json.loads(args["pii_fields"])
 deleted_fields = []
-if 'deleted_fields' in args:
-    deleted_fields = json.loads(args['deleted_fields'])
-if 'period' in args:
-    user_defined_partition_size = args['period'].strip()
-    if user_defined_partition_size not in ("autodetect", "PT1M", "PT1H", "P1D", "P7D"):
+if "deleted_fields" in args:
+    deleted_fields = json.loads(args["deleted_fields"])
+if "period" in args:
+    user_defined_partition_size = args["period"].strip()
+    if user_defined_partition_size not in (
+        "autodetect",
+        "PT1M",
+        "PT1H",
+        "P1D",
+        "P7D",
+    ):
         print("ERROR: Invalid user-defined value for dataset period:")
         print(user_defined_partition_size)
-        exit(1)
+        sys.exit(1)
+if 'country_code' in args:
+    country_code = args['country_code']
+else:
+    print("Missing required arg: country_code")
+    sys.exit(1)
 
 # Read optional parameters
 try:
-    timestamp_column = getResolvedOptions(sys.argv, ['timestamp_column'])['timestamp_column'].strip()
-except GlueArgumentError as e:
+    timestamp_column = getResolvedOptions(sys.argv, ["timestamp_column"])[
+        "timestamp_column"
+    ].strip()
+except GlueArgumentError:
     timestamp_column = None
 
 ###############################
 # LOAD INPUT DATA
 ###############################
 
-source_bucket = args['source_bucket']
-key = args['source_key']
-filename = key.split('/')[-1]
-output_bucket = args['output_bucket']
+source_bucket = args["source_bucket"]
+key = args["source_key"]
+filename = key.split("/")[-1]
+output_bucket = args["output_bucket"]
 
-s3 = boto3.client('s3')
+s3 = boto3.client("s3")
 response = s3.head_object(Bucket=source_bucket, Key=key)
-content_type = response['ContentType']
+content_type = response["ContentType"]
 print("CONTENT TYPE: " + content_type)
-num_bytes = response['ContentLength']
+num_bytes = response["ContentLength"]
 print("FILE SIZE: " + str(num_bytes))
 num_rows = 0
 
@@ -135,12 +156,18 @@ json_content_type = "application/json"
 csv_content_type = "text/csv"
 
 if content_type == json_content_type:
-    dfs = wr.s3.read_json(path=['s3://' + source_bucket + '/' + key], chunksize=chunksize, lines=True)
+    dfs = wr.s3.read_json(
+        path=["s3://" + source_bucket + "/" + key],
+        chunksize=chunksize,
+        lines=True,
+    )
 elif content_type == csv_content_type:
-    dfs = wr.s3.read_csv(path=['s3://' + source_bucket + '/' + key], chunksize=chunksize)
+    dfs = wr.s3.read_csv(
+        path=["s3://" + source_bucket + "/" + key], chunksize=chunksize
+    )
 else:
     print("Unsupported content type: " + content_type)
-    exit(1)
+    sys.exit(1)
 
 for chunk in dfs:
     # Save each chunk
@@ -155,7 +182,7 @@ for column_name in deleted_fields:
     df.drop(column_name, axis=1, inplace=True)
 
 # Define the column name to hold the timestamp in its full precision
-timestamp_full_precision = 'timestamp_full_precision'
+timestamp_full_precision = "timestamp_full_precision"
 
 if timestamp_column:
     # Convert timestamp column to datetime type so we can use datetime methods
@@ -163,41 +190,54 @@ if timestamp_column:
         df[timestamp_column] = pd.to_datetime(df[timestamp_column], utc=True)
     except ValueError as e:
         print(e)
-        print('Failed to parse timeseries in column ' + timestamp_column)
-        print('Verify that timeseries is formatted according to ISO 8601.')
+        print("Failed to parse timeseries in column " + timestamp_column)
+        print("Verify that timeseries is formatted according to ISO 8601.")
         raise e
     except Exception as e:
         print(e)
-        print('Failed to parse timeseries in column ' + timestamp_column)
+        print("Failed to parse timeseries in column " + timestamp_column)
         raise e
+
+###############################
+# DATA NORMALIZATION PATTERNS
+###############################
+
+addressNormalizer = AddressNormalizer(country_code)
+stateNormalizer = StateNormalizer(country_code)
+zipNormalizer = ZipNormalizer(country_code)
+phoneNormalizer = PhoneNormalizer(country_code)
 
 ###############################
 # DATA NORMALIZATION
 ###############################
-# df1 will contain integer, float, and datetime columns 
+# df1 will contain integer, float, and datetime columns
 df1 = df.select_dtypes(exclude=[object])
 # df2 will contain string columns
 df2 = df.select_dtypes(include=[object])
 
 
 def address_transformations(text):
-    text = addressNormalizer.normalize(text).normalizedAddress
+    text = addressNormalizer.normalize(text).normalized_address
     return text
 
+
 def state_transformations(text):
-    text = stateNormalizer.normalize(text).normalizedState.lower()
+    text = stateNormalizer.normalize(text).normalized_state.lower()
     return text
+
 
 def normalize_email(text):
     email_normalize = EmailNormalizer(text)
     return email_normalize.normalize()
 
+
 def zip_transformations(text):
-    text = zipNormalizer.normalize(text).normalizedZip
+    text = zipNormalizer.normalize(text).normalized_zip
     return text
 
+
 def phone_transformations(text):
-    text = phoneNormalizer.normalize(text).normalizedPhone
+    text = phoneNormalizer.normalize(text).normalized_phone
     return text
 
 
@@ -207,26 +247,56 @@ def phone_transformations(text):
 sha256_pattern = "^[a-f0-9]{64}$"
 
 for field in pii_fields:
-    column_name = field['column_name']
-    if field['pii_type'] == "ADDRESS":
-        df2[column_name] = df2[column_name].copy().apply(
-            lambda x: x if re.match(sha256_pattern, x) else address_transformations(x))
-    elif field['pii_type'] == "STATE":
-        df2[column_name] = df2[column_name].copy().apply(
-            lambda x: x if re.match(sha256_pattern, x) else state_transformations(x))
-    elif field['pii_type'] == "ZIP":
-        df2[column_name] = df2[column_name].copy().apply(
-            lambda x: x if re.match(sha256_pattern, x) else zip_transformations(x))
-    elif field['pii_type'] == "PHONE":
-        df2[column_name] = df2[column_name].copy().apply(
-            lambda x: x if re.match(sha256_pattern, x) else phone_transformations(x))
-    elif field['pii_type'] == "EMAIL":
+    column_name = field["column_name"]
+    if field["pii_type"] == "ADDRESS":
+        df2[column_name] = (
+            df2[column_name]
+            .copy()
+            .apply(
+                lambda x: x
+                if re.match(sha256_pattern, x)
+                else address_transformations(x)
+            )
+        )
+    elif field["pii_type"] == "STATE":
+        df2[column_name] = (
+            df2[column_name]
+            .copy()
+            .apply(
+                lambda x: x
+                if re.match(sha256_pattern, x)
+                else state_transformations(x)
+            )
+        )
+    elif field["pii_type"] == "ZIP":
+        df2[column_name] = (
+            df2[column_name]
+            .copy()
+            .apply(
+                lambda x: x
+                if re.match(sha256_pattern, x)
+                else zip_transformations(x)
+            )
+        )
+    elif field["pii_type"] == "PHONE":
+        df2[column_name] = (
+            df2[column_name]
+            .copy()
+            .apply(
+                lambda x: x
+                if re.match(sha256_pattern, x)
+                else phone_transformations(x)
+            )
+        )
+    elif field["pii_type"] == "EMAIL":
         df2[column_name] = df2[column_name].copy().apply(lambda x: x.lower())
-        df2[column_name].replace("[^\w.@-]", "", inplace=True, regex=True)
-        df2[column_name] = df2[column_name].copy().apply(lambda x: normalize_email(x))
+        df2[column_name].replace(r"[^\w.@-]", "", inplace=True, regex=True)
+        df2[column_name] = (
+            df2[column_name].copy().apply(lambda x: normalize_email(x))
+        )
     else:
         df2[column_name] = df2[column_name].copy().apply(lambda x: x.lower())
-        # convert characters ß, ä, ö, ü, ø, æ 
+        # convert characters ß, ä, ö, ü, ø, æ
         df2[column_name].replace("ß", "ss", inplace=True)
         df2[column_name].replace("ä", "ae", inplace=True)
         df2[column_name].replace("ö", "oe", inplace=True)
@@ -241,11 +311,18 @@ for field in pii_fields:
 ###############################
 
 for field in pii_fields:
-    column_name = field['column_name']
+    column_name = field["column_name"]
     # If the column value looks like a sha256 hash, then don't hash it again.
     # This allows users to import datasets that have already been hashed.
-    df2[column_name] = df2[column_name].copy().apply(
-        lambda x: x if re.match(sha256_pattern, x) else hashlib.sha256(x.encode()).hexdigest())
+    df2[column_name] = (
+        df2[column_name]
+        .copy()
+        .apply(
+            lambda x: x
+            if re.match(sha256_pattern, x)
+            else hashlib.sha256(x.encode()).hexdigest()
+        )
+    )
 
 df = pd.concat([df1, df2], axis=1)
 
@@ -259,42 +336,51 @@ if timestamp_column:
     # But before we write that data to AMC, we will want to restore the timestamp to full precision.
     # So we record that full precision here so that it can be restored later.
     df[timestamp_full_precision] = df[timestamp_column]
-    df[timestamp_column] = df[timestamp_column].dt.round('Min')
+    df[timestamp_column] = df[timestamp_column].dt.round("Min")
 
     # Prepare to calculate time deltas by sorting on the timeseries column
     unique_timestamps = pd.DataFrame(df[timestamp_column].unique())
-    unique_timestamps = unique_timestamps.rename(columns={0: 'timestamp'})
-    unique_timestamps = unique_timestamps.sort_values(by='timestamp')
+    unique_timestamps = unique_timestamps.rename(columns={0: "timestamp"})
+    unique_timestamps = unique_timestamps.sort_values(by="timestamp")
 
     if user_defined_partition_size in ("PT1M", "PT1H", "P1D", "P7D"):
         timeseries_partition_size = user_defined_partition_size
     if user_defined_partition_size == "autodetect":
         # Store the time delta between each sequential event
-        unique_timestamps['timedelta'] = unique_timestamps['timestamp'] - unique_timestamps['timestamp'].shift()
+        unique_timestamps["timedelta"] = (
+            unique_timestamps["timestamp"]
+            - unique_timestamps["timestamp"].shift()
+        )
 
         # Here we calculate the partition size based on the minimum delta between timestamps in the dataset.
-        zero_timedelta = '0 days 00:00:00'
-        min_timedelta = unique_timestamps['timedelta'][unique_timestamps['timedelta'] != zero_timedelta].dropna().min()
+        zero_timedelta = "0 days 00:00:00"
+        min_timedelta = (
+            unique_timestamps["timedelta"][
+                unique_timestamps["timedelta"] != zero_timedelta
+            ]
+            .dropna()
+            .min()
+        )
 
         # Initialize timeseries partition size. The available options are:
         #   PT1M (minute)
         #   PT1H (hour)
         #   P1D (day)
         #   P7D (7 days)
-        timeseries_partition_size = 'PT1M'
+        timeseries_partition_size = "PT1M"
 
         # If the smallest delta between timestamps is at least 60 minutes (3600 seconds), then we'll partition timeseries data into one file for each hour.
         # Note, timedelta.seconds rolls over to 0 when the timedelta reaches 1 day, so we need to check timedelta.days too:
-        if (min_timedelta.seconds >= 3600 and min_timedelta.days == 0):
-            timeseries_partition_size = 'PT1H'
+        if min_timedelta.seconds >= 3600 and min_timedelta.days == 0:
+            timeseries_partition_size = "PT1H"
 
         # If the smallest delta between timestamps is at least 24 hours, then we'll partition timeseries data into one file for each day.
-        elif (0 < min_timedelta.days < 7):
-            timeseries_partition_size = 'P1D'
+        elif 0 < min_timedelta.days < 7:
+            timeseries_partition_size = "P1D"
 
         # If the smallest delta between timestamps is at least 7 days, then we'll partition timeseries data into one file for each week.
-        elif (min_timedelta.days >= 7):
-            timeseries_partition_size = 'P7D'
+        elif min_timedelta.days >= 7:
+            timeseries_partition_size = "P7D"
 
 ###############################
 # SAVE OUTPUT DATA
@@ -303,14 +389,14 @@ if timestamp_column:
 # Partition the timeseries dataset into separate files for each
 # unique timestamp.
 output_files = []
-amc_str = 'amc'
-datetime_format = '%Y-%m-%dT%H:%M:%SZ'
+amc_str = "amc"
+datetime_format = "%Y-%m-%dT%H:%M:%SZ"
 
 if timestamp_column:
-    dataset_type = 'FACT'
+    dataset_type = "FACT"
     # Initialize a temporary variable to help us know when timestamps
     # map to a new string:
-    timestamp_str_old = ''
+    timestamp_str_old = ""
     # Initialize a dataframe to hold the dataset for this timestamp:
     df_partition = pd.DataFrame()
     for timestamp in unique_timestamps.timestamp:
@@ -321,9 +407,9 @@ if timestamp_column:
         #   00 for minutes and seconds in the case of PT1H, P1D, P7D,
         #   and 00 for hours, minutes, and seconds in the case of P1D, P7D.
         timestamp_str = timestamp.strftime("%Y_%m_%d-%H:%M:00")
-        if timeseries_partition_size == 'PT1H' or timeseries_partition_size == 'P1D' or timeseries_partition_size == 'P7D':
+        if timeseries_partition_size in ("PT1H", "P1D", "P7D"):
             timestamp_str = timestamp.strftime("%Y_%m_%d-%H:00:00")
-        if timeseries_partition_size == 'P1D' or timeseries_partition_size == 'P7D':
+        if timeseries_partition_size in ("P1D", "P7D"):
             timestamp_str = timestamp.strftime("%Y_%m_%d-00:00:00")
 
         # Since unique_timestamps is sorted, we can iterate thru
@@ -336,94 +422,188 @@ if timestamp_column:
         if timestamp_str_old != timestamp_str:
             # Yes, this timestamp maps to a new timestamp_str.
             # From now on check to see when timestamp_str is different from this one
-            if timestamp_str_old == '':
+            if timestamp_str_old == "":
                 # ...unless we're just starting out.
                 timestamp_str_old = timestamp_str
                 # Get all the events that occurred at the first timestamp
                 # so that they can be recorded when we read the next timestamp.
                 df_partition = df[df[timestamp_column] == timestamp]
-                df_partition[timestamp_column] = df_partition[timestamp_column].dt.strftime(datetime_format)
+                df_partition[timestamp_column] = df_partition[
+                    timestamp_column
+                ].dt.strftime(datetime_format)
                 # Now proceed to the next unique timestamp.
                 continue
             # write the old df_partition to s3
-            output_file = 's3://' + output_bucket + '/' + amc_str + '/' + dataset_id + '/' + timeseries_partition_size + '/' + filename + '-' + timestamp_str_old + '.gz'
+            output_file = (
+                "s3://"
+                + output_bucket
+                + "/"
+                + amc_str
+                + "/"
+                + dataset_id
+                + "/"
+                + timeseries_partition_size
+                + "/"
+                + filename
+                + "-"
+                + timestamp_str_old
+                + ".gz"
+            )
             if len(df_partition) > 0:
                 output_files.append(output_file)
                 # Earlier, we rounded the timestamp_column to minute (60s) granularity.
                 # Now we need to revert it back to full precision in order to avoid data loss.
-                df_partition[timestamp_column] = df_partition[timestamp_full_precision].dt.strftime(datetime_format)
-                df_partition.drop(timestamp_full_precision, axis=1, inplace=True)
+                df_partition[timestamp_column] = df_partition[
+                    timestamp_full_precision
+                ].dt.strftime(datetime_format)
+                df_partition.drop(
+                    timestamp_full_precision, axis=1, inplace=True
+                )
                 print(writing + str(len(df_partition)) + rows_to + output_file)
                 num_rows += len(df_partition)
                 if content_type == json_content_type:
-                    wr.s3.to_json(df=df_partition, path=output_file, compression='gzip', lines=True, orient='records')
+                    wr.s3.to_json(
+                        df=df_partition,
+                        path=output_file,
+                        compression="gzip",
+                        lines=True,
+                        orient="records",
+                    )
                 elif content_type == csv_content_type:
-                    wr.s3.to_csv(df=df_partition, path=output_file, compression='gzip', header=True, index=False)
+                    wr.s3.to_csv(
+                        df=df_partition,
+                        path=output_file,
+                        compression="gzip",
+                        header=True,
+                        index=False,
+                    )
             # reset df_partition for the new timestamp string
             df_partition = pd.DataFrame()
             timestamp_str_old = timestamp_str
             # Get all the events that occurred at this timestamp
             df_partition = df[df[timestamp_column] == timestamp]
-            df_partition[timestamp_column] = df_partition[timestamp_column].dt.strftime(datetime_format)
+            df_partition[timestamp_column] = df_partition[
+                timestamp_column
+            ].dt.strftime(datetime_format)
         else:
             # Append all the events that occurred at this timestamp to df_partition
             df_partition2 = pd.DataFrame()
             df_partition2 = df[df[timestamp_column] == timestamp]
-            df_partition2[timestamp_column] = df_partition2[timestamp_column].dt.strftime(datetime_format)
-            df_partition = df_partition.append(df_partition2, ignore_index=True)
+            df_partition2[timestamp_column] = df_partition2[
+                timestamp_column
+            ].dt.strftime(datetime_format)
+            df_partition = df_partition.append(
+                df_partition2, ignore_index=True
+            )
     # write the last timestamp to s3
-    output_file = 's3://' + output_bucket + '/' + amc_str + '/' + dataset_id + '/' + timeseries_partition_size + '/' + filename + '-' + timestamp_str_old + '.gz'
+    output_file = (
+        "s3://"
+        + output_bucket
+        + "/"
+        + amc_str
+        + "/"
+        + dataset_id
+        + "/"
+        + timeseries_partition_size
+        + "/"
+        + filename
+        + "-"
+        + timestamp_str_old
+        + ".gz"
+    )
     if len(df_partition) > 0:
         output_files.append(output_file)
         # Earlier, we rounded the timestamp_column to minute (60s) granularity.
         # Now we need to revert it back to full precision in order to avoid data loss.
-        df_partition[timestamp_column] = df_partition[timestamp_full_precision].dt.strftime(datetime_format)
+        df_partition[timestamp_column] = df_partition[
+            timestamp_full_precision
+        ].dt.strftime(datetime_format)
         df_partition.drop(timestamp_full_precision, axis=1, inplace=True)
         print(writing + str(len(df_partition)) + rows_to + output_file)
         num_rows += len(df_partition)
         if content_type == json_content_type:
-            wr.s3.to_json(df=df_partition, path=output_file, compression='gzip', lines=True, orient='records')
+            wr.s3.to_json(
+                df=df_partition,
+                path=output_file,
+                compression="gzip",
+                lines=True,
+                orient="records",
+            )
         elif content_type == csv_content_type:
-            wr.s3.to_csv(df=df_partition, path=output_file, compression='gzip', header=True, index=False)
+            wr.s3.to_csv(
+                df=df_partition,
+                path=output_file,
+                compression="gzip",
+                header=True,
+                index=False,
+            )
 
     output = {
-        'timeseries granularity': timeseries_partition_size,
-        'output files': output_files
+        "timeseries granularity": timeseries_partition_size,
+        "output files": output_files,
     }
     print(output)
 else:
-    dataset_type = 'DIMENSION'
-    output_file = 's3://' + output_bucket + '/' + amc_str + '/' + dataset_id + '/dimension/' + filename + '.gz'
+    dataset_type = "DIMENSION"
+    output_file = (
+        "s3://"
+        + output_bucket
+        + "/"
+        + amc_str
+        + "/"
+        + dataset_id
+        + "/dimension/"
+        + filename
+        + ".gz"
+    )
     print(writing + str(len(df)) + rows_to + output_file)
     num_rows += len(df)
     if content_type == json_content_type:
-        wr.s3.to_json(df=df, path=output_file, compression='gzip', lines=True, orient='records')
+        wr.s3.to_json(
+            df=df,
+            path=output_file,
+            compression="gzip",
+            lines=True,
+            orient="records",
+        )
     elif content_type == csv_content_type:
-        wr.s3.to_csv(df=df, path=output_file, compression='gzip', header=True, index=False)
-    output = {
-        'output files': output_file
-    }
+        wr.s3.to_csv(
+            df=df,
+            path=output_file,
+            compression="gzip",
+            header=True,
+            index=False,
+        )
+    output = {"output files": output_file}
     print(output)
 
 ###############################
 # SAVE PERFORMANCE METRICS
 ###############################
 
-if enable_anonymous_data == 'true':
-    glue_client = boto3.client('glue')
-    lambda_client = boto3.client('lambda')
+if enable_anonymous_data == "true":
+    glue_client = boto3.client("glue")
+    lambda_client = boto3.client("lambda")
     response = glue_client.get_job_run(
-        JobName=job_name,
-        RunId=job_run_id,
-        PredecessorsIncluded=True|False
+        JobName=job_name, RunId=job_run_id, PredecessorsIncluded=True | False
     )
-    started_on = response['JobRun']['StartedOn'].replace(tzinfo=None)
+    started_on = response["JobRun"]["StartedOn"].replace(tzinfo=None)
     glue_job_duration = (datetime.now() - started_on).total_seconds()
-    metrics = {'RequestType': 'Workload', 'Metrics': {'SolutionId': solution_id, 'UUID': uuid, 'numBytes': num_bytes, 'numRows': num_rows, 'datasetType': dataset_type, 'glueJobDuration': glue_job_duration}}
+    metrics = {
+        "RequestType": "Workload",
+        "Metrics": {
+            "SolutionId": solution_id,
+            "UUID": uuid,
+            "numBytes": num_bytes,
+            "numRows": num_rows,
+            "datasetType": dataset_type,
+            "glueJobDuration": glue_job_duration,
+        },
+    }
     response = lambda_client.invoke(
         FunctionName=anonymous_data_logger,
-        InvocationType='Event',
-        Payload=json.dumps(metrics).encode('utf-8')
+        InvocationType="Event",
+        Payload=json.dumps(metrics).encode("utf-8"),
     )
     print("Performance metrics:")
     print(metrics)

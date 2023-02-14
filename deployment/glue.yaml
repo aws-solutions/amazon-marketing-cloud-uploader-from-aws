@@ -102,7 +102,7 @@ Resources:
                   - "logs:PutLogEvents"
                 Resource:
                   - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*"
-              - Fn::If: 
+              - Fn::If:
                 - EnableCmkEncryptionCondition
                 - Effect: Allow
                   Action:
@@ -112,7 +112,7 @@ Resources:
                 - !Ref AWS::NoValue
 
   GlueDeployHelper:
-    # Glue Helper function 
+    # Glue Helper function
     # - copy glue etl script and normalization library to artifact bucket
     Type: AWS::Lambda::Function
     Metadata:
@@ -141,8 +141,8 @@ Resources:
           from urllib.request import build_opener, HTTPHandler, Request
           LOGGER = logging.getLogger()
           LOGGER.setLevel(logging.INFO)
-          
-          
+
+
           def lambda_handler(event, context):
             """
             Handle Lambda event from AWS
@@ -174,15 +174,15 @@ Resources:
               s3 = boto3.resource('s3')
               bucket_name = os.environ["DESTINATION_BUCKET"]
               LOGGER.info("Purging bucket, " + bucket_name)
-              bucket = s3.Bucket(bucket_name) 
+              bucket = s3.Bucket(bucket_name)
               bucket.objects.all().delete()
             except Exception as e:
               LOGGER.info("Unable to purge artifact bucket while deleting stack: {e}".format(e=e))
               send_response(event, context, "FAILED", {"Message": "Unexpected event received from CloudFormation"})
             else:
               send_response(event, context, "SUCCESS", {"Message": "Resource creation successful!"})
-          
-          
+
+
           def copy_source(event, context):
             try:
               s3 = boto3.resource('s3')
@@ -194,7 +194,7 @@ Resources:
               send_response(event, context, "FAILED", {"Message": "Unexpected event received from CloudFormation"})
             else:
               send_response(event, context, "SUCCESS", {"Message": "Resource creation successful!"})
-          
+
           def send_response(event, context, response_status, response_data):
             """
             Send a resource manipulation status response to CloudFormation
@@ -343,7 +343,7 @@ Resources:
         Version: '2012-10-17'
         Statement:
           - Effect: Allow
-            Principal: 
+            Principal:
               AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
             Action: 'kms:*'
             Resource: '*'
@@ -391,7 +391,7 @@ Resources:
 
   AmcGlueJob:
     Type: AWS::Glue::Job
-    DependsOn: 
+    DependsOn:
       - CopyGlueEtlScripts
     Properties:
       Name: !Sub "${AWS::StackName}-amc-transformation-job"

@@ -1,6 +1,6 @@
+aws_xray_sdk
+awswrangler
+boto3
 chalice
 pytest
-aws_xray_sdk
-boto3
 requests
-awswrangler

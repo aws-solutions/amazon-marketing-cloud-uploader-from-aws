@@ -1,23 +1,27 @@
 import re
 
 
-def isValidEmailAddress(email):
+def is_valid_email_address(email):
     try:
-        return bool(email and re.match("([\w._-]+@[\w._-]+)", email))
+        wrd_str = r"\w"
+        re_str = f"([{wrd_str}._-]+@[{wrd_str}._-]+)"
+        return bool(email and re.match(re_str, email))
     except Exception:
         return False
 
-def normalizeEmail(email):
+
+def normalize_email(email):
     if email:
-        return re.sub("[^\w.@-]+", "", email.lower())
+        return re.sub(r"[^\w.@-]+", "", email.lower())
     return None
 
-class EmailNormalizer():
+
+class EmailNormalizer:
     def __init__(self, email):
         self.email = email
 
     def normalize(self):
-        email = normalizeEmail(self.email)
-        if isValidEmailAddress(email):
+        email = normalize_email(self.email)
+        if is_valid_email_address(email):
             return email
         return ""
