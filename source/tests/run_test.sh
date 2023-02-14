@@ -37,6 +37,7 @@ then
     export AWS_XRAY_SDK_ENABLED=false
     export AMC_GLUE_JOB_NAME="some-GlueStack-123-amc-transformation-job"
     export CUSTOMER_MANAGED_KEY=""
+    export AWS_REGION="us-east-1"
 
     pip install -r requirements-dev.txt
     pytest tests -vv --ignore="tests/e2e/"

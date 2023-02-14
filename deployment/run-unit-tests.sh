@@ -58,7 +58,7 @@ export VERSION="0.0.0"
 export botoConfig='{"region_name": "us-east-1"}'
 export AWS_XRAY_SDK_ENABLED=false
 export AMC_GLUE_JOB_NAME="some-GlueStack-123-amc-transformation-job"
-export CUSTOMER_MANAGED_KEY="some-GlueStack-123-amc-transformation-job"
+export CUSTOMER_MANAGED_KEY=""
 export AWS_REGION="us-east-1"
 
 echo "------------------------------------------------------------------------------"
