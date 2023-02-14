@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add Import/Export to Step 3 (Define columns), so user can import or export column schema for AMC ingestion. [#48]
 - Use custom lambda layer for aws-xray-sdk [#68]
 - Add Pre-commit, fix SonarCube/SonarLint issues [#16]
+- Add Unit Test, combine coverage report for source/app/tests and source/tests. [#100]
 
 ### Changed
 

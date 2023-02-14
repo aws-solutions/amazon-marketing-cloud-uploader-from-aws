@@ -1,6 +1,9 @@
-aws_xray_sdk
-awswrangler
-boto3
 chalice
 pytest
+aws_xray_sdk
+boto3
 requests
+awswrangler
+pytest-mock
+moto==4.1.2
+pyparsing

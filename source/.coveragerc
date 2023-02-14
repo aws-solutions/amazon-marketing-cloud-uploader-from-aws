@@ -1,6 +1,7 @@
 [run]
 omit =
     tests/*
+    api/tests/*
 
 source =
     api
@@ -9,4 +10,4 @@ source =
     amc_uploader
 
 [report]
-fail_under = 9.0
+fail_under = 30.0

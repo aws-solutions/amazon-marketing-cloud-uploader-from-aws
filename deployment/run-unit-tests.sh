@@ -47,15 +47,20 @@ source $venv_folder/bin/activate
 cd $source_dir
 pip install --upgrade pip
 pip install -r requirements-dev.txt
+pip install -r api/tests/requirements-test.txt
 
 # env variables
 export PYTHONDONTWRITEBYTECODE=1
 export AMC_ENDPOINT_URL="AmcEndpointUrl"
-export AMC_API_ROLE_ARN="AmcApiRoleArn"
+export AMC_API_ROLE_ARN="arn:aws:iam::999999999999:role/SomeTestRole"
 export SOLUTION_NAME="SOLUTION_NAME"
 export SOLUTION_VERSION="SOLUTION_VERSION"
+export VERSION="0.0.1"
 export botoConfig='{"region_name": "us-east-1"}'
 export AWS_XRAY_SDK_ENABLED=false
+export AMC_GLUE_JOB_NAME="some-GlueStack-123-amc-transformation-job"
+export CUSTOMER_MANAGED_KEY="some-GlueStack-123-amc-transformation-job"
+export AWS_REGION="us-east-1"
 
 echo "------------------------------------------------------------------------------"
 echo "[Test] Run pytest with coverage"
@@ -65,7 +70,8 @@ cd $source_dir
 coverage_report_path=$source_dir/tests/coverage-reports/source.coverage.xml
 echo "coverage report path set to $coverage_report_path"
 
-pytest --cov --cov-report term-missing --cov-report term --cov-report "xml:$coverage_report_path" --cov-config=$source_dir/.coveragerc --ignore="tests/e2e"
+pytest $source_dir/tests --cov=$source_dir/glue/ --cov=$source_dir/helper/ --cov=$source_dir/amc_uploader/ --cov-report term-missing --cov-report term --cov-report "xml:$coverage_report_path" --ignore="tests/e2e" --ignore="api/tests/test_api_integration.py" --cov-fail-under=15 -vv
+pytest $source_dir/api/tests --cov=$source_dir/api/ --cov-append --cov-report term-missing --cov-report term --cov-report "xml:$coverage_report_path" --cov-config=$source_dir/.coveragerc --ignore="tests/e2e" --ignore="api/tests/test_api_integration.py" -vv
 
 # The pytest --cov with its parameters and .coveragerc generates a xml cov-report with `coverage/sources` list
 # with absolute path for the source directories. To avoid dependencies of tools (such as SonarQube) on different
