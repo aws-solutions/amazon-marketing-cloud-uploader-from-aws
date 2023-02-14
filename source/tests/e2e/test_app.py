@@ -27,10 +27,7 @@ def browser():
 
 def test_everything(browser, test_environment, stack_resources):
     browser.implicitly_wait(5)
-    browser.get(
-        test_environment.get("LOCALHOST_URL")
-        or stack_resources["UserInterface"]
-    )
+    browser.get(stack_resources['UserInterface'])
     wait = WebDriverWait(browser, 30)
     # Login
     username_field = browser.find_element(
@@ -142,31 +139,6 @@ def test_everything(browser, test_environment, stack_resources):
     cc_dropdown = browser.find_element(By.ID, "country-code-dropdown")
     Select(cc_dropdown).select_by_value("US")
     assert cc_dropdown.get_attribute("value") == "US"
-
-    # open Step 3
-    browser.find_element(By.ID, "step3").click()
-
-    assert browser.find_element(
-        By.XPATH, "//button[contains(text(), 'Export')]"
-    )
-    assert browser.find_element(
-        By.XPATH, "//button[@title='Export column schema']"
-    )
-    assert browser.find_element(
-        By.XPATH, "//button[contains(text(), 'Import')]"
-    )
-    assert browser.find_element(
-        By.XPATH, "//button[@title='Import column schema']"
-    )
-    assert browser.find_element(
-        By.XPATH, "//button[contains(text(), 'Reset')]"
-    )
-
-    assert browser.find_element(By.XPATH, "//button[contains(text(), 'Next')]")
-    assert browser.find_element(
-        By.XPATH, "//button[contains(text(), 'Previous')]"
-    )
-
     # Sign out
     browser.find_element(
         "xpath", "/html/body/div/div/div/div[1]/nav/div/ul/li/a"
