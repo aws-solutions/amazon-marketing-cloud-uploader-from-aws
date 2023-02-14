@@ -10,7 +10,7 @@ help(){
     -h, --help      Print this help and exit.
     -rut, --run_unit_test    Run Unit Test.
 EOF
-	exit 0  
+	exit 0
 }
 
 if [[ ( $@ == "--help") ||  $@ == "-h" ]]

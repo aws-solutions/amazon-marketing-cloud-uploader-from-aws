@@ -1,9 +1,9 @@
-chalice
-pytest
 aws_xray_sdk
-boto3
-requests
 awswrangler
-pytest-mock
+boto3
+chalice
 moto==4.1.2
 pyparsing
+pytest
+pytest-mock
+requests
