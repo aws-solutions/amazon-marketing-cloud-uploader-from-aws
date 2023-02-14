@@ -1,23 +1,311 @@
-name: Pull Request Workflow
+name: pr-workflow
 
 on:
   pull_request:
-    types: [opened, edited, reopened, synchronize]
+    types: [opened, synchronize]
+    branches:
+      - development
+  workflow_dispatch:
 
 jobs:
-  pull-request-job:
-    name: Status Checks
+  viperlight-scan:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Viperlight
+      - name: Check out pr branch
+        uses: actions/checkout@v2.3.4
+        with:
+          ref: ${{ github.sha }}
+      - name: Viperlight scan
         run: |
-          wget -q https://viperlight-scanner.s3.amazonaws.com/latest/.viperlightrc
-          wget -q https://viperlight-scanner.s3.amazonaws.com/latest/viperlight.zip
+          echo "Installing content scanning utility"
+          sudo apt-get install wget -y
+          wget -v "https://s3.amazonaws.com/viperlight-scanner/latest/.viperlightrc"
+          wget -v "https://s3.amazonaws.com/viperlight-scanner/latest/viperlight.zip"
           unzip -q viperlight.zip -d ../viperlight
           rm -r ./viperlight.zip
           echo "Content scanning utility installation complete `date`"
           echo "Starting content scanning `date` in `pwd`"
-          ../viperlight/bin/viperlight scan -m files-contents -m files-aws -m files-binary -m files-entropy -m files-secrets
+          ../viperlight/bin/viperlight scan -x python-pipoutdated -x python-bandit
           echo "Completed content scanning `date`"
+
+  cfn-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out pr branch
+        uses: actions/checkout@v2.3.4
+        with:
+          ref: ${{ github.sha }}
+      - name: Run cfn_nag
+        uses: stelligent/cfn_nag@master
+        continue-on-error: true
+        with:
+          input_path: deployment
+
+  npm-lint-checker:
+    needs:
+      - viperlight-scan
+      - cfn-scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out pr branch
+        uses: actions/checkout@v2.3.4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Run npm lint
+        run: |
+          ./run-pre-commit.sh -rnl
+
+  pre-commit:
+    needs:
+      - npm-lint-checker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out pr branch
+        uses: actions/checkout@v2.3.4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Run Pre-Commit
+        run: |
+          ./run-pre-commit.sh -rpc
+
+  unit-test:
+    needs:
+      - pre-commit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out pr branch
+        uses: actions/checkout@v2.3.4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Run Unit Test
+        run: |
+          VENV=$(mktemp -d) && echo "$VENV"
+          python3.10 -m venv "$VENV"
+          source "$VENV"/bin/activate
+          ls -l
+          cd source
+          pip install -r requirements-dev.txt
+          cd tests
+          pytest amc_transformation/test_amc_transformation.py -vv
+          pytest amc_uploader/test_amc_uploader.py -vv
+          cd ..
+          cd api/tests
+          ./run_api_test.sh --run_unit_test
+      - name: Run Coverage Report
+        run: |
+          cd deployment
+          ./check_test_coverage.sh
+
+
+  build:
+    needs:
+      - viperlight-scan
+      - cfn-scan
+      - unit-test
+    runs-on: ubuntu-latest
+    outputs:
+      REGION: ${{ steps.init.outputs.REGION }}
+      SHORT_SHA: ${{ steps.init.outputs.SHORT_SHA }}
+      DIST_OUTPUT_BUCKET: ${{ steps.init.outputs.DIST_OUTPUT_BUCKET }}
+      TEMPLATE_OUTPUT_BUCKET: ${{ steps.init.outputs.TEMPLATE_OUTPUT_BUCKET }}
+      VERSION: ${{ steps.init.outputs.VERSION }}
+      SOLUTION_NAME: ${{ steps.init.outputs.SOLUTION_NAME }}
+      TEMPLATE: ${{ steps.builder.outputs.TEMPLATE }}
+    steps:
+      - name: Check out pr branch
+        uses: actions/checkout@v2.3.4
+        with:
+          ref: ${{ github.sha }}
+      - name: Setup build environment
+        id: init
+        run: |
+          REGION="us-east-1"
+          VERSION="0.0.0"
+          SOLUTION_NAME="amazon-marketing-cloud-uploader-from-aws"
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          DIST_OUTPUT_BUCKET=github-pr-workflow-$SHORT_SHA-dist
+          TEMPLATE_OUTPUT_BUCKET=github-pr-workflow-$SHORT_SHA
+          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
+          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "REGION=$REGION" >> $GITHUB_ENV
+          echo "REGION=$REGION" >> $GITHUB_OUTPUT
+          echo "DIST_OUTPUT_BUCKET=$DIST_OUTPUT_BUCKET" >> $GITHUB_ENV
+          echo "DIST_OUTPUT_BUCKET=$DIST_OUTPUT_BUCKET" >> $GITHUB_OUTPUT
+          echo "TEMPLATE_OUTPUT_BUCKET=$TEMPLATE_OUTPUT_BUCKET" >> $GITHUB_ENV
+          echo "TEMPLATE_OUTPUT_BUCKET=$TEMPLATE_OUTPUT_BUCKET" >> $GITHUB_OUTPUT
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "SOLUTION_NAME=$SOLUTION_NAME" >> $GITHUB_ENV
+          echo "SOLUTION_NAME=$SOLUTION_NAME" >> $GITHUB_OUTPUT
+      - name: Initialize AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ steps.init.outputs.REGION }}
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Run build script
+        id: builder
+        run: |
+          aws s3 mb s3://$DIST_OUTPUT_BUCKET-$REGION
+          aws s3 mb s3://$TEMPLATE_OUTPUT_BUCKET
+          cd deployment
+          echo "./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name ${SOLUTION_NAME} --version ${VERSION} --region ${REGION}"
+          echo y | ./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name ${SOLUTION_NAME} --version ${VERSION}  --region ${REGION} | tee >( grep TEMPLATE >template )
+          TEMPLATE=$(cat template | cut -f 2 -d "'")
+          echo "TEMPLATE=$TEMPLATE" >> $GITHUB_OUTPUT
+
+  deploy:
+    needs:
+      - build
+    runs-on: ubuntu-latest
+    outputs:
+      STACK_NAME: ${{ steps.init.outputs.STACK_NAME }}
+    steps:
+      - name: Initialize AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{needs.build.outputs.REGION}}
+      - name: Setup deploy environment
+        id: init
+        run: |
+          STACK_NAME=github-pr-worklfow-${{needs.build.outputs.SHORT_SHA}}
+          echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
+          echo "STACK_NAME=$STACK_NAME" >> $GITHUB_OUTPUT
+          echo "EMAIL=${{secrets.EMAIL_ADDRESS}}" >> $GITHUB_ENV
+          echo "TEMPLATE=${{needs.build.outputs.TEMPLATE}}" >> $GITHUB_ENV
+          echo "DATA_BUCKET_NAME=${{secrets.DATA_BUCKET_NAME}}" >> $GITHUB_ENV
+          echo "AMC_API_ENDPOINT=${{secrets.AMC_API_ENDPOINT}}" >> $GITHUB_ENV
+          echo "DATA_UPLOAD_ACCOUNT_ID=${{secrets.DATA_UPLOAD_ACCOUNT_ID}}" >> $GITHUB_ENV
+      - name: Deploy
+        run: |
+          echo "Creating the stack"
+          aws cloudformation create-stack --stack-name $STACK_NAME --template-url $TEMPLATE --parameters ParameterKey=AdminEmail,ParameterValue=$EMAIL ParameterKey=DataBucketName,ParameterValue=$DATA_BUCKET_NAME ParameterKey=AmcEndpointUrl,ParameterValue=$AMC_API_ENDPOINT ParameterKey=DataUploadAccountId,ParameterValue=$DATA_UPLOAD_ACCOUNT_ID --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --disable-rollback
+          aws cloudformation wait stack-create-complete --stack-name $STACK_NAME
+
+  integration_test:
+    needs:
+      - build
+      - deploy
+    runs-on: ubuntu-latest
+    outputs:
+      AMC_GLUE_JOB_ROLE_NAME: ${{ steps.api_test.outputs.AMC_GLUE_JOB_ROLE_NAME }}
+    steps:
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Initialize AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{needs.build.outputs.REGION}}
+      - name: Check out pr branch
+        uses: actions/checkout@v2.3.4
+        with:
+          ref: ${{ github.sha }}
+      - name: Run API Tests
+        id: api_test
+        run: |
+          STACK_NAME=${{needs.deploy.outputs.STACK_NAME}}
+          echo "STACK_NAME=$STACK_NAME" >> $GITHUB_OUTPUT
+          SOLUTION_NAME=${{needs.build.outputs.SOLUTION_NAME}}
+          echo "SOLUTION_NAME=$SOLUTION_NAME" >> $GITHUB_OUTPUT
+          VERSION=${{needs.build.outputs.VERSION}}
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          RESOURCE_ID=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id GlueStack --query "StackResources[0].PhysicalResourceId")
+          echo "RESOURCE_ID=$RESOURCE_ID" >> $GITHUB_OUTPUT
+          NESTED_STACK_ID=$(echo $RESOURCE_ID | cut -d "/" -f 2)
+          echo "NESTED_STACK_ID=$NESTED_STACK_ID" >> $GITHUB_OUTPUT
+          AMC_GLUE_JOB_NAME=$(aws cloudformation describe-stack-resources --stack-name $NESTED_STACK_ID --logical-resource-id "AmcGlueJob" --query "StackResources[0].PhysicalResourceId")
+          AMC_GLUE_JOB_NAME=$(echo "$AMC_GLUE_JOB_NAME" | tr -d '"')
+          ARTIFACT_BUCKET=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id "ArtifactBucket" --query "StackResources[0].PhysicalResourceId")
+          ARTIFACT_BUCKET=$(echo $ARTIFACT_BUCKET | tr -d '"')
+          echo "ARTIFACT_BUCKET=$ARTIFACT_BUCKET" >> $GITHUB_OUTPUT
+          ROLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id "AmcApiAccessRole" --query "StackResources[0].PhysicalResourceId")
+          ROLE_NAME=$(echo $ROLE_NAME | tr -d '"')
+          echo "ROLE_NAME=$ROLE_NAME" >> $GITHUB_OUTPUT
+          CURRENT_ASSUME_ROLE_POLICY1=$(aws iam get-role --role-name $ROLE_NAME --query "Role.AssumeRolePolicyDocument.Statement[0]")
+          CURRENT_ASSUME_ROLE_POLICY2=$(aws iam get-role --role-name $ROLE_NAME --query "Role.AssumeRolePolicyDocument.Statement[1]")
+          TEST_ACCOUNT_ID=$(aws sts get-caller-identity --query Account)
+          TEST_ACCOUNT_ID=$(echo $TEST_ACCOUNT_ID | tr -d '"')
+          TEST_USER_ARN="arn:aws:iam::$TEST_ACCOUNT_ID:user/githubBuilderBot"
+          TEST_USER_ASSUME_ROLE_POLICY='{"Effect":"Allow","Principal":{"AWS":"'"$TEST_USER_ARN"'"},"Action":"sts:AssumeRole"}'
+          echo "TEST_USER_ASSUME_ROLE_POLICY=$TEST_USER_ASSUME_ROLE_POLICY" >> $GITHUB_OUTPUT
+          TEST_IAM_USER_POLICY='{"Version":"2012-10-17","Statement":['$CURRENT_ASSUME_ROLE_POLICY1', '$CURRENT_ASSUME_ROLE_POLICY2', '$TEST_USER_ASSUME_ROLE_POLICY']}'
+          aws iam update-assume-role-policy --role-name $ROLE_NAME --policy-document "$TEST_IAM_USER_POLICY"
+          AMC_GLUE_JOB_ROLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $NESTED_STACK_ID --logical-resource-id "AmcGlueJobRole" --query "StackResources[0].PhysicalResourceId")
+          AMC_GLUE_JOB_ROLE_NAME=$(echo $AMC_GLUE_JOB_ROLE_NAME | tr -d '"')
+          echo "AMC_GLUE_JOB_ROLE_NAME=$AMC_GLUE_JOB_ROLE_NAME" >> $GITHUB_ENV
+          echo "AMC_GLUE_JOB_ROLE_NAME=$AMC_GLUE_JOB_ROLE_NAME" >> $GITHUB_OUTPUT
+          export AMC_GLUE_JOB_NAME=$AMC_GLUE_JOB_NAME
+          export AMC_API_ROLE_ARN="arn:aws:iam::$TEST_ACCOUNT_ID:role/$ROLE_NAME"
+          export TEST_S3_BUCKET_NAME=${{ secrets.DATA_BUCKET_NAME }}
+          export AMC_ENDPOINT_URL=${{ secrets.AMC_API_ENDPOINT }}
+          export TEST_OUTPUT_BUCKET=$ARTIFACT_BUCKET
+          export SOLUTION_NAME=$SOLUTION_NAME
+          export CUSTOMER_MANAGED_KEY=''
+          export AWS_XRAY_CONTEXT_MISSING='LOG_ERROR'
+          export botoConfig="{}"
+          export VERSION=$VERSION
+          export AWS_REGION="us-east-1"
+          aws iam attach-role-policy --role-name $AMC_GLUE_JOB_ROLE_NAME --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+          VENV=$(mktemp -d) && echo "$VENV"
+          python3.10 -m venv "$VENV"
+          source "$VENV"/bin/activate
+          ls -l
+          pip3 install -r source/api/tests/requirements-test.txt
+          pytest source/api/tests/test_api_integration.py -vv
+
+  cleanup:
+    if: always()
+    needs:
+      - deploy
+      - build
+      - integration_test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Initialize AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{needs.build.outputs.REGION}}
+      - name: Remove build artifacts
+        if: needs.deploy.result == 'success' || needs.deploy.result == 'failure'
+        run: |
+          aws s3 rb s3://${{needs.build.outputs.DIST_OUTPUT_BUCKET}}-${{needs.build.outputs.REGION}} --force
+          aws s3 rb s3://${{needs.build.outputs.TEMPLATE_OUTPUT_BUCKET}} --force
+      - name: Detach s3 role
+        if: needs.integration_test.result == 'success' || needs.integration_test.result == 'failure'
+        run: |
+          aws iam detach-role-policy --role-name ${{needs.integration_test.outputs.AMC_GLUE_JOB_ROLE_NAME}} --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+      - name: Remove stack
+        if: needs.deploy.result == 'success'
+        run: |
+          STACK_NAME=${{needs.deploy.outputs.STACK_NAME}}
+          echo "Removing stack $STACK_NAME"
+          aws cloudformation delete-stack --stack-name $STACK_NAME
+          aws cloudformation wait stack-delete-complete --stack-name $STACK_NAME
