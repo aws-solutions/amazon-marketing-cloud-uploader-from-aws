@@ -172,7 +172,7 @@ SPDX-License-Identifier: Apache-2.0
           for (let key of s3keysList) {
             console.log("Starting Glue ETL job for s3://" + this.DATA_BUCKET_NAME + "/" + key)
             resource = 'start_amc_transformation'
-            data = {'sourceBucket': this.DATA_BUCKET_NAME, 'sourceKey': key, 'outputBucket': this.ARTIFACT_BUCKET_NAME, 'piiFields': JSON.stringify(this.pii_fields),'deletedFields': JSON.stringify(this.deleted_columns), 'timestampColumn': this.timestamp_column_name, 'datasetId': this.dataset_definition.dataSetId, 'period': this.dataset_definition.period}
+            data = {'sourceBucket': this.DATA_BUCKET_NAME, 'sourceKey': key, 'outputBucket': this.ARTIFACT_BUCKET_NAME, 'piiFields': JSON.stringify(this.pii_fields),'deletedFields': JSON.stringify(this.deleted_columns), 'timestampColumn': this.timestamp_column_name, 'datasetId': this.dataset_definition.dataSetId, 'period': this.dataset_definition.period, 'countryCode': this.dataset_definition.countryCode}
             let requestOpts = {
               headers: {'Content-Type': 'application/json'},
               body: data

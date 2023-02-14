@@ -16,6 +16,7 @@
 #   --deleted_fields: array of strings indicating the names of columns which the user requested to be dropped from the dataset prior to uploading to AMC.
 #   --dataset_id: name of dataset, used as the prefix folder for the output s3key.
 #   --period: time period of dataset, one of ["autodetect","PT1M","PT1H","P1D","P7D"]. Autodetect enabled by default. (optional)
+#   --country: country-specific normalization to apply to all rows in the dataset (2-digit ISO country code).
 #
 # OUTPUT:
 #   - Transformed data files in user-specified output bucket,
@@ -33,7 +34,7 @@
 #    export DATASET_ID='mytest123'
 #    export REGION=us-east-1
 #    aws glue start-job-run --job-name $JOB_NAME --arguments '{"--source_bucket": "'$SOURCE_BUCKET'", "--output_bucket": "'$OUTPUT_BUCKET'", "--source_key": "'$SOURCE_KEY'", "--pii_fields": "'$PII_FIELDS'",
-#    "--deleted_fields": "'$DELETED_FIELDS'", "--timestamp_column": "'$TIMESTAMP_COLUMN'", "--dataset_id": "'$DATASET_ID'", "--period": "autodetect"}' --region $REGION
+#    "--deleted_fields": "'$DELETED_FIELDS'", "--timestamp_column": "'$TIMESTAMP_COLUMN'", "--dataset_id": "'$DATASET_ID'", "--period": "autodetect", "--country": "US"}' --region $REGION
 #
 ###############################################################################
 
@@ -53,21 +54,9 @@ from normalizers.phone_normalizer import PhoneNormalizer
 from normalizers.state_normalizer import StateNormalizer
 from normalizers.zip_normalizer import ZipNormalizer
 
-# Hardcode country code for now.
-country_code = "US"
-
 # Resolve sonarqube code smells
 writing = "Writing "
 rows_to = " rows to "
-
-###############################
-# DATA NORMALIZATION PATTERNS
-###############################
-
-addressNormalizer = AddressNormalizer(country_code)
-stateNormalizer = StateNormalizer(country_code)
-zipNormalizer = ZipNormalizer(country_code)
-phoneNormalizer = PhoneNormalizer(country_code)
 
 ###############################
 # PARSE ARGS
@@ -90,7 +79,8 @@ try:
             "pii_fields",
             "deleted_fields",
             "dataset_id",
-            "period",
+            "period", 
+            "country_code"
         ],
     )
 except GlueArgumentError as e:
@@ -128,6 +118,11 @@ if "period" in args:
         print("ERROR: Invalid user-defined value for dataset period:")
         print(user_defined_partition_size)
         sys.exit(1)
+if 'country_code' in args:
+    country_code = args['country_code']
+else:
+    print("Missing required arg: country_code")
+    sys.exit(1)
 
 # Read optional parameters
 try:
@@ -202,6 +197,15 @@ if timestamp_column:
         print(e)
         print("Failed to parse timeseries in column " + timestamp_column)
         raise e
+
+###############################
+# DATA NORMALIZATION PATTERNS
+###############################
+
+addressNormalizer = AddressNormalizer(country_code)
+stateNormalizer = StateNormalizer(country_code)
+zipNormalizer = ZipNormalizer(country_code)
+phoneNormalizer = PhoneNormalizer(country_code)
 
 ###############################
 # DATA NORMALIZATION
