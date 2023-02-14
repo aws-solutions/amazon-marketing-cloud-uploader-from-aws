@@ -31,8 +31,7 @@ then
 
     export AMC_ENDPOINT_URL="AmcEndpointUrl"
     export AMC_API_ROLE_ARN="arn:aws:iam::999999999999:role/SomeTestRole"
-    export SOLUTION_NAME="SOLUTION_NAME"
-    export SOLUTION_VERSION="SOLUTION_VERSION"
+    export SOLUTION_NAME="amcufa test"
     export VERSION="0.0.0"
     export botoConfig='{"region_name": "us-east-1"}'
     export AWS_XRAY_SDK_ENABLED=false
