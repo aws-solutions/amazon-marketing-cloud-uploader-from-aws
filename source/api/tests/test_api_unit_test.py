@@ -25,6 +25,10 @@ def test_configs():
     return {
         "s3bucket": "fake_s3_bucket",
         "outputBucket": "fake_output_bucket",
+        "source_key": "some_file.json",
+        "data_set_id": "test_data_set_id",
+        "period": "autodetect",
+        "content_type": "application/json"
     }
 
 
@@ -64,43 +68,43 @@ def get_amc_json(test_data):
     return output
 
 
-def test_version():
+def test_version(test_configs):
     with Client(app.app) as client:
         response = client.http.get(
             "/version",
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": test_configs["content_type"]},
         )
         assert response.status_code == 200
         assert response.json_body["version"] == os.environ["VERSION"]
 
 
 def test_list_bucket(test_configs):
-    content_type = "application/json"
+    
     with mock_s3():
         s3 = boto3.client("s3")
         s3.create_bucket(Bucket=test_configs["s3bucket"])
         s3 = boto3.resource("s3")
-        s3_object = s3.Object(test_configs["s3bucket"], "some_file.json")
-        s3_object.put(Body="{}", ContentType=content_type)
+        s3_object = s3.Object(test_configs["s3bucket"], test_configs["source_key"])
+        s3_object.put(Body="{}", ContentType=test_configs["content_type"])
 
         with Client(app.app) as client:
             response = client.http.post(
                 "/list_bucket",
-                headers={"Content-Type": content_type},
+                headers={"Content-Type": test_configs["content_type"]},
                 body=json.dumps({"s3bucket": test_configs["s3bucket"]}),
             )
             assert response.status_code == 200
-            assert response.json_body[0]["key"] == "some_file.json"
+            assert response.json_body[0]["key"] == test_configs["source_key"]
             assert response.json_body[0]["size"] == 2
 
 
 def test_get_data_columns(test_configs, get_amc_json, test_data):
-    content_type = "application/json"
+    content_type = test_configs["content_type"]
     with mock_s3():
         s3 = boto3.client("s3")
         s3.create_bucket(Bucket=test_configs["s3bucket"])
         s3 = boto3.resource("s3")
-        s3_object = s3.Object(test_configs["s3bucket"], "some_file.json")
+        s3_object = s3.Object(test_configs["s3bucket"], test_configs["source_key"])
         s3_object.put(Body=get_amc_json, ContentType=content_type)
 
         with Client(app.app) as client:
@@ -110,7 +114,7 @@ def test_get_data_columns(test_configs, get_amc_json, test_data):
                 body=json.dumps(
                     {
                         "s3bucket": test_configs["s3bucket"],
-                        "s3key": "some_file.json",
+                        "s3key": test_configs["source_key"],
                     }
                 ),
             )
@@ -122,15 +126,15 @@ def test_get_data_columns(test_configs, get_amc_json, test_data):
 
 @mock_sts
 @patch("chalicelib.sigv4.requests.delete")
-def test_delete_dataset(mock_delete_response):
+def test_delete_dataset(mock_delete_response, test_configs):
     mock_delete_response.return_value = MagicMock(status_code=200, text="{}")
 
-    content_type = "application/json"
+    content_type = test_configs["content_type"]
     with Client(app.app) as client:
         response = client.http.post(
             "/delete_dataset",
             headers={"Content-Type": content_type},
-            body=json.dumps({"dataSetId": "test_data_set_id"}),
+            body=json.dumps({"dataSetId": test_configs["data_set_id"]}),
         )
         assert response.status_code == 200
         assert response.json_body == {}
@@ -138,7 +142,7 @@ def test_delete_dataset(mock_delete_response):
 
 @mock_sts
 @patch("chalicelib.sigv4.requests.get")
-def test_upload_status(mock_delete_response):
+def test_upload_status(mock_delete_response, test_configs):
     expected_data = {
         "sourceS3Bucket": "some_bucket",
         "sourceFileS3Key": "some_key",
@@ -148,23 +152,23 @@ def test_upload_status(mock_delete_response):
         status_code=200, text=json.dumps(expected_data)
     )
 
-    content_type = "application/json"
+    content_type = test_configs["content_type"]
     with Client(app.app) as client:
         response = client.http.post(
             "/upload_status",
             headers={"Content-Type": content_type},
             body=json.dumps(
-                {"dataSetId": "test_data_set_id", "uploadId": "123456"}
+                {"dataSetId": test_configs["data_set_id"], "uploadId": "123456"}
             ),
         )
         assert response.status_code == 200
         assert response.json_body == expected_data
 
 
-def test_get_etl_jobs():
-    content_type = "application/json"
+def test_get_etl_jobs(test_configs):
+    content_type = test_configs["content_type"]
     with mock_glue():
-        data_set_id = "some_data_test_id"
+        data_set_id = test_configs["data_set_id"]
         solution_config = json.loads(os.environ["botoConfig"])
         from botocore import config
 
@@ -207,3 +211,70 @@ def test_get_etl_jobs():
                 assert response.json_body["JobRuns"] == json.loads(
                     json.dumps(job_runs_data["JobRuns"], default=str)
                 )
+
+@mock_sts
+@patch("chalicelib.sigv4.requests.post")
+def test_create_dataset(mock_delete_response, test_configs):
+    payload = {
+        "body":{
+            "period": "autodetect",
+            "dataSetId": test_configs["data_set_id"],
+            "dataSetType": "DIMENSION",
+            "compressionFormat": "GZIP",
+            "columns": []
+        }
+    }
+    mock_delete_response.return_value = MagicMock(status_code=200, text="{}", data=payload)
+
+    content_type = test_configs["content_type"]
+    with Client(app.app) as client:
+        response = client.http.post(
+            "/create_dataset",
+            headers={"Content-Type": content_type},
+            body=json.dumps(payload),
+        )
+        assert response.status_code == 200
+        assert response.json_body == {}
+
+
+@mock_sts
+def test_create_dataset(test_configs):
+    with mock_glue():
+        solution_config = json.loads(os.environ["botoConfig"])
+        from botocore import config
+
+        config = config.Config(**solution_config)
+        glue_client = boto3.client("glue", config=config)
+
+        glue_client.create_job(
+            Name=os.environ["AMC_GLUE_JOB_NAME"],
+            Role="Glue_DefaultRole",
+            Command={
+                "Name": "glueetl",
+                "ScriptLocation": "s3://my_script_bucket/scripts/my_etl_script.py",
+            },
+        )
+
+        content_type = test_configs["content_type"]
+        with Client(app.app) as client:
+            response = client.http.post(
+                "/start_amc_transformation",
+                headers={"Content-Type": content_type},
+                body=json.dumps(
+                    {
+                        "sourceBucket": test_configs["s3bucket"],
+                        "sourceKey": test_configs["source_key"],
+                        "outputBucket": test_configs["outputBucket"],
+                        "piiFields": '[{"column_name":"first_name","pii_type":"FIRST_NAME"},{"column_name":"last_name","pii_type":"LAST_NAME"},{"column_name":"email","pii_type":"EMAIL"}]',
+                        "deletedFields": "[]",
+                        "timestampColumn": "timestamp",
+                        "datasetId": test_configs["data_set_id"],
+                        "period": test_configs["period"],
+                    }
+                ),
+            )
+            assert response.status_code == 200
+            assert response.json_body["JobRunId"]
+            glue_resp = glue_client.get_job_run(JobName=os.environ["AMC_GLUE_JOB_NAME"], RunId=response.json_body["JobRunId"])
+            assert glue_resp["JobRun"]["Id"] == response.json_body["JobRunId"]
+
