@@ -86,7 +86,7 @@ SPDX-License-Identifier: Apache-2.0
                 </button>
               </b-col>
             </b-row>
-            <b-table 
+            <b-table
               :items="items"
               :fields="fields"
               :busy="isBusy"
@@ -373,7 +373,7 @@ SPDX-License-Identifier: Apache-2.0
             }
             if (x.nullable === true) column_definition.nullable = true
             this.columns.push(column_definition)
-            
+
           })
         // add identifier for main event timestamp column
         this.items.filter(x => x.column_type === 'isMainEventTime')

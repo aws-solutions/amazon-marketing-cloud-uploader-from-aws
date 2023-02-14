@@ -233,7 +233,15 @@ def get_etl_data_by_job_id():
 
 @pytest.fixture
 def test_data_set_type():
-    def _method(data_set_type, file_format, test_configs, get_etl_data_by_job_id, generate_random_test_files_to_s3_bucket, s3_key_sub_dir="", test_columns=None):
+    def _method(
+        data_set_type,
+        file_format,
+        test_configs,
+        get_etl_data_by_job_id,
+        generate_random_test_files_to_s3_bucket,
+        s3_key_sub_dir="",
+        test_columns=None,
+    ):
         is_data_set_created = False
         try:
             data_set_id = f"amc_integ_test_{int(time.time())}_{data_set_type}_{file_format}"
@@ -258,69 +266,71 @@ def test_data_set_type():
                     "dataType": "TIMESTAMP",
                     "isMainEventTime": True,
                 }
-            logger.info(f"TIME_STAMP_DATA_SET_TYPE: {time_stamp_data_set_type}")
+            logger.info(
+                f"TIME_STAMP_DATA_SET_TYPE: {time_stamp_data_set_type}"
+            )
             test_columns = test_columns or [
                 {
                     "name": "user_id",
                     "description": "The customer resolved id",
                     "dataType": "STRING",
                     "nullable": True,
-                    "isMainUserId": True
+                    "isMainUserId": True,
                 },
                 {
                     "name": "user_type",
                     "description": "The customer resolved type",
                     "dataType": "STRING",
                     "nullable": True,
-                    "isMainUserIdType": True
+                    "isMainUserIdType": True,
                 },
                 {
                     "name": "first_name",
                     "description": "hashed First name",
                     "dataType": "STRING",
                     "externalUserIdType": {
-                    "type": "HashedIdentifier",
-                    "identifierType": "FIRST_NAME"
+                        "type": "HashedIdentifier",
+                        "identifierType": "FIRST_NAME",
                     },
-                    "nullable": True
+                    "nullable": True,
                 },
                 {
                     "name": "last_name",
                     "description": "hashed Last name",
                     "dataType": "STRING",
                     "externalUserIdType": {
-                    "type": "HashedIdentifier",
-                    "identifierType": "LAST_NAME"
+                        "type": "HashedIdentifier",
+                        "identifierType": "LAST_NAME",
                     },
-                    "nullable": True
+                    "nullable": True,
                 },
                 {
                     "name": "email",
                     "description": "hashed Email",
                     "dataType": "STRING",
                     "externalUserIdType": {
-                    "type": "HashedIdentifier",
-                    "identifierType": "EMAIL"
+                        "type": "HashedIdentifier",
+                        "identifierType": "EMAIL",
                     },
-                    "nullable": True
+                    "nullable": True,
                 },
                 {
                     "name": "timestamp",
                     "description": "Timestamp",
-                    **time_stamp_data_set_type
+                    **time_stamp_data_set_type,
                 },
                 {
                     "name": "product_quantity",
                     "description": "Product quantity",
                     "dataType": "STRING",
-                    "columnType": "DIMENSION"
+                    "columnType": "DIMENSION",
                 },
                 {
                     "name": "product_name",
                     "description": "Product name",
                     "dataType": "STRING",
-                    "columnType": "DIMENSION"
-                }
+                    "columnType": "DIMENSION",
+                },
             ]
             with Client(app.app) as client:
                 # create_dataset
@@ -335,7 +345,7 @@ def test_data_set_type():
                                 "period": "P1D",
                                 "dataSetType": data_set_type,
                                 "compressionFormat": "GZIP",
-                                "columns": test_columns
+                                "columns": test_columns,
                             }
                         }
                     ),
@@ -367,7 +377,7 @@ def test_data_set_type():
                             "timestampColumn": "timestamp",
                             "datasetId": data_set_id,
                             "period": period,
-                            "countryCode": "US"
+                            "countryCode": "US",
                         }
                     ),
                 )
@@ -519,87 +529,121 @@ def test_create_upload_delete_dataset_DIMENSION_CSV(
     )
 
 
-def test_create_upload_delete_dataset_FACT_JSON_SUB_DIRECTORY(test_configs, test_data_set_type, get_etl_data_by_job_id, generate_random_test_files_to_s3_bucket):
-   test_data_set_type("FACT", "JSON", test_configs, get_etl_data_by_job_id, generate_random_test_files_to_s3_bucket, s3_key_sub_dir="integ_test_data/")
+def test_create_upload_delete_dataset_FACT_JSON_SUB_DIRECTORY(
+    test_configs,
+    test_data_set_type,
+    get_etl_data_by_job_id,
+    generate_random_test_files_to_s3_bucket,
+):
+    test_data_set_type(
+        "FACT",
+        "JSON",
+        test_configs,
+        get_etl_data_by_job_id,
+        generate_random_test_files_to_s3_bucket,
+        s3_key_sub_dir="integ_test_data/",
+    )
 
-def test_create_upload_delete_dataset_DIMENSION_JSON_LIVE_RAMP(test_configs, test_data_set_type, get_etl_data_by_job_id, generate_random_test_files_to_s3_bucket):
+
+def test_create_upload_delete_dataset_DIMENSION_JSON_LIVE_RAMP(
+    test_configs,
+    test_data_set_type,
+    get_etl_data_by_job_id,
+    generate_random_test_files_to_s3_bucket,
+):
     test_columns = [
         {
             "name": "user_id",
             "description": "The customer resolved id",
             "dataType": "STRING",
             "nullable": True,
-            "isMainUserId": True
+            "isMainUserId": True,
         },
         {
             "name": "user_type",
             "description": "The customer resolved type",
             "dataType": "STRING",
             "nullable": True,
-            "isMainUserIdType": True
+            "isMainUserIdType": True,
         },
         {
             "name": "first_name",
             "description": "hashed First name",
             "dataType": "STRING",
             "externalUserIdType": {
-            "type": "HashedIdentifier",
-            "identifierType": "FIRST_NAME"
+                "type": "HashedIdentifier",
+                "identifierType": "FIRST_NAME",
             },
-            "nullable": True
+            "nullable": True,
         },
         {
             "name": "ramp_id",
             "description": "The user's LiveRamp ID",
             "dataType": "STRING",
             "nullable": True,
-            "externalUserIdType": {
-                "type": "LiveRamp"
-            }
-        }
+            "externalUserIdType": {"type": "LiveRamp"},
+        },
     ]
-    test_data_set_type("DIMENSION", "JSON", test_configs, get_etl_data_by_job_id, generate_random_test_files_to_s3_bucket, test_columns=test_columns)
+    test_data_set_type(
+        "DIMENSION",
+        "JSON",
+        test_configs,
+        get_etl_data_by_job_id,
+        generate_random_test_files_to_s3_bucket,
+        test_columns=test_columns,
+    )
 
-def test_create_upload_delete_dataset_FACT_JSON_LIVE_RAMP(test_configs, test_data_set_type, get_etl_data_by_job_id, generate_random_test_files_to_s3_bucket):
+
+def test_create_upload_delete_dataset_FACT_JSON_LIVE_RAMP(
+    test_configs,
+    test_data_set_type,
+    get_etl_data_by_job_id,
+    generate_random_test_files_to_s3_bucket,
+):
     test_columns = [
         {
             "name": "user_id",
             "description": "The customer resolved id",
             "dataType": "STRING",
             "nullable": True,
-            "isMainUserId": True
+            "isMainUserId": True,
         },
         {
             "name": "user_type",
             "description": "The customer resolved type",
             "dataType": "STRING",
             "nullable": True,
-            "isMainUserIdType": True
+            "isMainUserIdType": True,
         },
         {
             "name": "first_name",
             "description": "hashed First name",
             "dataType": "STRING",
             "externalUserIdType": {
-            "type": "HashedIdentifier",
-            "identifierType": "FIRST_NAME"
+                "type": "HashedIdentifier",
+                "identifierType": "FIRST_NAME",
             },
-            "nullable": True
+            "nullable": True,
         },
         {
             "name": "timestamp",
             "description": "Timestamp",
             "dataType": "TIMESTAMP",
-            "isMainEventTime": True
+            "isMainEventTime": True,
         },
         {
             "name": "ramp_id",
             "description": "The user's LiveRamp ID",
             "dataType": "STRING",
             "nullable": True,
-            "externalUserIdType": {
-                "type": "LiveRamp"
-            }
-        }
+            "externalUserIdType": {"type": "LiveRamp"},
+        },
     ]
-    test_data_set_type("FACT", "JSON", test_configs, get_etl_data_by_job_id, generate_random_test_files_to_s3_bucket, test_columns=test_columns)
+    test_data_set_type(
+        "FACT",
+        "JSON",
+        test_configs,
+        get_etl_data_by_job_id,
+        generate_random_test_files_to_s3_bucket,
+        test_columns=test_columns,
+    )
