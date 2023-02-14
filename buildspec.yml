@@ -25,7 +25,7 @@ phases:
       - echo "Starting build `date` in `pwd`"
       - cd deployment
       - env
-      - chmod +x ./build-s3-dist.sh && ./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name ${SOLUTION_NAME} --version ${VERSION} --region ${AWS_REGION} --use_solution_builder_pipeline 
+      - chmod +x ./build-s3-dist.sh && ./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name ${SOLUTION_NAME} --version ${VERSION} --region ${AWS_REGION} --use_solution_builder_pipeline
       - echo "Build completed `date`"
       - echo "Starting open-source-dist `date` in `pwd`"
       - chmod +x ./build-open-source-dist.sh && ./build-open-source-dist.sh $SOLUTION_NAME
@@ -47,4 +47,3 @@ artifacts:
       - CHANGELOG.md
       - NOTICE.txt
       - LICENSE.txt
-
