@@ -28,7 +28,7 @@ def test_configs():
         "source_key": "some_file.json",
         "data_set_id": "test_data_set_id",
         "period": "autodetect",
-        "content_type": "application/json"
+        "content_type": "application/json",
     }
 
 
@@ -79,12 +79,13 @@ def test_version(test_configs):
 
 
 def test_list_bucket(test_configs):
-    
     with mock_s3():
         s3 = boto3.client("s3")
         s3.create_bucket(Bucket=test_configs["s3bucket"])
         s3 = boto3.resource("s3")
-        s3_object = s3.Object(test_configs["s3bucket"], test_configs["source_key"])
+        s3_object = s3.Object(
+            test_configs["s3bucket"], test_configs["source_key"]
+        )
         s3_object.put(Body="{}", ContentType=test_configs["content_type"])
 
         with Client(app.app) as client:
@@ -104,7 +105,9 @@ def test_get_data_columns(test_configs, get_amc_json, test_data):
         s3 = boto3.client("s3")
         s3.create_bucket(Bucket=test_configs["s3bucket"])
         s3 = boto3.resource("s3")
-        s3_object = s3.Object(test_configs["s3bucket"], test_configs["source_key"])
+        s3_object = s3.Object(
+            test_configs["s3bucket"], test_configs["source_key"]
+        )
         s3_object.put(Body=get_amc_json, ContentType=content_type)
 
         with Client(app.app) as client:
@@ -158,7 +161,10 @@ def test_upload_status(mock_delete_response, test_configs):
             "/upload_status",
             headers={"Content-Type": content_type},
             body=json.dumps(
-                {"dataSetId": test_configs["data_set_id"], "uploadId": "123456"}
+                {
+                    "dataSetId": test_configs["data_set_id"],
+                    "uploadId": "123456",
+                }
             ),
         )
         assert response.status_code == 200
@@ -212,19 +218,22 @@ def test_get_etl_jobs(test_configs):
                     json.dumps(job_runs_data["JobRuns"], default=str)
                 )
 
+
 @mock_sts
 @patch("chalicelib.sigv4.requests.post")
 def test_create_dataset(mock_delete_response, test_configs):
     payload = {
-        "body":{
+        "body": {
             "period": "autodetect",
             "dataSetId": test_configs["data_set_id"],
             "dataSetType": "DIMENSION",
             "compressionFormat": "GZIP",
-            "columns": []
+            "columns": [],
         }
     }
-    mock_delete_response.return_value = MagicMock(status_code=200, text="{}", data=payload)
+    mock_delete_response.return_value = MagicMock(
+        status_code=200, text="{}", data=payload
+    )
 
     content_type = test_configs["content_type"]
     with Client(app.app) as client:
@@ -238,7 +247,7 @@ def test_create_dataset(mock_delete_response, test_configs):
 
 
 @mock_sts
-def test_create_dataset(test_configs):
+def test_start_amc_transformation(test_configs):
     with mock_glue():
         solution_config = json.loads(os.environ["botoConfig"])
         from botocore import config
@@ -275,6 +284,8 @@ def test_create_dataset(test_configs):
             )
             assert response.status_code == 200
             assert response.json_body["JobRunId"]
-            glue_resp = glue_client.get_job_run(JobName=os.environ["AMC_GLUE_JOB_NAME"], RunId=response.json_body["JobRunId"])
+            glue_resp = glue_client.get_job_run(
+                JobName=os.environ["AMC_GLUE_JOB_NAME"],
+                RunId=response.json_body["JobRunId"],
+            )
             assert glue_resp["JobRun"]["Id"] == response.json_body["JobRunId"]
-
