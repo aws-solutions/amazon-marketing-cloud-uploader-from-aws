@@ -1,4 +1,4 @@
-name: pull-request-workflow
+name: Pull Request Workflow
 
 on:
   pull_request:
@@ -100,11 +100,7 @@ jobs:
           source "$VENV"/bin/activate
           ls -l
           cd source
-          pip install -r requirements-dev.txt
-          cd tests
-          pytest amc_transformation/test_amc_transformation.py -vv
-          pytest amc_uploader/test_amc_uploader.py -vv
-          cd ..
+          ./tests/run_test.sh --run_unit_test
           cd api/tests
           ./run_api_test.sh --run_unit_test
       - name: Run Coverage Report

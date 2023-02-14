@@ -2,6 +2,10 @@
 #
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
+# Usage: ./run_api_test.sh [arguments]
+#     Available options:
+#     -h, --help      Print this help and exit.
+#     -rut, --run_unit_test    Run Unit Test.
 
 help(){
   cat <<EOF
@@ -29,6 +33,7 @@ then
     export AMC_API_ROLE_ARN="arn:aws:iam::999999999999:role/SomeTestRole"
     export SOLUTION_NAME="SOLUTION_NAME"
     export SOLUTION_VERSION="SOLUTION_VERSION"
+    export VERSION="0.0.0"
     export botoConfig='{"region_name": "us-east-1"}'
     export AWS_XRAY_SDK_ENABLED=false
     export AMC_GLUE_JOB_NAME="some-GlueStack-123-amc-transformation-job"
