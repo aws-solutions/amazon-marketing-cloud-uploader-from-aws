@@ -8,13 +8,13 @@ def is_valid_email(email):
     except Exception:
         return False
 
-class EmailNormalizer():
+class EmailNormalizer:
 
     def normalize(self, record):
-        self.normalized_email = record.lower()
-        self.normalized_email = re.sub("[^\w.@-]+", "", self.normalized_email)
+        self.normalized_record = record.lower()
+        self.normalized_record = re.sub("[^\w.@-]+", "", self.normalized_record)
 
-        if not is_valid_email(self.normalized_email):
-            self.normalized_email = ""
+        if not is_valid_email(self.normalized_record):
+            self.normalized_record = ""
 
         return self

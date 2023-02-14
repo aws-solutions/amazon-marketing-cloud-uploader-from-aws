@@ -3,3 +3,5 @@ requests_aws4auth
 selenium
 webdriver-manager
 phonenumbers
+pandas
+regex
