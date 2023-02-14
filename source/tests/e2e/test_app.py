@@ -27,10 +27,7 @@ def browser():
 
 def test_everything(browser, test_environment, stack_resources):
     browser.implicitly_wait(5)
-    browser.get(
-        test_environment.get("LOCALHOST_URL")
-        or stack_resources["UserInterface"]
-    )
+    browser.get(stack_resources['UserInterface'])
     wait = WebDriverWait(browser, 30)
     # Login
     username_field = browser.find_element(
@@ -137,6 +134,7 @@ def test_everything(browser, test_environment, stack_resources):
         By.XPATH, '//*[@id="time_period_options_BV_option_0"]'
     ).is_selected()
 
+<<<<<<< HEAD
     # open Step 3
     browser.find_element(By.ID, "step3").click()
 
@@ -161,6 +159,8 @@ def test_everything(browser, test_environment, stack_resources):
         By.XPATH, "//button[contains(text(), 'Previous')]"
     )
 
+=======
+>>>>>>> development
     # Sign out
     browser.find_element(
         "xpath", "/html/body/div/div/div/div[1]/nav/div/ul/li/a"
