@@ -40,8 +40,9 @@ def test_load_address_map_helper():
 ###############################
 # TEST NORMALIZATION & HASHING
 ###############################
-
 import shutil
+import sys
+sys.path.append('./glue')
 
 import pandas as pd
 
