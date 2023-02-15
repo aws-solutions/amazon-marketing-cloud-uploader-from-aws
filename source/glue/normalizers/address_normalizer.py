@@ -196,7 +196,7 @@ class Dash:
                 second_part = word[index + 1 :]
                 if not second_part.isnumeric() and first_part.isnumeric():
                     normalized_address.update_address_tokens(
-                        i, 
+                        i,
                         first_part=first_part, 
                         second_part=second_part
                     )
