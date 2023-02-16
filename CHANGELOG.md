@@ -5,8 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
 ### Added
 
 - Allow users to upload multiple S3 files at the same time [#41]
@@ -17,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automate build and deploy tests [#34]
 - Invalid email addresses should normalize to empty string and added unit tests to github pr-workflow. [#63]
 - Use custom lambda layer for aws-xray-sdk [#68]
-- Add Pre-commit, Fix SonarCube/SonarLint issues [#16]
+- Add Pre-commit, fix SonarCube/SonarLint issues [#16]
 
 ### Changed
 

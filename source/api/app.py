@@ -59,6 +59,7 @@ CUSTOMER_MANAGED_KEY = os.environ["CUSTOMER_MANAGED_KEY"]
 APPLICATION_JSON = "application/json"
 DATA = "/data/"
 
+
 @app.route("/list_datasets", cors=True, methods=["POST"], authorizer=authorizer)
 def list_datasets():
     """
@@ -82,7 +83,7 @@ def list_datasets():
         logger.error(ex)
         return {"Status": "Error", "Message": str(ex)}
         path = "/dataSets"
-        response = sigv4.get(path)
+        response = sigv4.get(destination_endpoint, path)
         return Response(
             body=response.text,
             status_code=response.status_code,
@@ -93,7 +94,9 @@ def list_datasets():
         return {"Status": "Error", "Message": str(ex)}
 
 
-@app.route("/create_dataset", cors=True, methods=["POST"], authorizer=authorizer)
+@app.route(
+    "/create_dataset", cors=True, methods=["POST"], authorizer=authorizer
+)
 def create_dataset():
     """
     Create a dataset in AMC.
@@ -116,7 +119,7 @@ def create_dataset():
         if CUSTOMER_MANAGED_KEY != "":
             body["customerEncryptionKeyArn"] = CUSTOMER_MANAGED_KEY
         path = "/dataSets"
-        response = sigv4.post(path, json.dumps(body))
+        response = sigv4.post(destination_endpoint, path, json.dumps(body))
         return Response(
             body=response.text,
             status_code=response.status_code,
@@ -153,8 +156,8 @@ def start_amc_transformation():
         timestamp_column = app.current_request.json_body["timestampColumn"]
         dataset_id = app.current_request.json_body["datasetId"]
         period = app.current_request.json_body["period"]
+        country_code = app.current_request.json_body["countryCode"]
         destination_endpoints = app.current_request.json_body["destination_endpoints"]
-        session = boto3.session.Session(region_name=os.environ["AWS_REGION"])
         args = {
             "--source_bucket": source_bucket,
             "--output_bucket": output_bucket,
@@ -164,6 +167,7 @@ def start_amc_transformation():
             "--timestamp_column": timestamp_column,
             "--dataset_id": dataset_id,
             "--period": period,
+            "--country_code": country_code,
             "--destination_endpoints": destination_endpoints
         }
         logger.info("Starting Glue job:")
@@ -310,7 +314,7 @@ def delete_dataset():
         sigv4.delete(destination_endpoint, path)
         # Step 2/2: delete the dataset definition
         path = "/dataSets/" + data_set_id
-        response = sigv4.delete(path)
+        response = sigv4.delete(destination_endpoint, path)
         return Response(
             body=response.text,
             status_code=response.status_code,

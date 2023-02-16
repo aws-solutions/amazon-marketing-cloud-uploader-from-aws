@@ -17,6 +17,7 @@
 #   --dataset_id: name of dataset, used as the prefix folder for the output s3key.
 #   --period: time period of dataset, one of ["autodetect","PT1M","PT1H","P1D","P7D"]. Autodetect enabled by default. (optional)
 #   --destination_endpoints: List of AMC endpoints to receive uploads
+#   --country: country-specific normalization to apply to all rows in the dataset (2-digit ISO country code).
 #
 # OUTPUT:
 #   - Transformed data files in user-specified output bucket,
@@ -25,7 +26,6 @@
 # SAMPLE COMMAND-LINE USAGE:
 #
 #    export JOB_NAME=mystack-GlueStack-12BSLR8H1F79M-amc-transformation-job
-#    export DESTINATION_ENDPOINTS='[\"https://abcde12345.execute-api.us-east-1.amazonaws.com/prod\", \"https://fghij67890.execute-api.us-east-1.amazonaws.com/prod\"]'
 #    export SOURCE_BUCKET=mybucket
 #    export SOURCE_KEY=mydata.json
 #    export OUTPUT_BUCKET=mystack-etl-artifacts-zmtmhi
@@ -34,7 +34,9 @@
 #    export DELETED_FIELDS='[\"customer_id\",\"purchase_id\"]'
 #    export DATASET_ID='mytest123'
 #    export REGION=us-east-1
-#    aws glue start-job-run --job-name $JOB_NAME --arguments '{"--source_bucket": "'$SOURCE_BUCKET'", "--output_bucket": "'$OUTPUT_BUCKET'", "--source_key": "'$SOURCE_KEY'", "--pii_fields": "'$PII_FIELDS'", "--deleted_fields": "'$DELETED_FIELDS'", "--timestamp_column": "'$TIMESTAMP_COLUMN'", "--dataset_id": "'$DATASET_ID'", "--period": "autodetect" "--destination_endpoints": "'$DESTINATION_ENDPOINTS'"}' --region $REGION
+#    export COUNTRY_CODE='US'
+#    export DESTINATION_ENDPOINTS='[\"https://abcde12345.execute-api.us-east-1.amazonaws.com/prod\", \"https://fghij67890.execute-api.us-east-1.amazonaws.com/prod\"]'
+#    aws glue start-job-run --job-name $JOB_NAME --arguments '{"--source_bucket": "'$SOURCE_BUCKET'", "--output_bucket": "'$OUTPUT_BUCKET'", "--source_key": "'$SOURCE_KEY'", "--pii_fields": "'$PII_FIELDS'", "--deleted_fields": "'$DELETED_FIELDS'", "--timestamp_column": "'$TIMESTAMP_COLUMN'", "--dataset_id": "'$DATASET_ID'", "--period": "autodetect", "--country": "'$COUNTRY_CODE'", "--destination_endpoints": "'$DESTINATION_ENDPOINTS'"}' --region $REGION
 #
 ###############################################################################
 
@@ -55,21 +57,9 @@ import re
 from datetime import datetime
 import base64
 
-# Hardcode country code for now.
-country_code = "US"
-
 # Resolve sonarqube code smells
 writing = "Writing "
 rows_to = " rows to "
-
-###############################
-# DATA NORMALIZATION PATTERNS
-###############################
-
-addressNormalizer = AddressNormalizer(country_code)
-stateNormalizer = StateNormalizer(country_code)
-zipNormalizer = ZipNormalizer(country_code)
-phoneNormalizer = PhoneNormalizer(country_code)
 
 ###############################
 # PARSE ARGS
@@ -93,6 +83,7 @@ try:
             "deleted_fields",
             "dataset_id",
             "period",
+            "country_code",
             "destination_endpoints"
         ],
     )
@@ -141,6 +132,11 @@ if "period" in args:
         print("ERROR: Invalid user-defined value for dataset period:")
         print(user_defined_partition_size)
         sys.exit(1)
+if 'country_code' in args:
+    country_code = args['country_code']
+else:
+    print("Missing required arg: country_code")
+    sys.exit(1)
 
 # Read optional parameters
 try:
@@ -215,6 +211,15 @@ if timestamp_column:
         print(e)
         print("Failed to parse timeseries in column " + timestamp_column)
         raise e
+
+###############################
+# DATA NORMALIZATION PATTERNS
+###############################
+
+addressNormalizer = AddressNormalizer(country_code)
+stateNormalizer = StateNormalizer(country_code)
+zipNormalizer = ZipNormalizer(country_code)
+phoneNormalizer = PhoneNormalizer(country_code)
 
 ###############################
 # DATA NORMALIZATION
