@@ -5,3 +5,10 @@ botocore>=1.12.139
 pytest>=4.5.0
 pytest-cov>=2.12.1
 requests
+
+requests_aws4auth
+selenium
+webdriver-manager
+phonenumbers
+pandas
+regex

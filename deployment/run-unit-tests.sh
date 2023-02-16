@@ -46,7 +46,7 @@ source $venv_folder/bin/activate
 # configure the environment
 cd $source_dir
 pip install --upgrade pip
-pip install -r tests/e2e/requirements.txt
+pip install -r requirements-dev.txt
 
 # env variables
 export PYTHONDONTWRITEBYTECODE=1
