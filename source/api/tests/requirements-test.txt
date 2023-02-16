@@ -2,7 +2,7 @@ aws_xray_sdk
 awswrangler
 boto3
 chalice
-moto==4.1.2
+moto
 pyparsing
 pytest
 pytest-mock
