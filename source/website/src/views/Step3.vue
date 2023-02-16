@@ -93,7 +93,7 @@ SPDX-License-Identifier: Apache-2.0
                 </button>
               </b-col>
             </b-row>
-            <b-table 
+            <b-table
               :items="items"
               :fields="fields"
               :busy="isBusy"

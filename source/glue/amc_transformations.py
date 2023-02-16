@@ -132,8 +132,8 @@ if "period" in args:
         print("ERROR: Invalid user-defined value for dataset period:")
         print(user_defined_partition_size)
         sys.exit(1)
-if 'country_code' in args:
-    country_code = args['country_code']
+if "country_code" in args:
+    country_code = args["country_code"]
 else:
     print("Missing required arg: country_code")
     sys.exit(1)

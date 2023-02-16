@@ -16,9 +16,6 @@ from chalicelib import sigv4
 solution_config = json.loads(os.environ["botoConfig"])
 config = config.Config(**solution_config)
 
-# Environment variables
-AMC_API_ROLE_ARN = os.environ["AMC_API_ROLE_ARN"]
-
 # Boto3 clients
 IAM_CLIENT = boto3.client("iam", config=config)
 S3_CLIENT = boto3.client("s3", config=config)
@@ -49,6 +46,7 @@ app = Chalice(app_name="amcufa_api")
 authorizer = IAMAuthorizer()
 
 # Environment variables
+AMC_API_ROLE_ARN = os.environ["AMC_API_ROLE_ARN"]
 ARTIFACT_BUCKET = os.environ["ARTIFACT_BUCKET"]
 SYSTEM_TABLE_NAME = os.environ["SYSTEM_TABLE_NAME"]
 VERSION = os.environ["VERSION"]
@@ -76,9 +74,10 @@ def list_datasets():
         destination_endpoint = app.current_request.json_body["destination_endpoint"]
         path = "/dataSets"
         response = sigv4.get(destination_endpoint, path)
-        return Response(body=response.text,
-                        status_code=response.status_code,
-                        headers={"Content-Type": APPLICATION_JSON})
+        return Response(
+            body=response.text,
+            status_code=response.status_code,
+            headers={"Content-Type": APPLICATION_JSON})
     except Exception as ex:
         logger.error(ex)
         return {"Status": "Error", "Message": str(ex)}
@@ -306,10 +305,10 @@ def delete_dataset():
             "%Y-%m-%dT%H:%M:%SZ"
         )
         path = (
-                DATA
-                + data_set_id
-                + "?timeWindowStart=1970-01-01T00:00:00Z&timeWindowEnd="
-                + current_datetime
+            DATA
+            + data_set_id
+            + "?timeWindowStart=1970-01-01T00:00:00Z&timeWindowEnd="
+            + current_datetime
         )
         sigv4.delete(destination_endpoint, path)
         # Step 2/2: delete the dataset definition
@@ -323,6 +322,7 @@ def delete_dataset():
     except Exception as ex:
         logger.error(ex)
         return {"Status": "Error", "Message": str(ex)}
+
 
 @app.route("/version", cors=True, methods=["GET"], authorizer=authorizer)
 def version():
