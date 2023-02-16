@@ -6,7 +6,6 @@ import shutil
 
 import pandas as pd
 import pytest
-from glue.normalizers import transform
 
 
 @pytest.fixture(autouse=True)
@@ -112,6 +111,8 @@ class AMCTransformationTest:
 
     # Test amc_transformations normalization & hashing
     def _normalization_matching(self):
+        from glue.normalizers import transform
+
         country = self.country
 
         raw = pd.read_json(
