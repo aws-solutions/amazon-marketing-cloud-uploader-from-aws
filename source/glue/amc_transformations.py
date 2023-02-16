@@ -46,7 +46,6 @@ import awswrangler as wr
 import boto3
 import pandas as pd
 from awsglue.utils import GlueArgumentError, getResolvedOptions
-
 from normalizers import transform
 
 # Resolve sonarqube code smells
@@ -154,28 +153,28 @@ csv_content_type = "text/csv"
 # This avoids reading phone or zip values as floats and dropping data or requiring additional transformation before normalization
 pii_column_names = {}
 for field in pii_fields:
-    pii_column_names[field['column_name']] = str
+    pii_column_names[field["column_name"]] = str
 
 if content_type == json_content_type:
     df_chunks = wr.s3.read_json(
-        path=['s3://' + source_bucket + '/' + key], 
-        chunksize=chunksize, 
+        path=["s3://" + source_bucket + "/" + key],
+        chunksize=chunksize,
         lines=True,
-        dtype=pii_column_names
-        )
+        dtype=pii_column_names,
+    )
 elif content_type == csv_content_type:
     df_chunks = wr.s3.read_csv(
-        path=['s3://' + source_bucket + '/' + key], 
+        path=["s3://" + source_bucket + "/" + key],
         chunksize=chunksize,
-        dtype=pii_column_names
-        )
+        dtype=pii_column_names,
+    )
 else:
     print("Unsupported content type: " + content_type)
     sys.exit(1)
 
 for chunk in df_chunks:
     # Save each chunk
-    raw_df = pd.concat([chunk, raw_df])
+    raw_df = pd.concat([chunk, df])
 
 ###############################
 # DATA CLEANSING
@@ -191,7 +190,9 @@ timestamp_full_precision = "timestamp_full_precision"
 if timestamp_column:
     # Convert timestamp column to datetime type so we can use datetime methods
     try:
-        raw_df[timestamp_column] = pd.to_datetime(raw_df[timestamp_column], utc=True)
+        raw_df[timestamp_column] = pd.to_datetime(
+            raw_df[timestamp_column], utc=True
+        )
     except ValueError as e:
         print(e)
         print("Failed to parse timeseries in column " + timestamp_column)
@@ -206,7 +207,9 @@ if timestamp_column:
 # DATA NORMALIZATION & HASHING
 ###############################
 
-transformed_df = transform.transform_data(df=raw_df, pii_fields=pii_fields, country_code=country_code)
+transformed_df = transform.transform_data(
+    df=raw_df, pii_fields=pii_fields, country_code=country_code
+)
 hashed_df = transform.hash_data(df=transformed_df, pii_fields=pii_fields)
 
 ###############################
@@ -310,7 +313,9 @@ if timestamp_column:
                 timestamp_str_old = timestamp_str
                 # Get all the events that occurred at the first timestamp
                 # so that they can be recorded when we read the next timestamp.
-                df_partition = hashed_df[hashed_df[timestamp_column] == timestamp]
+                df_partition = hashed_df[
+                    hashed_df[timestamp_column] == timestamp
+                ]
                 df_partition[timestamp_column] = df_partition[
                     timestamp_column
                 ].dt.strftime(datetime_format)

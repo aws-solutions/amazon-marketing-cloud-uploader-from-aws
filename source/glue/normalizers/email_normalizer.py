@@ -1,5 +1,6 @@
 import re
 
+
 def is_valid_email(email):
     try:
         wrd_str = r"\w"
@@ -8,11 +9,13 @@ def is_valid_email(email):
     except Exception:
         return False
 
-class EmailNormalizer:
 
+class EmailNormalizer:
     def normalize(self, record):
         self.normalized_record = record.lower()
-        self.normalized_record = re.sub("[^\w.@-]+", "", self.normalized_record)
+        self.normalized_record = re.sub(
+            r"[^\w.@-]+", "", self.normalized_record
+        )
 
         if not is_valid_email(self.normalized_record):
             self.normalized_record = ""

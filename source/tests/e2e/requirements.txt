@@ -1,7 +1,7 @@
+-r ../../requirements-dev.txt
+pandas
+phonenumbers
+regex
 requests_aws4auth
 selenium
 webdriver-manager
-phonenumbers
-pandas
-regex
--r ../../requirements-dev.txt
