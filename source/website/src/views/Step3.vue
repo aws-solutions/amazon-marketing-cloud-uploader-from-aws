@@ -60,6 +60,13 @@ SPDX-License-Identifier: Apache-2.0
         >
           DIMENSION datasets must not include a MainEventTime field.
         </b-alert>
+        <b-alert
+            :show="showImportError"
+            variant="danger"
+            dismissible
+        >
+          Import failed. Check data format.
+        </b-alert>
         <b-row style="text-align: left">
           <b-col cols="2">
             <Sidebar :is-step3-active="true" />
@@ -77,7 +84,7 @@ SPDX-License-Identifier: Apache-2.0
               <b-col>
                 Fill in the table to define properties for each field in the input data.
               </b-col>
-              <b-col sm="3" align="right" class="row align-items-end">
+              <b-col sm="3" align="right">
                 <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push({path: '/step2'})">
                   Previous
                 </button> &nbsp;
@@ -153,9 +160,17 @@ SPDX-License-Identifier: Apache-2.0
               </template>
             </b-table>
             <b-row>
-              <b-col></b-col>
-              <b-col sm="2" align="right" class="row align-items-end">
-                <b-button type="submit" variant="outline-secondary" @click="onReset">
+              <b-col align="left">
+                <b-button id="import_button" type="button" variant="outline-secondary" class="mb-2" @click="onImport">
+                  Import
+                </b-button> &nbsp;
+                <b-form-file id="importFile" v-model="importFilename" style="display:none;" accept="application/json" @input="importFile"></b-form-file>
+                <b-button id="export_button" type="button" variant="outline-secondary" class="mb-2" @click="onExport">
+                  Export
+                </b-button>
+              </b-col>
+              <b-col align="right">
+                <b-button id="reset_button" type="reset" variant="outline-secondary" class="mb-2" @click="onReset">
                   Reset
                 </b-button>
               </b-col>
@@ -179,7 +194,8 @@ SPDX-License-Identifier: Apache-2.0
     },
     data() {
       return {
-        new_dataset_definition: {},
+        importFilename: null,
+        dataset_definition: {},
         isBusy: false,
         showServerError: false,
         showSchemaError: false,
@@ -188,6 +204,8 @@ SPDX-License-Identifier: Apache-2.0
         showIncompleteTimeFieldError: false,
         showUnexpectedTimeFieldError: false,
         showUserIdWarning: false,
+        showImportError: false,
+        dismissSecs: 5,
         userIdWarningMessage: "Do not include user_id and user_type columns in data files containing hashed identifiers. These columns are used by AMC when a match is found in a hashed record.",
         items: [],
         columns: [],
@@ -230,7 +248,7 @@ SPDX-License-Identifier: Apache-2.0
       }
     },
     computed: {
-      ...mapState(['deleted_columns','dataset_definition', 's3key', 'step3_form_input']),
+      ...mapState(['deleted_columns', 's3key', 'step3_form_input']),
       contains_hashed_identifier() {
         return this.items.filter(x => (x.column_type === 'PII')).length > 0
       },
@@ -269,15 +287,12 @@ SPDX-License-Identifier: Apache-2.0
       console.log('created')
     },
     mounted: function() {
-      this.new_dataset_definition = this.dataset_definition
       if (!this.s3key) {
         this.showMissingDataAlert = true
       }
-      else if (!this.step3_form_input.length) {
-        this.send_request('POST', 'get_data_columns', {'s3bucket': this.DATA_BUCKET_NAME, 's3key':this.s3key})
-      } else {
-        this.items = this.step3_form_input
-      }
+      else {
+        this.onReset()
+      } 
     },
     methods: {
       deleteColumn(column_name) {
@@ -286,9 +301,53 @@ SPDX-License-Identifier: Apache-2.0
         this.$store.commit('updateDeletedColumns', this.deleted_columns)
         console.log("deleted_columns: " + this.deleted_columns)
       },
+      onImport() {
+        this.importFilename = null
+        // dismiss success alert
+        this.showSuccessCountDown = 0
+        // dismiss error alert
+        this.showImportError = false
+        document.getElementById('importFile').click()
+      },
+      importFile() {
+        if (!this.importFilename) {
+          return;
+        }
+        const reader = new FileReader();
+        const vm = this;
+        reader.onload = function(e) {
+          try {
+            const contents = JSON.parse(e.target.result);
+            // validate contents
+            if (Array.isArray(contents) && contents.length > 0 && Object.keys(contents[0]).includes("name") && Object.keys(contents[0]).includes("description") && Object.keys(contents[0]).includes("data_type") && Object.keys(contents[0]).includes("column_type") && Object.keys(contents[0]).includes("pii_type")) {
+              vm.items = contents
+              vm.dismissCountDown = vm.dismissSecs
+            } else {
+              console.log("Invalid data:")
+              console.log(contents);
+              vm.showImportError = true
+            }
+          } catch (error) {
+            console.log(error)
+            vm.showImportError = true
+          }
+        };
+        reader.readAsText(this.importFilename);
+      },
+      onExport() {
+        const table_data = JSON.stringify(this.items);
+        const blob = new Blob([table_data], {type: 'text/plain'});
+        const e = document.createEvent('MouseEvents'),
+            a = document.createElement('a');
+        a.download = "column_definitions.json";
+        a.href = window.URL.createObjectURL(blob);
+        a.dataset.downloadurl = ['text/json', a.download, a.href].join(':');
+        e.initEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+        a.dispatchEvent(e);
+      },
       onReset() {
         this.$store.commit('updateDeletedColumns', [])
-        this.send_request('POST', 'get_data_columns', {'s3bucket': this.DATA_BUCKET_NAME, 's3key':this.s3key})
+        this.send_request('POST', 'get_data_columns', {'s3bucket': this.DATA_BUCKET_NAME, 's3key': this.s3key})
         this.column_type_options.forEach(x => x.disabled = false)
         this.pii_type_options.forEach(x => x.disabled = false)
       },
@@ -385,16 +444,16 @@ SPDX-License-Identifier: Apache-2.0
             this.columns.push(column_definition)
           }
           )
-        this.new_dataset_definition['columns'] = this.columns
+        this.dataset_definition['columns'] = this.columns
         if (this.content_type === "application/json")
-          this.new_dataset_definition['fileFormat'] = 'JSON'
+          this.dataset_definition['fileFormat'] = 'JSON'
         else if (this.content_type === "text/csv")
-          this.new_dataset_definition['fileFormat'] = 'CSV'
+          this.dataset_definition['fileFormat'] = 'CSV'
         else
           console.log("ERROR: unrecognized content_type, " + this.content_type)
           this.showServerError = true;
 
-        this.$store.commit('updateDatasetDefinition', this.new_dataset_definition)
+        this.$store.commit('updateDatasetDefinition', this.dataset_definition)
         this.$router.push({path: '/step4'})
       },
       changeDescription(value, index) {
