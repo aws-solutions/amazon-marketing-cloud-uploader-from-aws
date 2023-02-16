@@ -63,6 +63,8 @@ jobs:
 
   pre-commit:
     needs:
+      - viperlight-scan
+      - cfn-scan
       - npm-lint-checker
     runs-on: ubuntu-latest
     steps:
@@ -81,6 +83,9 @@ jobs:
 
   unit-test:
     needs:
+      - viperlight-scan
+      - cfn-scan
+      - npm-lint-checker
       - pre-commit
     runs-on: ubuntu-latest
     steps:
