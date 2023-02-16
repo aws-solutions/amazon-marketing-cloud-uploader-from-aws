@@ -57,6 +57,9 @@ export SOLUTION_VERSION="SOLUTION_VERSION"
 export botoConfig='{"region_name": "us-east-1"}'
 export AWS_XRAY_SDK_ENABLED=false
 
+# set PYTHONPATH to enable importing modules from ./glue/normalizers
+export PYTHONPATH=$PYTHONPATH:./glue
+
 echo "------------------------------------------------------------------------------"
 echo "[Test] Run pytest with coverage"
 echo "------------------------------------------------------------------------------"
