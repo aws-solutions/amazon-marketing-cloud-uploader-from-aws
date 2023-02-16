@@ -196,9 +196,7 @@ class Dash:
                 second_part = word[index + 1 :]
                 if not second_part.isnumeric() and first_part.isnumeric():
                     normalized_address.update_address_tokens(
-                        i,
-                        first_part=first_part, 
-                        second_part=second_part
+                        i, first_part=first_part, second_part=second_part
                     )
 
 
@@ -224,9 +222,7 @@ class Pound:
                     i += 1
                 elif second_part == "":
                     normalized_address.update_address_tokens(
-                        i, 
-                        first_part=first_part, 
-                        pound_string=POUND_STRING
+                        i, first_part=first_part, pound_string=POUND_STRING
                     )
                     i += 1
                 else:

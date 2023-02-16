@@ -375,7 +375,7 @@ def test_data_set_type():
                             "timestampColumn": "timestamp",
                             "datasetId": data_set_id,
                             "period": period,
-                            "countryCode": "US"
+                            "countryCode": "US",
                         }
                     ),
                 )

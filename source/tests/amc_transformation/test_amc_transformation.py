@@ -42,6 +42,11 @@ def test_load_address_map_helper():
 ###############################
 import shutil
 
+def test_address_normalizer():
+    from glue.normalizers.address_normalizer import AddressNormalizer
+
+    address_normalizer = AddressNormalizer("US")
+
 import pandas as pd
 
 from glue.normalizers import transform
