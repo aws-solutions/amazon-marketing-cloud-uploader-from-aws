@@ -2,10 +2,11 @@
 #
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
-# Usage: ./run_api_test.sh [arguments]
-#     Available options:
-#     -h, --help      Print this help and exit.
-#     -rut, --run_unit_test    Run Unit Test.
+# Usage:
+#  ./source/api/tests/run_api_test.sh [arguments]
+#  Available options:
+#  -h, --help      Print this help and exit.
+#  -rut, --run_unit_test    Run Unit Test.
 
 help(){
   cat <<EOF
