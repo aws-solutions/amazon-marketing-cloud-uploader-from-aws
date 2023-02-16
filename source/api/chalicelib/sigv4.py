@@ -38,7 +38,6 @@ logger.setLevel(logging.INFO)
 logger.addHandler(handler)
 
 # Environment variables
-AMC_ENDPOINT = os.environ["AMC_ENDPOINT_URL"]
 AMC_API_ROLE = os.environ["AMC_API_ROLE_ARN"]
 SOLUTION_NAME = os.environ["SOLUTION_NAME"]
 SOLUTION_VERSION = os.environ["VERSION"]
