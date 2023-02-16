@@ -1,3 +1,15 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# ###############################################################################
+# PURPOSE:
+#   * Regression test for helper.
+# USAGE:
+#   ./run_test.sh --run_unit_test
+###############################################################################
+
+
+
 import json
 import os
 from unittest.mock import MagicMock, mock_open, patch
