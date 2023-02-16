@@ -124,7 +124,7 @@ SPDX-License-Identifier: Apache-2.0
                     Import
                   </b-button> &nbsp;
                   <b-form-file id="importFile" v-model="importFilename" style="display:none;" accept="application/json" @input="importFile"></b-form-file>
-                  <b-button id="export_button" type="button" variant="outline-secondary" class="mb-2" @click="onExport">
+                  <b-button id="export_button" type="button" variant="outline-secondary" class="mb-2" :disabled="!isValidForm" @click="onExport">
                     Export
                   </b-button>
                 </b-col>
@@ -266,7 +266,7 @@ SPDX-License-Identifier: Apache-2.0
         const blob = new Blob([table_data], {type: 'text/plain'});
         const e = document.createEvent('MouseEvents'),
             a = document.createElement('a');
-        a.download = "data.json";
+        a.download = "amc_instances.json";
         a.href = window.URL.createObjectURL(blob);
         a.dataset.downloadurl = ['text/json', a.download, a.href].join(':');
         e.initEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
