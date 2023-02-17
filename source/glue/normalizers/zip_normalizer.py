@@ -3,7 +3,6 @@ import re
 
 class ZipNormalizer:
     def __init__(self, country_code):
-        self.normalized_zip = None
         # CA ZIP, A1A1A1
         if country_code == "CA":
             self.normalize_regex = r"[^0-9A-Za-z]"
@@ -33,12 +32,12 @@ class ZipNormalizer:
             self.regex = re.compile(r"\d{5}")
 
     def normalize(self, record):
-        self.normalized_zip = re.sub(self.normalize_regex, "", record)
+        self.normalized_record = re.sub(self.normalize_regex, "", record)
 
-        if len(self.normalized_zip) > self.zip_length:
-            self.normalized_zip = self.normalized_zip[: self.zip_length]
+        if len(self.normalized_record) > self.zip_length:
+            self.normalized_record = self.normalized_record[: self.zip_length]
 
-        if not re.match(self.regex, self.normalized_zip):
-            self.normalized_zip = ""
+        if not re.match(self.regex, self.normalized_record):
+            self.normalized_record = ""
 
         return self

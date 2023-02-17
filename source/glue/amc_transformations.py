@@ -38,7 +38,6 @@
 #
 ###############################################################################
 
-import hashlib
 import json
 import sys
 from datetime import datetime
@@ -46,13 +45,8 @@ from datetime import datetime
 import awswrangler as wr
 import boto3
 import pandas as pd
-import regex as re
 from awsglue.utils import GlueArgumentError, getResolvedOptions
-from normalizers.address_normalizer import AddressNormalizer
-from normalizers.email_normalizer import EmailNormalizer
-from normalizers.phone_normalizer import PhoneNormalizer
-from normalizers.state_normalizer import StateNormalizer
-from normalizers.zip_normalizer import ZipNormalizer
+from normalizers import transform
 
 # Resolve sonarqube code smells
 writing = "Writing "
@@ -155,23 +149,32 @@ df = pd.DataFrame()
 json_content_type = "application/json"
 csv_content_type = "text/csv"
 
+# Configure all PII-designated fields to be read as strings
+# This avoids reading phone or zip values as floats and dropping data or requiring additional transformation before normalization
+pii_column_names = {}
+for field in pii_fields:
+    pii_column_names[field["column_name"]] = str
+
 if content_type == json_content_type:
-    dfs = wr.s3.read_json(
+    df_chunks = wr.s3.read_json(
         path=["s3://" + source_bucket + "/" + key],
         chunksize=chunksize,
         lines=True,
+        dtype=pii_column_names,
     )
 elif content_type == csv_content_type:
-    dfs = wr.s3.read_csv(
-        path=["s3://" + source_bucket + "/" + key], chunksize=chunksize
+    df_chunks = wr.s3.read_csv(
+        path=["s3://" + source_bucket + "/" + key],
+        chunksize=chunksize,
+        dtype=pii_column_names,
     )
 else:
     print("Unsupported content type: " + content_type)
     sys.exit(1)
 
-for chunk in dfs:
+for chunk in df_chunks:
     # Save each chunk
-    df = pd.concat([chunk, df])
+    raw_df = pd.concat([chunk, df])
 
 ###############################
 # DATA CLEANSING
@@ -179,7 +182,7 @@ for chunk in dfs:
 
 # Delete the columns that were indicated by the user to be deleted.
 for column_name in deleted_fields:
-    df.drop(column_name, axis=1, inplace=True)
+    raw_df.drop(column_name, axis=1, inplace=True)
 
 # Define the column name to hold the timestamp in its full precision
 timestamp_full_precision = "timestamp_full_precision"
@@ -187,7 +190,9 @@ timestamp_full_precision = "timestamp_full_precision"
 if timestamp_column:
     # Convert timestamp column to datetime type so we can use datetime methods
     try:
-        df[timestamp_column] = pd.to_datetime(df[timestamp_column], utc=True)
+        raw_df[timestamp_column] = pd.to_datetime(
+            raw_df[timestamp_column], utc=True
+        )
     except ValueError as e:
         print(e)
         print("Failed to parse timeseries in column " + timestamp_column)
@@ -199,132 +204,13 @@ if timestamp_column:
         raise e
 
 ###############################
-# DATA NORMALIZATION PATTERNS
+# DATA NORMALIZATION & HASHING
 ###############################
 
-addressNormalizer = AddressNormalizer(country_code)
-stateNormalizer = StateNormalizer(country_code)
-zipNormalizer = ZipNormalizer(country_code)
-phoneNormalizer = PhoneNormalizer(country_code)
-
-###############################
-# DATA NORMALIZATION
-###############################
-# df1 will contain integer, float, and datetime columns
-df1 = df.select_dtypes(exclude=[object])
-# df2 will contain string columns
-df2 = df.select_dtypes(include=[object])
-
-
-def address_transformations(text):
-    text = addressNormalizer.normalize(text).normalized_address
-    return text
-
-
-def state_transformations(text):
-    text = stateNormalizer.normalize(text).normalized_state.lower()
-    return text
-
-
-def normalize_email(text):
-    email_normalize = EmailNormalizer(text)
-    return email_normalize.normalize()
-
-
-def zip_transformations(text):
-    text = zipNormalizer.normalize(text).normalized_zip
-    return text
-
-
-def phone_transformations(text):
-    text = phoneNormalizer.normalize(text).normalized_phone
-    return text
-
-
-# This regex expression matches a sha256 hash value.
-# Sha256 hash codes are 64 consecutive hexadecimal digits, a-f and 0-9.
-# We'll use this pattern to avoid normalizing and hashing values that are already hashed.
-sha256_pattern = "^[a-f0-9]{64}$"
-
-for field in pii_fields:
-    column_name = field["column_name"]
-    if field["pii_type"] == "ADDRESS":
-        df2[column_name] = (
-            df2[column_name]
-            .copy()
-            .apply(
-                lambda x: x
-                if re.match(sha256_pattern, x)
-                else address_transformations(x)
-            )
-        )
-    elif field["pii_type"] == "STATE":
-        df2[column_name] = (
-            df2[column_name]
-            .copy()
-            .apply(
-                lambda x: x
-                if re.match(sha256_pattern, x)
-                else state_transformations(x)
-            )
-        )
-    elif field["pii_type"] == "ZIP":
-        df2[column_name] = (
-            df2[column_name]
-            .copy()
-            .apply(
-                lambda x: x
-                if re.match(sha256_pattern, x)
-                else zip_transformations(x)
-            )
-        )
-    elif field["pii_type"] == "PHONE":
-        df2[column_name] = (
-            df2[column_name]
-            .copy()
-            .apply(
-                lambda x: x
-                if re.match(sha256_pattern, x)
-                else phone_transformations(x)
-            )
-        )
-    elif field["pii_type"] == "EMAIL":
-        df2[column_name] = df2[column_name].copy().apply(lambda x: x.lower())
-        df2[column_name].replace(r"[^\w.@-]", "", inplace=True, regex=True)
-        df2[column_name] = (
-            df2[column_name].copy().apply(lambda x: normalize_email(x))
-        )
-    else:
-        df2[column_name] = df2[column_name].copy().apply(lambda x: x.lower())
-        # convert characters ß, ä, ö, ü, ø, æ
-        df2[column_name].replace("ß", "ss", inplace=True)
-        df2[column_name].replace("ä", "ae", inplace=True)
-        df2[column_name].replace("ö", "oe", inplace=True)
-        df2[column_name].replace("ü", "ue", inplace=True)
-        df2[column_name].replace("ø", "o", inplace=True)
-        df2[column_name].replace("æ", "ae", inplace=True)
-        # remove all symbols and whitespace
-        df2[column_name].replace("[^a-z0-9]", "", inplace=True, regex=True)
-
-###############################
-# PII HASHING
-###############################
-
-for field in pii_fields:
-    column_name = field["column_name"]
-    # If the column value looks like a sha256 hash, then don't hash it again.
-    # This allows users to import datasets that have already been hashed.
-    df2[column_name] = (
-        df2[column_name]
-        .copy()
-        .apply(
-            lambda x: x
-            if re.match(sha256_pattern, x)
-            else hashlib.sha256(x.encode()).hexdigest()
-        )
-    )
-
-df = pd.concat([df1, df2], axis=1)
+transformed_df = transform.transform_data(
+    df=raw_df, pii_fields=pii_fields, country_code=country_code
+)
+hashed_df = transform.hash_data(df=transformed_df, pii_fields=pii_fields)
 
 ###############################
 # TIME SERIES PARTITIONING
@@ -335,11 +221,11 @@ if timestamp_column:
     # so we round timestamps to the nearest minute, below.
     # But before we write that data to AMC, we will want to restore the timestamp to full precision.
     # So we record that full precision here so that it can be restored later.
-    df[timestamp_full_precision] = df[timestamp_column]
-    df[timestamp_column] = df[timestamp_column].dt.round("Min")
+    hashed_df[timestamp_full_precision] = hashed_df[timestamp_column]
+    hashed_df[timestamp_column] = hashed_df[timestamp_column].dt.round("Min")
 
     # Prepare to calculate time deltas by sorting on the timeseries column
-    unique_timestamps = pd.DataFrame(df[timestamp_column].unique())
+    unique_timestamps = pd.DataFrame(hashed_df[timestamp_column].unique())
     unique_timestamps = unique_timestamps.rename(columns={0: "timestamp"})
     unique_timestamps = unique_timestamps.sort_values(by="timestamp")
 
@@ -427,7 +313,9 @@ if timestamp_column:
                 timestamp_str_old = timestamp_str
                 # Get all the events that occurred at the first timestamp
                 # so that they can be recorded when we read the next timestamp.
-                df_partition = df[df[timestamp_column] == timestamp]
+                df_partition = hashed_df[
+                    hashed_df[timestamp_column] == timestamp
+                ]
                 df_partition[timestamp_column] = df_partition[
                     timestamp_column
                 ].dt.strftime(datetime_format)
@@ -481,14 +369,14 @@ if timestamp_column:
             df_partition = pd.DataFrame()
             timestamp_str_old = timestamp_str
             # Get all the events that occurred at this timestamp
-            df_partition = df[df[timestamp_column] == timestamp]
+            df_partition = hashed_df[hashed_df[timestamp_column] == timestamp]
             df_partition[timestamp_column] = df_partition[
                 timestamp_column
             ].dt.strftime(datetime_format)
         else:
             # Append all the events that occurred at this timestamp to df_partition
             df_partition2 = pd.DataFrame()
-            df_partition2 = df[df[timestamp_column] == timestamp]
+            df_partition2 = hashed_df[hashed_df[timestamp_column] == timestamp]
             df_partition2[timestamp_column] = df_partition2[
                 timestamp_column
             ].dt.strftime(datetime_format)
@@ -556,11 +444,11 @@ else:
         + filename
         + ".gz"
     )
-    print(writing + str(len(df)) + rows_to + output_file)
-    num_rows += len(df)
+    print(writing + str(len(hashed_df)) + rows_to + output_file)
+    num_rows += len(hashed_df)
     if content_type == json_content_type:
         wr.s3.to_json(
-            df=df,
+            df=hashed_df,
             path=output_file,
             compression="gzip",
             lines=True,
@@ -568,7 +456,7 @@ else:
         )
     elif content_type == csv_content_type:
         wr.s3.to_csv(
-            df=df,
+            df=hashed_df,
             path=output_file,
             compression="gzip",
             header=True,

@@ -13,8 +13,6 @@ def check_if_valid(number: int, country_code: str):
 
 
 class PhoneNormalizer:
-    normalized_phone = None
-
     def __init__(self, country_code):
         # library takes 'GB' instead of 'UK' as country_code
         if country_code == "UK":
@@ -28,16 +26,16 @@ class PhoneNormalizer:
         try:
             parsed_number = phonenumbers.parse(record, self.country_code)
         except phonenumbers.phonenumberutil.NumberParseException:
-            self.normalized_phone = ""
+            self.normalized_record = ""
         else:
             is_possible = phonenumbers.is_possible_number(parsed_number)
             is_valid = check_if_valid(
                 parsed_number.national_number, self.country_code
             )
             if is_possible and is_valid:
-                self.normalized_phone = phonenumbers.format_number(
+                self.normalized_record = phonenumbers.format_number(
                     parsed_number, phonenumbers.PhoneNumberFormat.E164
                 ).replace("+", "")
             else:
-                self.normalized_phone = ""
+                self.normalized_record = ""
         return self
