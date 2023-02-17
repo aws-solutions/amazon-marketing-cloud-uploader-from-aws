@@ -10,4 +10,4 @@ source =
     amc_uploader
 
 [report]
-fail_under = 40.0
+fail_under = 69
