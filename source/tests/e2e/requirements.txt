@@ -1,6 +1,6 @@
+boto3
 pytest
 requests
 requests_aws4auth
-webdriver-manager
 selenium
-boto3
+webdriver-manager
