@@ -121,7 +121,7 @@ SPDX-License-Identifier: Apache-2.0
       },
       timestamp_column_name() {
         const timestamp_column = this.dataset.columns.filter(x => x.isMainEventTime).map(x => x.name)
-        // The Glue ETL job requires timestamp_column_name to be an empty string 
+        // The Glue ETL job requires timestamp_column_name to be an empty string
         // for all DIMENSION datasets.
         const dataset_type = this.dataset_definition['dataSetType']
         if (dataset_type == 'FACT' && timestamp_column && timestamp_column.length > 0)
@@ -164,7 +164,7 @@ SPDX-License-Identifier: Apache-2.0
         // Navigate to next step
         this.$router.push('Step5')
       },
-            async create_dataset() {
+      async create_dataset() {
         const resource = "create_dataset"
         const data = {'body': this.dataset_definition}
         console.log("sending POST " + " " + resource + " " + JSON.stringify(data))
@@ -192,7 +192,7 @@ SPDX-License-Identifier: Apache-2.0
         const resource = 'start_amc_transformation'
         const apiName = 'amcufa-api'
         let response = ""
-        const data = {'sourceBucket': this.DATA_BUCKET_NAME, 'sourceKey': key, 'outputBucket': this.ARTIFACT_BUCKET_NAME, 'piiFields': JSON.stringify(this.pii_fields),'deletedFields': JSON.stringify(this.deleted_columns), 'timestampColumn': this.timestamp_column_name, 'datasetId': this.dataset_definition.dataSetId, 'period': this.dataset_definition.period}
+        const data = {'sourceBucket': this.DATA_BUCKET_NAME, 'sourceKey': key, 'outputBucket': this.ARTIFACT_BUCKET_NAME, 'piiFields': JSON.stringify(this.pii_fields),'deletedFields': JSON.stringify(this.deleted_columns), 'timestampColumn': this.timestamp_column_name, 'datasetId': this.dataset_definition.dataSetId, 'period': this.dataset_definition.period, 'countryCode': this.dataset_definition.countryCode}
         let requestOpts = {
           headers: {'Content-Type': 'application/json'},
           body: data

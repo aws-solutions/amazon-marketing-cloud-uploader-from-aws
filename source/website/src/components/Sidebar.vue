@@ -47,7 +47,7 @@ SPDX-License-Identifier: Apache-2.0
           Confirm details
         </b-link>
         <hr>
-        Step5
+        Step 5
         <b-link
           id="step5"
           to="/step5"

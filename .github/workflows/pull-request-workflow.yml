@@ -1,10 +1,11 @@
-name: pr-workflow
+name: Pull Request Workflow
 
 on:
   pull_request:
     types: [opened, synchronize]
     branches:
       - development
+      - github_first
   workflow_dispatch:
 
 jobs:
@@ -41,8 +42,9 @@ jobs:
         with:
           input_path: deployment
 
-  unit-test:
-    needs: 
+  npm-lint-checker:
+    needs:
+      - viperlight-scan
       - cfn-scan
     runs-on: ubuntu-latest
     steps:
@@ -51,25 +53,69 @@ jobs:
         with:
           ref: ${{ github.sha }}
 
-      - name: Set up Python 3.9
+      - name: Set up Python 3.10
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.10'
+      - name: Run npm lint
+        run: |
+          ./run-pre-commit.sh -rnl
+
+  pre-commit:
+    needs:
+      - viperlight-scan
+      - cfn-scan
+      - npm-lint-checker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out pr branch
+        uses: actions/checkout@v2.3.4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Run Pre-Commit
+        run: |
+          ./run-pre-commit.sh -rpc
+
+  unit-test:
+    needs:
+      - viperlight-scan
+      - cfn-scan
+      - npm-lint-checker
+      - pre-commit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out pr branch
+        uses: actions/checkout@v2.3.4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
       - name: Run Unit Test
         run: |
           VENV=$(mktemp -d) && echo "$VENV"
-          python3.9 -m venv "$VENV"
+          python3.10 -m venv "$VENV"
           source "$VENV"/bin/activate
           ls -l
           cd source
-          pip install -r requirements-dev.txt
-          cd tests
-          pytest amc_transformation/test_amc_transformation.py -vv
-          pytest amc_uploader/test_amc_uploader.py -vv
-          
+          ./tests/run_test.sh --run_unit_test
+          cd api/tests
+          ./run_api_test.sh --run_unit_test
+      - name: Run Coverage Report
+        run: |
+          cd deployment
+          ./check_test_coverage.sh
+
 
   build:
-    needs: 
+    needs:
       - viperlight-scan
       - cfn-scan
       - unit-test
@@ -115,14 +161,14 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ steps.init.outputs.REGION }}
 
-      - name: Set up Python 3.9
+      - name: Set up Python 3.10
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.10'
       - name: Run build script
         id: builder
         run: |
-          aws s3 mb s3://$DIST_OUTPUT_BUCKET-$REGION 
+          aws s3 mb s3://$DIST_OUTPUT_BUCKET-$REGION
           aws s3 mb s3://$TEMPLATE_OUTPUT_BUCKET
           cd deployment
           echo "./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name ${SOLUTION_NAME} --version ${VERSION} --region ${REGION}"
@@ -168,10 +214,10 @@ jobs:
     outputs:
       AMC_GLUE_JOB_ROLE_NAME: ${{ steps.api_test.outputs.AMC_GLUE_JOB_ROLE_NAME }}
     steps:
-      - name: Set up Python 3.9
+      - name: Set up Python 3.10
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.10'
       - name: Initialize AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -229,7 +275,7 @@ jobs:
           export AWS_REGION="us-east-1"
           aws iam attach-role-policy --role-name $AMC_GLUE_JOB_ROLE_NAME --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess"
           VENV=$(mktemp -d) && echo "$VENV"
-          python3.9 -m venv "$VENV"
+          python3.10 -m venv "$VENV"
           source "$VENV"/bin/activate
           ls -l
           pip3 install -r source/api/tests/requirements-test.txt
@@ -237,7 +283,7 @@ jobs:
 
   cleanup:
     if: always()
-    needs: 
+    needs:
       - deploy
       - build
       - integration_test
@@ -250,12 +296,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{needs.build.outputs.REGION}}
       - name: Remove build artifacts
-        if: needs.deploy.result == 'success' || needs.deploy.result == 'failure' 
+        if: needs.deploy.result == 'success' || needs.deploy.result == 'failure'
         run: |
           aws s3 rb s3://${{needs.build.outputs.DIST_OUTPUT_BUCKET}}-${{needs.build.outputs.REGION}} --force
           aws s3 rb s3://${{needs.build.outputs.TEMPLATE_OUTPUT_BUCKET}} --force
       - name: Detach s3 role
-        if: needs.integration_test.result == 'success' || needs.integration_test.result == 'failure' 
+        if: needs.integration_test.result == 'success' || needs.integration_test.result == 'failure'
         run: |
           aws iam detach-role-policy --role-name ${{needs.integration_test.outputs.AMC_GLUE_JOB_ROLE_NAME}} --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess"
       - name: Remove stack

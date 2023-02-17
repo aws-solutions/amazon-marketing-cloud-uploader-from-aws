@@ -13,7 +13,7 @@ SPDX-License-Identifier: Apache-2.0
           variant="danger"
           dismissible
         >
-          Invalid dataset definition. {{ formErrorMessage }} 
+          Invalid dataset definition. {{ formErrorMessage }}
         </b-alert>
         <b-modal id="modal-dataset-type" title="Dataset Types" ok-only>
           <p><strong>Fact</strong> datasets represent time-series data and must include a timestamp column.</p>
@@ -34,6 +34,9 @@ SPDX-License-Identifier: Apache-2.0
             <li>P7D (7 days)</li>
           </ul>
           <p>By default, this tool will automatically use the shortest possible period which is appropriate for your data and partition input files accordingly. However, you can override the auto-detected period by explicitly setting it in the dataset definition.</p>
+        </b-modal>
+        <b-modal id="modal-country" title="Country" ok-only>
+          <p><strong>One country per file:</strong> If uploaded data contains hashed identifiers, it is recommended to separate upload data by country. For example, if you have data with both CA and US records, these records should be split into different files as the tool will apply country-specific normalization rules for fields such as phone number and address.</p>
         </b-modal>
         <b-row style="text-align: left">
           <b-col cols="2">
@@ -185,6 +188,30 @@ SPDX-License-Identifier: Apache-2.0
                   </b-col>
                 </b-row>
               </div>
+              <b-row>
+                <b-col sm="1">
+                  <slot name="label">
+                    Country:
+                    <b-link v-b-modal.modal-country>
+                      <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
+                    </b-link>
+                  </slot>
+                </b-col>
+                <b-col sm="5">
+                  <b-form-group
+                    description="Select country - this tool applies country-specific normalization to all rows in the input file"
+                  >
+                    <b-form-select id="country-code-dropdown" v-model="country_code">
+                      <b-form-select-option value="US">
+                        US
+                      </b-form-select-option>
+                      <b-form-select-option value="UK">
+                        UK
+                      </b-form-select-option>
+                    </b-form-select>
+                  </b-form-group>
+                </b-col>
+              </b-row>
             </div>
             <b-row>
               <b-col sm="9" align="right">
@@ -207,7 +234,7 @@ SPDX-License-Identifier: Apache-2.0
   import Header from '@/components/Header.vue'
   import Sidebar from '@/components/Sidebar.vue'
   import { mapState } from 'vuex'
-  
+
   export default {
     name: "Step2",
     components: {
@@ -226,8 +253,9 @@ SPDX-License-Identifier: Apache-2.0
         new_dataset_definition: {},
         dataset_id: '',
         description: '',
+        country_code: '',
         dataset_type: '',
-        // time_period is autodetected in Glue ETL and updated in amc_uploader.py 
+        // time_period is autodetected in Glue ETL and updated in amc_uploader.py
         time_period: 'autodetect',
         time_period_options: [
           { value: "autodetect", text: "Autodetect" },
@@ -271,14 +299,15 @@ SPDX-License-Identifier: Apache-2.0
       this.new_dataset_definition = this.dataset_definition
       this.dataset_id = this.new_dataset_definition['dataSetId']
       this.description = this.new_dataset_definition['description']
+      this.country_code = this.new_dataset_definition['countryCode']
       this.file_format = Object.keys(this.new_dataset_definition).includes('fileFormat')?this.new_dataset_definition['fileFormat']:this.file_format
       // set default value for file format
       if (this.file_format === '') {
         if (this.s3key.split('.').pop().toLowerCase() === "csv") {
-          this.file_format = "CSV" 
+          this.file_format = "CSV"
         }
         else if (this.s3key.split('.').pop().toLowerCase() === "json") {
-          this.file_format = "JSON" 
+          this.file_format = "JSON"
         }
       }
       this.time_period = Object.keys(this.new_dataset_definition).includes('period')?this.new_dataset_definition['period']:this.time_period
@@ -329,6 +358,7 @@ SPDX-License-Identifier: Apache-2.0
         this.showFormError = false;
         this.new_dataset_definition['dataSetId'] = this.dataset_id
         this.new_dataset_definition['description'] = this.description
+        this.new_dataset_definition['countryCode'] = this.country_code
         this.new_dataset_definition['period'] = this.time_period
         this.new_dataset_definition['dataSetType'] = this.dataset_type
         this.new_dataset_definition['compressionFormat'] = 'GZIP'
@@ -369,6 +399,10 @@ SPDX-License-Identifier: Apache-2.0
         }
         if (/^[a-zA-Z0-9_-]+$/.test(this.dataset_id) === false) {
           this.formErrorMessage = "Dataset name must match regex ^[a-zA-Z0-9_-]+$"
+          return false
+        }
+        if (!this.new_dataset_definition['countryCode']  || this.new_dataset_definition['countryCode'].length === 0) {
+          this.formErrorMessage = "Missing country."
           return false
         }
         if (!this.new_dataset_definition['dataSetType']  || this.new_dataset_definition['dataSetType'].length === 0) {

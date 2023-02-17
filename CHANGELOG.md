@@ -5,8 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
 ### Added
 
 - Allow users to upload S3 files to existing datasets [#73]
@@ -15,10 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Record anonymous performance metrics to measure ETL workload size [#52]
 - Automate integration tests [#42]
 - Automate front-end tests [#32]
-- Automate build and deploy tests [#34]  
+- Automate build and deploy tests [#34]
 - Invalid email addresses should normalize to empty string and added unit tests to github pr-workflow. [#63]
-- Add Import/Export to Step 3 (Define columns), so user can import or export column schema for AMC ingestion. [#48]
 - Use custom lambda layer for aws-xray-sdk [#68]
+- Add Pre-commit, fix SonarCube/SonarLint issues [#16]
+- Add Unit Tests, combine coverage report for source/api/tests and source/tests. [#100]
 
 ### Changed
 
@@ -32,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Resolve a data loss issue in the normalization job [#23]
 
 ### Security
- 
+
 - Enable integrity checks for front-end assets [#39]
 
 
@@ -42,5 +41,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Initial release.
-
-

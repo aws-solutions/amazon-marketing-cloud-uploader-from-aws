@@ -1,6 +1,7 @@
 *.iml
 source/website/public/runtimeConfig.json
 */.DS_Store
+.DS_Store
 .idea/*
 node_modules
 package
@@ -15,3 +16,5 @@ source/amc_uploader/amc_uploader.egg-info/
 source/tests/coverage-reports/
 deployment/open-source
 __pycache__
+.scannerwork/*
+source/tests/.DS_Store
