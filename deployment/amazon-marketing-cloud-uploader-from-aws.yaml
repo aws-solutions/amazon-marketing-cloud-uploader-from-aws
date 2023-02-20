@@ -776,7 +776,7 @@ Resources:
       Role: !GetAtt AnonymousDataCustomResourceRole.Arn
       Code:
         S3Bucket: !Join [ "-", [ !FindInMap [ "Application", "SourceCode", "RegionalS3Bucket" ], Ref: "AWS::Region" ] ]
-        S3Key: !Join [ "/", [ !FindInMap [ "Application", "SourceCode", "CodeKeyPrefix" ], "anonymous-data-logger.zip" ] ]
+        S3Key: !Join [ "/", [ !FindInMap [ "Application", "SourceCode", "CodeKeyPrefix" ], "anonymous_data_logger.zip" ] ]
       Runtime:  python3.8
       Timeout: 180
 

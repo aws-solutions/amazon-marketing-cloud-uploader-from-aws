@@ -8,6 +8,7 @@ source =
     glue
     helper
     amc_uploader
+    anonymous_data_logger
 
 [report]
 fail_under = 69
