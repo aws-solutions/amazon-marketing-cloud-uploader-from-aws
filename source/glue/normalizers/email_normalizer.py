@@ -1,7 +1,7 @@
 import re
 
 
-def is_valid_email_address(email):
+def is_valid_email(email):
     try:
         wrd_str = r"\w"
         re_str = f"([{wrd_str}._-]+@[{wrd_str}._-]+)"
@@ -10,18 +10,14 @@ def is_valid_email_address(email):
         return False
 
 
-def normalize_email(email):
-    if email:
-        return re.sub(r"[^\w.@-]+", "", email.lower())
-    return None
-
-
 class EmailNormalizer:
-    def __init__(self, email):
-        self.email = email
+    def normalize(self, record):
+        self.normalized_record = record.lower()
+        self.normalized_record = re.sub(
+            r"[^\w.@-]+", "", self.normalized_record
+        )
 
-    def normalize(self):
-        email = normalize_email(self.email)
-        if is_valid_email_address(email):
-            return email
-        return ""
+        if not is_valid_email(self.normalized_record):
+            self.normalized_record = ""
+
+        return self

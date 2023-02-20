@@ -17,7 +17,6 @@
 #   https://github.com/amzn/amazon-ads-advertiser-audience-normalization-sdk-py
 #
 ###############################################################################
-import hashlib
 import json
 import os
 import re
@@ -245,7 +244,6 @@ class AddressNormalizer:
         self.street_word_maps.extend(NumberIndicators)
         self.street_word_maps.extend(DirectionalWords)
         self.normalized_address = None
-        self.sha256normalized_address = None
 
         if country_code == "US":
             self.street_word_maps.extend(USStreetSuffixes)
@@ -304,10 +302,8 @@ class AddressNormalizer:
                         i, first_part=self.street_word_maps[j].get(word)
                     )
 
-        self.normalized_address = "".join(
+        self.normalized_record = "".join(
             normalized_address.address_tokens
         ).lower()
-        self.sha256normalized_address = hashlib.sha256(
-            self.normalized_address.encode()
-        ).hexdigest()
+
         return self
