@@ -384,7 +384,7 @@ touch ./setup.cfg
 echo "[install]" > ./setup.cfg
 echo "prefix= " >> ./setup.cfg
 pip3 install --quiet -r ../requirements.txt --target .
-cp -R ../lib .
+cp -R ../anonymous_lib .
 if ! [ -d ../dist/anonymous_data_logger.zip ]; then
   zip -q -r9 ../dist/anonymous_data_logger.zip .
 elif [ -d ../dist/anonymous_data_logger.zip ]; then
