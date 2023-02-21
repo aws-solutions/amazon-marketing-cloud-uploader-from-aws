@@ -194,8 +194,8 @@ SPDX-License-Identifier: Apache-2.0
     },
     data() {
       return {
+        new_dataset_definition: {},
         importFilename: null,
-        dataset_definition: {},
         isBusy: false,
         showServerError: false,
         showSchemaError: false,
@@ -248,7 +248,7 @@ SPDX-License-Identifier: Apache-2.0
       }
     },
     computed: {
-      ...mapState(['deleted_columns', 's3key', 'step3_form_input']),
+      ...mapState(['deleted_columns', 'dataset_definition', 's3key', 'step3_form_input']),
       contains_hashed_identifier() {
         return this.items.filter(x => (x.column_type === 'PII')).length > 0
       },
@@ -287,10 +287,12 @@ SPDX-License-Identifier: Apache-2.0
       console.log('created')
     },
     mounted: function() {
+      this.new_dataset_definition = this.dataset_definition
       if (!this.s3key) {
         this.showMissingDataAlert = true
       }
       else {
+        // reset the web form
         this.onReset()
       } 
     },
@@ -444,16 +446,16 @@ SPDX-License-Identifier: Apache-2.0
             this.columns.push(column_definition)
           }
           )
-        this.dataset_definition['columns'] = this.columns
+        this.new_dataset_definition['columns'] = this.columns
         if (this.content_type === "application/json")
-          this.dataset_definition['fileFormat'] = 'JSON'
+          this.new_dataset_definition['fileFormat'] = 'JSON'
         else if (this.content_type === "text/csv")
-          this.dataset_definition['fileFormat'] = 'CSV'
+          this.new_dataset_definition['fileFormat'] = 'CSV'
         else
           console.log("ERROR: unrecognized content_type, " + this.content_type)
           this.showServerError = true;
 
-        this.$store.commit('updateDatasetDefinition', this.dataset_definition)
+        this.$store.commit('updateDatasetDefinition', this.new_dataset_definition)
         this.$router.push({path: '/step4'})
       },
       changeDescription(value, index) {
