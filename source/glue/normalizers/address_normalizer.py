@@ -174,7 +174,7 @@ class NormalizedAddress:
             address_token = address[text_start - start :]
             tokens.append(address_token)
 
-        self.address_token = tokens
+        self.address_tokens = tokens
 
     def update_address_tokens(self, index, **kwargs):
         rest = []
@@ -197,7 +197,7 @@ class Dash:
                 second_part = word[index + 1 :]
                 if not second_part.isnumeric() and first_part.isnumeric():
                     normalized_address.update_address_tokens(
-                        i, 1, first_part=first_part, second_part=second_part
+                        i, first_part=first_part, second_part=second_part
                     )
 
 
@@ -217,20 +217,18 @@ class Pound:
                 if first_part == "":
                     normalized_address.update_address_tokens(
                         i,
-                        1,
                         pound_string=POUND_STRING,
                         second_part=second_part,
                     )
                     i += 1
                 elif second_part == "":
                     normalized_address.update_address_tokens(
-                        i, 1, first_part=first_part, pound_string=POUND_STRING
+                        i, first_part=first_part, pound_string=POUND_STRING
                     )
                     i += 1
                 else:
                     normalized_address.update_address_tokens(
                         i,
-                        1,
                         first_part=first_part,
                         pound_string=POUND_STRING,
                         second_part=second_part,
@@ -303,7 +301,7 @@ class AddressNormalizer:
             for j in range(0, len(self.street_word_maps)):
                 if word in self.street_word_maps[j]:
                     normalized_address.update_address_tokens(
-                        i, 1, first_part=self.street_word_maps[j].get(word)
+                        i, first_part=self.street_word_maps[j].get(word)
                     )
 
         self.normalized_address = "".join(

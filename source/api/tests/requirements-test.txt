@@ -2,5 +2,8 @@ aws_xray_sdk
 awswrangler
 boto3
 chalice
+moto
+pyparsing
 pytest
+pytest-mock
 requests

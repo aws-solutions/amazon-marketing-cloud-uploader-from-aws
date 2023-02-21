@@ -40,7 +40,7 @@ fi
 if [[ ( $@ == "--run_pre-commit") ||  $@ == "-rpc" ]]
 then
     VENV=$(mktemp -d) && echo "$VENV"
-    python3.9 -m venv "$VENV"
+    python3.10 -m venv "$VENV"
     source "$VENV"/bin/activate
     pip install pre-commit
     "$VENV"/bin/pre-commit install

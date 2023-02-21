@@ -63,3 +63,21 @@ def test_load_address_map_helper():
 
     assert address_map["UKStreetSuffixes"]
     assert address_map["UKSubBuildingDesignator"]
+
+
+def test_address_normalizer():
+    from glue.normalizers.address_normalizer import AddressNormalizer
+
+    address_normalizer = AddressNormalizer("US")
+
+    test = address_normalizer.normalize("")
+    assert test.normalized_address == ""
+
+    test = address_normalizer.normalize("3895 Service Court")
+    assert test.normalized_address == "3895servicect"
+
+    test = address_normalizer.normalize("&*#( Hill")
+    assert test.normalized_address == "&*#hl"
+
+    test = address_normalizer.normalize("142")
+    assert test.normalized_address == "142"
