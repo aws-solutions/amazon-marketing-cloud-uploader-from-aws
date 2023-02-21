@@ -11,4 +11,4 @@ source =
     anonymous_data_logger
 
 [report]
-fail_under = 69
+fail_under = 70
