@@ -61,6 +61,9 @@ export AMC_GLUE_JOB_NAME="some-GlueStack-123-amc-transformation-job"
 export CUSTOMER_MANAGED_KEY=""
 export AWS_REGION="us-east-1"
 
+# set PYTHONPATH to enable importing modules from ./glue/normalizers
+export PYTHONPATH=$PYTHONPATH:./glue
+
 echo "------------------------------------------------------------------------------"
 echo "[Test] Run pytest with coverage"
 echo "------------------------------------------------------------------------------"

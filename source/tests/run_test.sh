@@ -7,6 +7,8 @@
 #     -h, --help      Print this help and exit.
 #     -rut, --run_unit_test    Run Unit Test.
 
+export PYTHONPATH=$PYTHONPATH:./glue
+
 help(){
   cat <<EOF
     Usage: $0 [arguments]
