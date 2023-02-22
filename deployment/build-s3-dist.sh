@@ -370,7 +370,7 @@ echo "Creating deployment package for anonymous data logger"
 echo "------------------------------------------------------------------------------"
 
 echo "Building anonymous data logger"
-cd "$source_dir/anonymous-data-logger" || exit 1
+cd "$source_dir/anonymous_data_logger" || exit 1
 [ -e dist ] && rm -rf dist
 mkdir -p dist
 [ -e package ] && rm -rf package
@@ -384,15 +384,15 @@ touch ./setup.cfg
 echo "[install]" > ./setup.cfg
 echo "prefix= " >> ./setup.cfg
 pip3 install --quiet -r ../requirements.txt --target .
-cp -R ../lib .
-if ! [ -d ../dist/anonymous-data-logger.zip ]; then
-  zip -q -r9 ../dist/anonymous-data-logger.zip .
-elif [ -d ../dist/anonymous-data-logger.zip ]; then
+cp -R ../anonymous_lib .
+if ! [ -d ../dist/anonymous_data_logger.zip ]; then
+  zip -q -r9 ../dist/anonymous_data_logger.zip .
+elif [ -d ../dist/anonymous_data_logger.zip ]; then
   echo "Package already present"
 fi
 popd || exit 1
-zip -q -g ./dist/anonymous-data-logger.zip ./anonymous-data-logger.py
-cp "./dist/anonymous-data-logger.zip" "$regional_dist_dir/anonymous-data-logger.zip"
+zip -q -g ./dist/anonymous_data_logger.zip ./anonymous_data_logger.py
+cp "./dist/anonymous_data_logger.zip" "$regional_dist_dir/anonymous_data_logger.zip"
 # Finished building anonymous data logger
 rm -rf ./dist ./package
 
