@@ -323,8 +323,6 @@ ESStateAbbreviation = {
 
 
 class StateNormalizer:
-    normalized_state = None
-
     def __init__(self, country_code):
         if country_code == "US":
             self.state_abbreviation_map = USStateAbbreviation
@@ -343,14 +341,16 @@ class StateNormalizer:
             self.state_abbreviation_map = {}
 
     def normalize(self, record):
-        self.normalized_state = record.upper()
-        self.normalized_state = re.sub(r"[^A-Z]", "", self.normalized_state)
+        self.normalized_record = record.upper()
+        self.normalized_record = re.sub(r"[^A-Z]", "", self.normalized_record)
 
-        if self.normalized_state in self.state_abbreviation_map:
-            self.normalized_state = self.state_abbreviation_map.get(
-                self.normalized_state
+        if self.normalized_record in self.state_abbreviation_map:
+            self.normalized_record = self.state_abbreviation_map.get(
+                self.normalized_record
             )
         elif len(record) > 2:
-            self.normalized_state = self.normalized_state[:2]
+            self.normalized_record = self.normalized_record[:2]
+
+        self.normalized_record = self.normalized_record.lower()
 
         return self
