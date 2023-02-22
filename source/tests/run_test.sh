@@ -7,6 +7,8 @@
 #     -h, --help      Print this help and exit.
 #     -rut, --run_unit_test    Run Unit Test.
 
+export PYTHONPATH=$PYTHONPATH:./glue:./anonymous_data_logger
+
 help(){
   cat <<EOF
     Usage: $0 [arguments]
@@ -38,8 +40,9 @@ then
     export AMC_GLUE_JOB_NAME="some-GlueStack-123-amc-transformation-job"
     export CUSTOMER_MANAGED_KEY=""
     export AWS_REGION="us-east-1"
+    export SOLUTION_VERSION="0.0.0"
 
     pip install -r requirements-dev.txt
-    pytest tests -vv --ignore="tests/e2e/"
+    pytest tests/ -vv --ignore="tests/e2e/"
 
 fi
