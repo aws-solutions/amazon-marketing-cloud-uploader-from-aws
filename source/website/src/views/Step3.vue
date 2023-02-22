@@ -421,6 +421,17 @@ SPDX-License-Identifier: Apache-2.0
           // automatically set data type to timestamp if column type is timestamp
           this.items[index].data_type = "TIMESTAMP"
         }
+        // if changing from PII column to another, the PII Type and Nullable columns should be reset
+        if (value !== 'PII' && this.items[index].column_type === 'PII') {
+          // re-enable the previous PII Type value when unselecting the PII Column type
+          const previous_value = this.items[index].pii_type
+          let idx = this.pii_type_options.findIndex((x => x.value === previous_value));
+          if (previous_value !== "") this.pii_type_options[idx].disabled = false
+
+          this.items[index].pii_type = ""
+          this.items[index].nullable = false
+        }
+
         this.items[index].column_type = value;
         this.$store.commit('saveStep3FormInput', this.items)
       },
