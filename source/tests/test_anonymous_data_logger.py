@@ -13,8 +13,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 
-
-
 @pytest.fixture
 def fake_event():
     return {
@@ -35,10 +33,11 @@ def fake_context():
 
 @patch("requests.put")
 @patch("urllib.request.urlopen")
-def test_handler(mock_response_open, mock_response_put, fake_event, fake_context):
-
+def test_handler(
+    mock_response_open, mock_response_put, fake_event, fake_context
+):
     from anonymous_data_logger.anonymous_data_logger import handler
-    
+
     fake_event["RequestType"] = "Create"
     fake_event["ResourceProperties"]["Resource"] = "UUID"
     fake_event["ResourceProperties"]["ServiceToken"] = "some arn"
@@ -70,8 +69,7 @@ def test_handler(mock_response_open, mock_response_put, fake_event, fake_context
         context=fake_context,
     )
 
-
-    with patch('logging.Logger.info') as log_mock:
+    with patch("logging.Logger.info") as log_mock:
         fake_resource = "AnonymousMetric"
         fake_event["RequestType"] = "Delete"
         fake_event["ResourceProperties"]["Resource"] = fake_resource
@@ -79,9 +77,11 @@ def test_handler(mock_response_open, mock_response_put, fake_event, fake_context
             event=fake_event,
             context=fake_context,
         )
-        log_mock.assert_called_with("RESPONSE:: {}: Not required to report data for delete request.".format(
-                        fake_resource
-        ))
+        log_mock.assert_called_with(
+            "RESPONSE:: {}: Not required to report data for delete request.".format(
+                fake_resource
+            )
+        )
 
         fake_event["RequestType"] = "Workload"
         fake_event["Metrics"] = "some metrics"
@@ -91,7 +91,7 @@ def test_handler(mock_response_open, mock_response_put, fake_event, fake_context
         )
         log_mock.assert_called_with("some metrics")
 
-    with patch('logging.Logger.error') as log_mock:
+    with patch("logging.Logger.error") as log_mock:
         fake_resource = "FakeAnonymousMetric"
         fake_event["ResourceProperties"]["Resource"] = fake_resource
         fake_event["RequestType"] = "Create"
@@ -99,9 +99,11 @@ def test_handler(mock_response_open, mock_response_put, fake_event, fake_context
             event=fake_event,
             context=fake_context,
         )
-        log_mock.assert_called_with("Create failed, {} not defined in the Custom Resource".format(
-                        fake_resource
-        ))
+        log_mock.assert_called_with(
+            "Create failed, {} not defined in the Custom Resource".format(
+                fake_resource
+            )
+        )
 
         fake_event["ResourceProperties"]["Resource"] = fake_resource
         fake_event["RequestType"] = "Update"
@@ -109,9 +111,11 @@ def test_handler(mock_response_open, mock_response_put, fake_event, fake_context
             event=fake_event,
             context=fake_context,
         )
-        log_mock.assert_called_with("Create failed, {} not defined in the Custom Resource".format(
-                        fake_resource
-        ))
+        log_mock.assert_called_with(
+            "Create failed, {} not defined in the Custom Resource".format(
+                fake_resource
+            )
+        )
 
         fake_event["ResourceProperties"]["Resource"] = fake_resource
         fake_event["RequestType"] = "DOES NOT EXIST"
@@ -119,5 +123,6 @@ def test_handler(mock_response_open, mock_response_put, fake_event, fake_context
             event=fake_event,
             context=fake_context,
         )
-        log_mock.assert_called_with("RESPONSE:: {} Not supported".format(fake_event["RequestType"]))
-      
+        log_mock.assert_called_with(
+            "RESPONSE:: {} Not supported".format(fake_event["RequestType"])
+        )
