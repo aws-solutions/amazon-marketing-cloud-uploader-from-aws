@@ -5,5 +5,6 @@ export default {
   s3key: '',
   deleted_columns: [],
   dataset_definition: {},
-  step3_form_input: {}
+  step3_form_input: {},
+  selected_dataset: null
 }

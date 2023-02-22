@@ -14,4 +14,7 @@ export default {
   updateS3key (state, value) {
     state.s3key = value
   },
+  updateSelectedDataset (state, value) {
+    state.selected_dataset = value
+  },
 }
