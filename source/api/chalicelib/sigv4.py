@@ -231,9 +231,9 @@ class Sigv4:
         )
 
 
-def delete(base_url, path):
+def delete(base_url, path, request_parameters=None):
     sig_response = Sigv4(
-        base_url=base_url, path=path, http_method="DELETE"
+        base_url=base_url, path=path, http_method="DELETE", request_parameters=request_parameters
     )
     return sig_response.process_request()
 

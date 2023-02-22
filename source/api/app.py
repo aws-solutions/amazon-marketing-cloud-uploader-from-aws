@@ -307,10 +307,9 @@ def delete_dataset():
         path = (
             DATA
             + data_set_id
-            + "?timeWindowStart=1970-01-01T00:00:00Z&timeWindowEnd="
-            + current_datetime
         )
-        sigv4.delete(destination_endpoint, path)
+        request_parameters = "timeWindowStart=1970-01-01T00:00:00Z&timeWindowEnd=" + current_datetime
+        sigv4.delete(destination_endpoint, path, request_parameters)
         # Step 2/2: delete the dataset definition
         path = "/dataSets/" + data_set_id
         response = sigv4.delete(destination_endpoint, path)
