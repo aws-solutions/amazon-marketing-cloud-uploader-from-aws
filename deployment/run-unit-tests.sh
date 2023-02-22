@@ -62,7 +62,7 @@ export CUSTOMER_MANAGED_KEY=""
 export AWS_REGION="us-east-1"
 export SOLUTION_VERSION="0.0.0"
 
-# set PYTHONPATH to enable importing modules from ./glue/normalizers,/anonymous_data_logger
+# set PYTHONPATH to enable importing modules from ./glue/library,/anonymous_data_logger
 export PYTHONPATH=$PYTHONPATH:./glue:./anonymous_data_logger
 
 echo "------------------------------------------------------------------------------"

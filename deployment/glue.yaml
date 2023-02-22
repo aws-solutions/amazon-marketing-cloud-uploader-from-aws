@@ -26,7 +26,7 @@ Mappings:
       RegionalS3Bucket: "%%REGIONAL_BUCKET_NAME%%"
       CodeKeyPrefix: "%%SOLUTION_NAME%%/%%VERSION%%"
       Filename: "amc_transformations.py"
-      Library: "normalizers.zip"
+      Library: "library.zip"
 
 Resources:
 
