@@ -172,7 +172,7 @@ SPDX-License-Identifier: Apache-2.0
                     <div class="text-muted">
                       {{ ENCRYPTION_MODE }}
                     </div>
-                    <br/>
+                    <br />
                   </b-col>
                 </b-row>
               </div>
