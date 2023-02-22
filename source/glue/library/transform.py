@@ -2,12 +2,12 @@ import hashlib
 
 import pandas as pd
 import regex as re
-from library.normalizers.address_normalizer import AddressNormalizer
-from library.normalizers.default_normalizer import DefaultNormalizer
-from library.normalizers.email_normalizer import EmailNormalizer
-from library.normalizers.phone_normalizer import PhoneNormalizer
-from library.normalizers.state_normalizer import StateNormalizer
-from library.normalizers.zip_normalizer import ZipNormalizer
+from library.address_normalizer import AddressNormalizer
+from library.default_normalizer import DefaultNormalizer
+from library.email_normalizer import EmailNormalizer
+from library.phone_normalizer import PhoneNormalizer
+from library.state_normalizer import StateNormalizer
+from library.zip_normalizer import ZipNormalizer
 
 ###############################
 # HELPER FUNCTIONS

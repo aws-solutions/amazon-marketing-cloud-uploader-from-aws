@@ -46,7 +46,6 @@ from library import read_write as rw
 
 REQUIRED_PARAMS = [
     "JOB_NAME",
-    "JOB_RUN_ID",
     "solution_id",
     "uuid",
     "enable_anonymous_data",
@@ -141,9 +140,10 @@ file.data = transform.hash_data(
 
 if isinstance(file, rw.FactDataset):
     file.timestamp_transform()
-    file.time_series_partitioning
-
-file.save_output()
+    file.time_series_partitioning()
+    file.save_fact_output()
+else:
+    file.save_dimension_output()
 
 if args["enable_anonymous_data"] == "true":
     file.save_performance_metrics()

@@ -38,13 +38,13 @@ def load_address_map_helper():
             return json.load(file)
     except Exception:
         # Glue job put files in zip
-        with ZipFile("normalizers.zip", "r") as zipFile:
+        with ZipFile("library.zip", "r") as zipFile:
             with tempfile.TemporaryDirectory() as tempdir:
                 zipFile.extractall(path=tempdir)
                 print(os.listdir(tempdir))
                 with open(
                     os.path.join(
-                        f"{tempdir}/normalizers/address_map_helper.json"
+                        f"{tempdir}/library/address_map_helper.json"
                     ),
                     "r",
                     encoding="utf-8",

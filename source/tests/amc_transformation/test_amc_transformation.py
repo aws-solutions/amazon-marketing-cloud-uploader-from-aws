@@ -17,7 +17,7 @@ from unittest.mock import patch
 ###############################
 # TEST HELPER UTILS
 ###############################
-from glue.library.normalizers.address_normalizer import load_address_map_helper
+from glue.library.address_normalizer import load_address_map_helper
 
 def test_load_address_map_helper():
 
