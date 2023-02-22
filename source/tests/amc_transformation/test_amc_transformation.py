@@ -1,18 +1,16 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
+# ###############################################################################
+# PURPOSE:
+#   * Regression test for amc_transformation.
+# USAGE:
+#   ./run_test.sh --run_unit_test
+###############################################################################
 
 import os
 import shutil
 
 import pandas as pd
-import pytest
-
-
-@pytest.fixture(autouse=True)
-def mock_env_variables():
-    os.environ["AMC_ENDPOINT_URL"] = "AmcEndpointUrl"
-    os.environ["AMC_API_ROLE_ARN"] = "AmcApiRoleArn"
-    os.environ["botoConfig"] = '{"region_name": "us-east-1"}'
 
 
 def test_load_address_map_helper():

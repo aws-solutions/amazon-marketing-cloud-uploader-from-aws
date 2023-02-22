@@ -772,11 +772,11 @@ Resources:
             reason: "This function does not require performance optimization, so the default concurrency limits suffice."
     Properties:
       Description: Used to send anonymous data
-      Handler: anonymous-data-logger.handler
+      Handler: anonymous_data_logger.handler
       Role: !GetAtt AnonymousDataCustomResourceRole.Arn
       Code:
         S3Bucket: !Join [ "-", [ !FindInMap [ "Application", "SourceCode", "RegionalS3Bucket" ], Ref: "AWS::Region" ] ]
-        S3Key: !Join [ "/", [ !FindInMap [ "Application", "SourceCode", "CodeKeyPrefix" ], "anonymous-data-logger.zip" ] ]
+        S3Key: !Join [ "/", [ !FindInMap [ "Application", "SourceCode", "CodeKeyPrefix" ], "anonymous_data_logger.zip" ] ]
       Runtime:  python3.8
       Timeout: 180
 
