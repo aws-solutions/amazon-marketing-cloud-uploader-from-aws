@@ -172,11 +172,12 @@ SPDX-License-Identifier: Apache-2.0
                     <div class="text-muted">
                       {{ ENCRYPTION_MODE }}
                     </div>
+                    <br/>
                   </b-col>
                 </b-row>
               </div>
-              <div v-if="dataset_mode === 'JOIN'">
-                <b-row>
+              <div>
+                <b-row v-if="dataset_mode === 'JOIN'">
                   <b-col sm="2">
                     Encryption Mode:
                     <b-link v-b-modal.modal-encryption-mode>
@@ -185,6 +186,7 @@ SPDX-License-Identifier: Apache-2.0
                     <div class="text-muted">
                       {{ ENCRYPTION_MODE }}
                     </div>
+                    <br />
                   </b-col>
                 </b-row>
               </div>
