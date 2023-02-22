@@ -209,6 +209,7 @@ SPDX-License-Identifier: Apache-2.0
           'timestampColumn': this.timestamp_column_name,
           'datasetId': this.dataset_definition.dataSetId,
           'period': this.dataset_definition.period,
+          'countryCode': this.dataset_definition.countryCode,
           'destination_endpoints': JSON.stringify(this.destination_endpoints)
         })
       },
