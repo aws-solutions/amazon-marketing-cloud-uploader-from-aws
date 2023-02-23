@@ -13,3 +13,4 @@ requests
 requests_aws4auth
 selenium
 webdriver-manager
+awswrangler
