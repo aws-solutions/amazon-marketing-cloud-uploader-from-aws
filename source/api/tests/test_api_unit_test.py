@@ -80,7 +80,7 @@ def test_version(test_configs):
 
 def test_list_bucket(test_configs):
     with mock_s3():
-        s3 = boto3.client("s3")
+        s3 = boto3.client("s3", region_name=os.environ["AWS_REGION"])
         s3.create_bucket(Bucket=test_configs["s3bucket"])
         s3 = boto3.resource("s3")
         s3_object = s3.Object(
@@ -102,7 +102,7 @@ def test_list_bucket(test_configs):
 def test_get_data_columns(test_configs, get_amc_json, test_data):
     content_type = test_configs["content_type"]
     with mock_s3():
-        s3 = boto3.client("s3")
+        s3 = boto3.client("s3", region_name=os.environ["AWS_REGION"])
         s3.create_bucket(Bucket=test_configs["s3bucket"])
         s3 = boto3.resource("s3")
         s3_object = s3.Object(
