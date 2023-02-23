@@ -22,12 +22,12 @@ SPDX-License-Identifier: Apache-2.0
         >
           Missing s3key. Go back and select a file.
         </b-alert>
-        <b-alert
-          v-model="showSchemaError"
+        <b-alert 
+          v-model="showBadRequestError"
           variant="danger"
           dismissible
         >
-          Schemas must match for each file when multi-uploading.
+          Error: {{ results }}
         </b-alert>
         <b-alert
           v-model="showUserIdWarning"
@@ -296,7 +296,7 @@ SPDX-License-Identifier: Apache-2.0
         busy_getting_datafile_columns: false,
         busy_getting_dataset_definition: false,
         showServerError: false,
-        showSchemaError: false,
+        showBadRequestError: false,
         showMissingDataAlert: false,
         showIncompleteFieldsError: false,
         showIncompleteTimeFieldError: false,
@@ -437,6 +437,8 @@ SPDX-License-Identifier: Apache-2.0
         this.pii_type_options.forEach(x => x.disabled = false)
       },
       validateForm() {
+        // Data sets should be valid
+        if (this.showBadRequestError || this.showServerError) return false
         // All fields must have values.
         if (this.incompleteFields.errorItems.length > 0) {
           this.showIncompleteFieldsError = true
@@ -640,9 +642,11 @@ SPDX-License-Identifier: Apache-2.0
           this.content_type = response.content_type
         }
         catch (e) {
+          if(e.response.status === 400) this.showBadRequestError = true;
+          else this.showServerError = true;
+
           console.log("ERROR: " + e.response.data.message)
           this.busy_getting_datafile_columns = false;
-          this.showServerError = true;
           this.results = e.response.data.message
         }
         this.busy_getting_datafile_columns = false;
