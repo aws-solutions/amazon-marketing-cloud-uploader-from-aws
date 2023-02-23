@@ -116,7 +116,7 @@ def test_copy_source_else(
     mock_response, mock_env_variables, fake_event, fake_context, test_configs
 ):
     with mock_s3():
-        s3 = boto3.client("s3")
+        s3 = boto3.client("s3", region_name=os.environ["AwsRegion"])
         s3.create_bucket(Bucket=test_configs["s3_bucket"])
         s3 = boto3.resource("s3")
         s3_object = s3.Object(
@@ -139,7 +139,7 @@ def test_copy_source_else(
 @patch("urllib.request.build_opener")
 def test_purge_bucket(mock_response, fake_event, fake_context, test_configs):
     with mock_s3():
-        s3 = boto3.client("s3")
+        s3 = boto3.client("s3", region_name=os.environ["AwsRegion"])
         s3.create_bucket(Bucket=test_configs["s3_bucket"])
         s3 = boto3.resource("s3")
         s3_object = s3.Object(
@@ -155,7 +155,7 @@ def test_purge_bucket(mock_response, fake_event, fake_context, test_configs):
 @patch("urllib.request.build_opener")
 def test_lambda_handler(mock_response, fake_event, fake_context, test_configs):
     with mock_s3():
-        s3 = boto3.client("s3")
+        s3 = boto3.client("s3", region_name=os.environ["AwsRegion"])
         s3.create_bucket(Bucket=test_configs["s3_bucket"])
         s3 = boto3.resource("s3")
         s3_object = s3.Object(

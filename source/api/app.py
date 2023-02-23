@@ -71,10 +71,30 @@ def list_datasets():
         logger.error(ex)
         return {"Status": "Error", "Message": ex}
 
+@app.route('/describe_dataset', cors=True, methods=['POST'], authorizer=authorizer)
+def describe_dataset():
+    """
+    Describe the schema and properties of an existing AMC dataset.
 
-@app.route(
-    "/create_dataset", cors=True, methods=["POST"], authorizer=authorizer
-)
+    Returns:
+
+    .. code-block:: python
+
+        {"dataSets": [...]}
+    """
+    log_request_parameters()
+    try:
+        data_set_id = app.current_request.json_body['dataSetId']
+        path = '/dataSets/' + data_set_id
+        response = sigv4.get(path)
+        return Response(body=response.text,
+                        status_code=response.status_code,
+                        headers={'Content-Type': 'application/json'})
+    except Exception as e:
+        logger.error(e)
+        return {"Status": "Error", "Message": e}
+
+@app.route('/create_dataset', cors=True, methods=['POST'], authorizer=authorizer)
 def create_dataset():
     """
     Create a dataset in AMC.
@@ -411,31 +431,30 @@ def get_data_columns():
         keys = json.loads(app.current_request.raw_body.decode())["s3key"]
         keys_to_validate = [x.strip() for x in keys.split(",")]
 
-        # for concurrent glue jobs, can only run a max of 200 per account
-        if len(keys_to_validate) > 200:
-            return Response(
-                body={"message": "Number of files selected cannot exceed 200"},
-                status_code=400,
-                headers={"Content-Type": "text/plain"},
-            )
-
-        # get first columns to compare against to ensure all files have same schema
-        base_key = keys_to_validate[0]
-
         json_content_type = "application/json"
         csv_content_type = "text/csv"
+        plain_text_content_type = "text/plain"
         content_type = ""
+
+        # for concurrent glue jobs, can only run a max of 200 per account
+        if(len(keys_to_validate) > 200):
+            return Response(body={"message": "Number of files selected cannot exceed 200."},
+                            status_code=400,
+                            headers={'Content-Type': plain_text_content_type})
+        # get first columns to compare against to ensure all files have same schema        
+        base_key = keys_to_validate[0]
+
         for key in keys_to_validate:
             s3_obj = boto3.client("s3", config=config)
             response = s3_obj.head_object(Bucket=bucket, Key=key)
             # Return an error if user selected a combination
             # of CSV and JSON files.
             if content_type == "":
-                content_type = response["ContentType"]
-            elif content_type != response["ContentType"]:
-                raise TypeError(
-                    "Files must all have the same format (CSV or JSON)."
-                )
+                content_type = response['ContentType']
+            elif content_type != response['ContentType']:
+                return Response(body={"message": "Files must all have the same format (CSV or JSON)."},
+                                status_code=400,
+                                headers={'Content-Type': plain_text_content_type})
             # Read first row
             logger.info("Reading " + "s3://" + bucket + "/" + key)
             if content_type == json_content_type:
@@ -449,7 +468,9 @@ def get_data_columns():
                     path=["s3://" + bucket + "/" + key], chunksize=1
                 )
             else:
-                raise TypeError("File format must be CSV or JSON")
+                return Response(body={"message": "File format must be CSV or JSON."},
+                                status_code=400,
+                                headers={'Content-Type': plain_text_content_type})
             chunk = next(dfs)
             columns = list(chunk.columns.values)
 
@@ -460,19 +481,12 @@ def get_data_columns():
                 )
 
             if set(columns) != set(base_columns):
-                error_text = (
-                    "Schemas must match for each file. The schemas in "
-                    + key
-                    + " and "
-                    + base_key
-                    + " do not match."
-                )
+                error_text = "Schemas must match for each file. The schemas in " + \
+                                key + " and " + base_key + " do not match."
                 logger.error(error_text)
-                return Response(
-                    body={"message": error_text},
-                    status_code=400,
-                    headers={"Content-Type": "text/plain"},
-                )
+                return Response(body={"message": error_text},
+                                status_code=400,
+                                headers={'Content-Type': plain_text_content_type})
 
         return result
     except Exception as ex:
