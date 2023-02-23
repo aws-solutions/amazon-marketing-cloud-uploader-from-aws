@@ -111,7 +111,7 @@ jobs:
       - name: Run Coverage Report
         run: |
           cd deployment
-          ./check_test_coverage.sh
+          ./run-unit-tests.sh
 
 
   build:
@@ -161,6 +161,10 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ steps.init.outputs.REGION }}
 
+      - name: Set up Node 16
+        uses: actions/setup-node@v3
+        with:
+         node-version: 16.18
       - name: Set up Python 3.10
         uses: actions/setup-python@v4
         with:

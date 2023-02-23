@@ -25,8 +25,8 @@
 import logging
 import uuid
 
-import lib.cfnresponse as cfn
-import lib.metrics as Metrics
+import anonymous_lib.cfnresponse as cfn
+import anonymous_lib.metrics as Metrics
 
 # format log messages like this:
 formatter = logging.Formatter(
