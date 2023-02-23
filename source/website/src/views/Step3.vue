@@ -361,7 +361,7 @@ SPDX-License-Identifier: Apache-2.0
           }
         )
         // add liveramp identifier
-        this.items.filter(x => x.column_type === 'ramp_id')
+        this.items.filter(x => x.column_type === 'LiveRamp ID')
           .forEach(x => {
             const column_definition = {
               "name": x.name,
@@ -389,7 +389,7 @@ SPDX-License-Identifier: Apache-2.0
           })
 
         // add identifiers for non-PII columns
-        this.items.filter(x => (x.pii_type === "" && (x.column_type !== 'isMainEventTime' && x.column_type !== 'ramp_id')))
+        this.items.filter(x => (x.pii_type === "" && (x.column_type !== 'isMainEventTime' && x.column_type !== 'LiveRamp ID')))
           .forEach(x => {
             const column_definition = {
               "name": x.name,
