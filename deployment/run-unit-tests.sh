@@ -1,18 +1,94 @@
 #!/bin/bash
-set +x
-#
+###############################################################################
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
-# This assumes all of the OS-level configuration has been completed and git repo has already been cloned
+# PURPOSE:
+#   Verify that pytest scripts achieve a minimum threshold for code coverage.
 #
-# This script should be run from the repo's deployment directory
-# cd deployment
-# ./run-unit-tests.sh
+# USAGE:
+#  ./run-unit-tests.sh [-h] [-v] 
 #
+#    The following options are available:
+#
+#     -h | --help       Print usage
+#     -v | --verbose    Print script debug info
+#
+###############################################################################
 
-[ "$DEBUG" == 'true' ] && set -x
-# set -e
+trap cleanup_and_die SIGINT SIGTERM ERR
+
+usage() {
+  msg "$msg"
+  cat <<EOF
+Usage: $(basename "${BASH_SOURCE[0]}") [-h] [-v] 
+
+Available options:
+
+-h, --help        Print this help and exit (optional)
+-v, --verbose     Print script debug info (optional)
+EOF
+  exit 1
+}
+
+cleanup_and_die() {
+  trap - SIGINT SIGTERM ERR
+  echo "Trapped signal."
+  cleanup
+  die 1
+}
+
+cleanup() {
+  # Deactivate and remove the temporary python virtualenv used to run this script
+  if [[ "$VIRTUAL_ENV" != "" ]];
+  then
+    echo ''
+    deactivate
+    rm -rf $VENV
+    rm -rf ./amc_uploader/amc_uploader.egg-info
+    rm -rf $VENV
+    rm -rf  __pycache__
+    rm -rf .pytest_cache
+    cd $template_dir    
+    echo "------------------------------------------------------------------------------"
+    echo "Cleaning up complete"
+    echo "------------------------------------------------------------------------------"
+  fi
+}
+
+msg() {
+  echo >&2 -e "${1-}"
+}
+
+die() {
+  local msg=$1
+  local code=${2-1} # default exit status 1
+  msg "$msg"
+  exit "$code"
+}
+
+parse_params() {
+  # default values of variables set from params
+  flag=0
+  param=''
+  use_solution_builder_pipeline=false
+
+  while :; do
+    case "${1-}" in
+    -h | --help) usage ;;
+    -v | --verbose) set -x ;;
+    -?*) die "Unknown option: $1" ;;
+    *) break ;;
+    esac
+    shift
+  done
+
+  args=("$@")
+
+  return 0
+}
+
+parse_params "$@"
 
 # Get reference for all important folders
 template_dir="$PWD"
@@ -23,8 +99,7 @@ root_dir="$template_dir/.."
 echo "------------------------------------------------------------------------------"
 echo "Creating a temporary Python virtualenv for this script"
 echo "------------------------------------------------------------------------------"
-python3 -c "import os; print (os.getenv('VIRTUAL_ENV'))" | grep -q None
-if [ $? -ne 0 ]; then
+if [[ "$VIRTUAL_ENV" != "" ]]; then
     echo "ERROR: Do not run this script inside Virtualenv. Type \`deactivate\` and run again.";
     exit 1;
 fi
@@ -34,14 +109,14 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 echo "Using virtual python environment:"
-venv_folder=$(mktemp -d) && echo "$venv_folder"
+VENV=$(mktemp -d) && echo "$VENV"
 command -v python3 > /dev/null
 if [ $? -ne 0 ]; then
     echo "ERROR: install Python3 before running this script"
     exit 1
 fi
-python3 -m venv $venv_folder
-source $venv_folder/bin/activate
+python3 -m venv "$VENV"
+source "$VENV"/bin/activate
 
 # configure the environment
 cd $source_dir
@@ -78,15 +153,6 @@ pytest $source_dir/api/tests --cov=$source_dir/api/ --cov-append --cov-report te
 # path to the corresponding project relative path. The $source_dir holds the absolute path for source directory.
 sed -i -e "s,<source>$source_dir,<source>source,g" $coverage_report_path
 
-echo "------------------------------------------------------------------------------"
-echo "[Env] Deactivating test virtual environment"
-echo "------------------------------------------------------------------------------"
-echo ''
-# deactivate the virtual environment
-deactivate
-rm -rf ./amc_uploader/amc_uploader.egg-info
-rm -rf $VENV
-rm -rf  __pycache__
-rm -rf .pytest_cache
-
-cd $template_dir
+cleanup
+echo "Done"
+exit 0
