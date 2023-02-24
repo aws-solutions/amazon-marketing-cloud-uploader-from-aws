@@ -59,7 +59,7 @@ class DataFile:
         self.pii_fields = list(json.loads(args["pii_fields"]))
         self.deleted_fields = list(json.loads(args["deleted_fields"]))
         self.dataset_id = args["dataset_id"]
-        self.period = args["period"]
+        self.user_defined_partition_size = args["period"]
         self.country_code = args["country_code"]
 
         # other attributes
@@ -193,7 +193,6 @@ class FactDataset(DataFile):
         self.data = df
 
     def time_series_partitioning(self) -> tuple:
-        user_defined_partition_size = self.period
         df = self.data
         # AMC supports "Units of upload" of PT1M (minute-by-minute) granularity or longer
         # so we round timestamps to the nearest minute, below.
@@ -207,9 +206,9 @@ class FactDataset(DataFile):
         unique_timestamps = unique_timestamps.rename(columns={0: "timestamp"})
         unique_timestamps = unique_timestamps.sort_values(by="timestamp")
 
-        if user_defined_partition_size in ("PT1M", "PT1H", "P1D", "P7D"):
-            timeseries_partition_size = user_defined_partition_size
-        if user_defined_partition_size == "autodetect":
+        if self.user_defined_partition_size in ("PT1M", "PT1H", "P1D", "P7D"):
+            timeseries_partition_size = self.user_defined_partition_size
+        if self.user_defined_partition_size == "autodetect":
             # Store the time delta between each sequential event
             unique_timestamps["timedelta"] = (
                 unique_timestamps["timestamp"]
