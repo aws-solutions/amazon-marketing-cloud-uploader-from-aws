@@ -16,7 +16,7 @@
 #   --deleted_fields: array of strings indicating the names of columns which the user requested to be dropped from the dataset prior to uploading to AMC.
 #   --dataset_id: name of dataset, used as the prefix folder for the output s3key.
 #   --period: time period of dataset, one of ["autodetect","PT1M","PT1H","P1D","P7D"]. Autodetect enabled by default. (optional)
-#   --country: country-specific normalization to apply to all rows in the dataset (2-digit ISO country code).
+#   --country_code: country-specific normalization to apply to all rows in the dataset (2-digit ISO country code).
 #
 # OUTPUT:
 #   - Transformed data files in user-specified output bucket,
@@ -34,7 +34,7 @@
 #    export DATASET_ID='mytest123'
 #    export REGION=us-east-1
 #    aws glue start-job-run --job-name $JOB_NAME --arguments '{"--source_bucket": "'$SOURCE_BUCKET'", "--output_bucket": "'$OUTPUT_BUCKET'", "--source_key": "'$SOURCE_KEY'", "--pii_fields": "'$PII_FIELDS'",
-#    "--deleted_fields": "'$DELETED_FIELDS'", "--timestamp_column": "'$TIMESTAMP_COLUMN'", "--dataset_id": "'$DATASET_ID'", "--period": "autodetect", "--country": "US"}' --region $REGION
+#    "--deleted_fields": "'$DELETED_FIELDS'", "--timestamp_column": "'$TIMESTAMP_COLUMN'", "--dataset_id": "'$DATASET_ID'", "--period": "autodetect", "--country_code": "US"}' --region $REGION
 #
 ###############################################################################
 
