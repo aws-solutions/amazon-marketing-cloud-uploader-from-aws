@@ -18,3 +18,5 @@ deployment/open-source
 __pycache__
 .scannerwork/*
 source/tests/.DS_Store
+source/tests/amc_transformation/test_results
+source/tests/amc_transformation/test_results/*
