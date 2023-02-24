@@ -121,8 +121,8 @@ source "$VENV"/bin/activate
 # configure the environment
 cd $source_dir
 pip install --upgrade pip
-pip install -r requirements-dev.txt
-pip install -r api/tests/requirements-test.txt
+pip install -q -r requirements-dev.txt
+pip install -q -r api/tests/requirements-test.txt
 
 # env variables
 export PYTHONDONTWRITEBYTECODE=1

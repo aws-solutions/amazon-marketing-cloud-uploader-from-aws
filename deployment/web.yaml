@@ -12,8 +12,6 @@ Parameters:
     Type: String
   PoolClientId:
     Type: String
-  ApiEndpoint:
-    Type: String
   RestAPIId:
     Type: String
   CustomerManagedKey:
@@ -343,7 +341,6 @@ Resources:
           IdentityPoolId: !Ref IdentityPoolId
           AwsRegion: !Ref AWS::Region
           PoolClientId: !Ref PoolClientId
-          ApiEndpoint: !Ref ApiEndpoint
           DataBucketName: !Ref DataBucketName
           ArtifactBucketName: !Ref ArtifactBucketName
           EncryptionMode: !If [EnableCmkEncryptionCondition, "aws-kms", "default"]

@@ -29,10 +29,6 @@
       "Type": "String",
       "Description": "S3 bucket containing first-party data object for ingest"
     },
-    "AmcEndpointUrl": {
-      "Type": "String",
-      "Description": "AMC endpoint URL"
-    },
     "AmcApiRoleArn": {
       "Type": "String",
       "Description": "AMC API Role"

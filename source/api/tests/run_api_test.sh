@@ -30,7 +30,6 @@ then
     python3.10 -m venv "$VENV"
     source "$VENV"/bin/activate
 
-    export AMC_ENDPOINT_URL="https://example.com/alpha"
     export AMC_API_ROLE_ARN="arn:aws:iam::999999999999:role/SomeTestRole"
     export SOLUTION_NAME="amcufa test"
     export VERSION="0.0.0"
