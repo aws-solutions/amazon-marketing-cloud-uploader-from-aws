@@ -433,6 +433,7 @@ Resources:
         "--pii_fields": ""
         "--deleted_fields": ""
         "--dataset_id": ""
+        "--destination_endpoints": ""
       ExecutionProperty:
         MaxConcurrentRuns: 200
       MaxRetries: 0
