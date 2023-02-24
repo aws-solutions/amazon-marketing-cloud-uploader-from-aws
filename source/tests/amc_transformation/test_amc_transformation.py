@@ -181,7 +181,7 @@ def test_amc_transformations(countries=None):
         test._normalization_matching()
         test._export_results()
 
-        #assert len(test.results) < 10, item
+        assert len(test.results) < 10, item
 
 
 ###############################
