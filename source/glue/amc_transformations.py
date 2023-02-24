@@ -56,10 +56,10 @@ REQUIRED_PARAMS = [
     "pii_fields",
     "deleted_fields",
     "dataset_id",
-    "period",
     "country_code"
 ]
 OPTIONAL_PARAMS = [
+    'period',
     'timestamp_column'
 ]
 
@@ -93,7 +93,7 @@ def check_params(required: list, optional: list) -> dict:
         pass
 
     # check specific params passed in
-    if args["period"] not in (
+    if args["period"] and args["period"] not in (
             "autodetect",
             "PT1M",
             "PT1H",
