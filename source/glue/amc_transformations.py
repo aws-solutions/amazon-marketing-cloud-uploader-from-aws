@@ -86,11 +86,9 @@ def check_params(required: list, optional: list) -> dict:
         pass
     
     # strip whitespace on applicable fields
-    try:
-        for i in args:
+    for i in ("dataset_id", "timestamp_column", "period"):
+        if args[i]:
             args[i] = args[i].strip()
-    except AttributeError:
-        pass
 
     # check specific params passed in
     if args["period"] and args["period"] not in (
