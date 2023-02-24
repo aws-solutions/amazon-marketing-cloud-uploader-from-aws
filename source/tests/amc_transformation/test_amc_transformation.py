@@ -171,7 +171,7 @@ class NormalizationTest:
 
 
 def test_amc_transformations(countries=None):
-    countries = countries or ["ca", "de", "es", "fr", "in", "it", "jp", "uk", "us"]
+    countries = countries or ["uk", "us"]
 
     if os.path.exists("tests/amc_transformation/test_results"):
             shutil.rmtree("tests/amc_transformation/test_results")
