@@ -311,13 +311,6 @@ def test_save_dimension_output(mock_write_to_s3):
     test_file.save_dimension_output()
     mock_write_to_s3.assert_called_once_with(df=df, filepath=filepath, content_type=content_type)
 
-class SAME_DF:
-    def __init__(self, df: pd.DataFrame):
-        self.df = df
-
-    def __eq__(self, other):
-        return isinstance(other, pd.DataFrame) and other.equals(self.df)
-
 @patch('glue.library.read_write.write_to_s3')
 def test_save_fact_output(mock_write_to_s3):
     test_file = rw.FactDataset(test_args)
@@ -367,7 +360,7 @@ def test_save_fact_output(mock_write_to_s3):
     test_file.save_fact_output()
 
     assert mock_write_to_s3.call_count == 3
-    
+
     check = expected_arguments[0]
     mock_write_to_s3.assert_any_call(**check)
     check = expected_arguments[1]
