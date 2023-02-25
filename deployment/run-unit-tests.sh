@@ -130,6 +130,7 @@ export AMC_ENDPOINT_URL="https://example.com/alpha"
 export AMC_API_ROLE_ARN="arn:aws:iam::999999999999:role/SomeTestRole"
 export SOLUTION_NAME="amcufa test"
 export ARTIFACT_BUCKET="test_bucket"
+export SYSTEM_TABLE_NAME="test_table"
 export VERSION="0.0.0"
 export botoConfig='{"region_name": "us-east-1"}'
 export AWS_XRAY_SDK_ENABLED=false
