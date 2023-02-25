@@ -59,17 +59,11 @@ class DataFile:
         self.pii_fields = list(json.loads(args["pii_fields"]))
         self.deleted_fields = list(json.loads(args["deleted_fields"]))
         self.dataset_id = args["dataset_id"]
-        self.user_defined_partition_size = args["period"]
         self.country_code = args["country_code"]
 
         # other attributes
         self.data = pd.DataFrame()
         self.filename = self.key.split("/")[-1]
-        self.content_type = ''
-        self.num_bytes = ''
-        self.timeseries_partition_size = ''
-        self.unique_timestamps = ''
-        self.timestamp_str_old = ''
         self.num_rows = 0
 
     def read_bucket(self) -> None:
@@ -156,8 +150,12 @@ class FactDataset(DataFile):
         super().__init__(args)
 
         self.timestamp_column = args["timestamp_column"]
+        self.timeseries_partition_size = args["period"]
+        self.timestamp_str_old = ""
         self.dataset_type = "FACT"
-        self.output_format = (
+
+    def _format_output(self):
+        return (
             "s3://"
             + self.output_bucket
             + "/"
@@ -202,24 +200,22 @@ class FactDataset(DataFile):
         df[self.timestamp_column] = df[self.timestamp_column].dt.round("Min")
 
         # Prepare to calculate time deltas by sorting on the timeseries column
-        unique_timestamps = pd.DataFrame(df[self.timestamp_column].unique())
-        unique_timestamps = unique_timestamps.rename(columns={0: "timestamp"})
-        unique_timestamps = unique_timestamps.sort_values(by="timestamp")
+        self.unique_timestamps = pd.DataFrame(df[self.timestamp_column].unique())
+        self.unique_timestamps = self.unique_timestamps.rename(columns={0: "timestamp"})
+        self.unique_timestamps = self.unique_timestamps.sort_values(by="timestamp")
 
-        if self.user_defined_partition_size in ("PT1M", "PT1H", "P1D", "P7D"):
-            timeseries_partition_size = self.user_defined_partition_size
-        if self.user_defined_partition_size == "autodetect":
+        if self.timeseries_partition_size == "autodetect":
             # Store the time delta between each sequential event
-            unique_timestamps["timedelta"] = (
-                unique_timestamps["timestamp"]
-                - unique_timestamps["timestamp"].shift()
+            self.unique_timestamps["timedelta"] = (
+                self.unique_timestamps["timestamp"]
+                - self.unique_timestamps["timestamp"].shift()
             )
 
             # Here we calculate the partition size based on the minimum delta between timestamps in the dataset.
             zero_timedelta = "0 days 00:00:00"
             min_timedelta = (
-                unique_timestamps["timedelta"][
-                    unique_timestamps["timedelta"] != zero_timedelta
+                self.unique_timestamps["timedelta"][
+                    self.unique_timestamps["timedelta"] != zero_timedelta
                 ]
                 .dropna()
                 .min()
@@ -230,24 +226,22 @@ class FactDataset(DataFile):
             #   PT1H (hour)
             #   P1D (day)
             #   P7D (7 days)
-            timeseries_partition_size = "PT1M"
+            self.timeseries_partition_size = "PT1M"
 
             # If the smallest delta between timestamps is at least 60 minutes (3600 seconds), then we'll partition timeseries data into one file for each hour.
             # Note, timedelta.seconds rolls over to 0 when the timedelta reaches 1 day, so we need to check timedelta.days too:
             if min_timedelta.seconds >= 3600 and min_timedelta.days == 0:
-                timeseries_partition_size = "PT1H"
+                self.timeseries_partition_size = "PT1H"
 
             # If the smallest delta between timestamps is at least 24 hours, then we'll partition timeseries data into one file for each day.
             elif 0 < min_timedelta.days < 7:
-                timeseries_partition_size = "P1D"
+                self.timeseries_partition_size = "P1D"
 
             # If the smallest delta between timestamps is at least 7 days, then we'll partition timeseries data into one file for each week.
             elif min_timedelta.days >= 7:
-                timeseries_partition_size = "P7D"
+                self.timeseries_partition_size = "P7D"
 
         self.data = df
-        self.timeseries_partition_size = timeseries_partition_size
-        self.unique_timestamps = unique_timestamps
 
     def save_fact_output(self):
         df = self.data
@@ -255,10 +249,6 @@ class FactDataset(DataFile):
         # Partition the timeseries dataset into separate files for each
         # unique timestamp.
         output_files = []
-
-        # Initialize a temporary variable to help us know when timestamps
-        # map to a new string:
-        self.timestamp_str_old = ""
 
         # Initialize a dataframe to hold the dataset for this timestamp:
         df_partition = pd.DataFrame()
@@ -299,7 +289,7 @@ class FactDataset(DataFile):
                     # Now proceed to the next unique timestamp.
                     continue
                 # write the old df_partition to s3
-                output_file = self.output_format
+                output_file = self._format_output()
                 if len(df_partition) > 0:
                     output_files.append(output_file)
                     # Earlier, we rounded the timestamp_column to minute (60s) granularity.
@@ -334,7 +324,7 @@ class FactDataset(DataFile):
                     df_partition2, ignore_index=True
                 )
         # write the last timestamp to s3
-        output_file = self.output_format
+        output_file = self._format_output()
         if len(df_partition) > 0:
             output_files.append(output_file)
             # Earlier, we rounded the timestamp_column to minute (60s) granularity.
@@ -362,7 +352,10 @@ class DimensionDataset(DataFile):
         super().__init__(args)
 
         self.dataset_type = "DIMENSION"
-        self.output_format = (
+
+    def save_dimension_output(self):
+        df = self.data
+        output_file = (
                 "s3://"
                 + self.output_bucket
                 + "/"
@@ -373,10 +366,6 @@ class DimensionDataset(DataFile):
                 + self.filename
                 + ".gz"
             )
-
-    def save_dimension_output(self):
-        df = self.data
-        output_file = self.output_format
 
         print(WRITING + str(len(df)) + ROWS_TO + output_file)
         self.num_rows += len(df)

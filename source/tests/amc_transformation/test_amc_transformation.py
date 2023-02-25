@@ -11,7 +11,7 @@ import os
 import shutil
 import pandas as pd
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, ANY
 
 
 ###############################
@@ -311,11 +311,17 @@ def test_save_dimension_output(mock_write_to_s3):
     test_file.save_dimension_output()
     mock_write_to_s3.assert_called_once_with(df=df, filepath=filepath, content_type=content_type)
 
+class SAME_DF:
+    def __init__(self, df: pd.DataFrame):
+        self.df = df
+
+    def __eq__(self, other):
+        return isinstance(other, pd.DataFrame) and other.equals(self.df)
+
 @patch('glue.library.read_write.write_to_s3')
 def test_save_fact_output(mock_write_to_s3):
     test_file = rw.FactDataset(test_args)
     test_file.content_type = "test"
-    test_file.timestamp_column = "timestamp"
     test_file.timeseries_partition_size = "P1D"
 
     unique_timestamps = pd.DataFrame(
@@ -340,5 +346,31 @@ def test_save_fact_output(mock_write_to_s3):
         columns=["timestamp", "address", "timestamp_full_precision"]
     )
 
+    expected_arguments = [
+        {
+            'df': ANY,
+            'filepath': 's3://test/amc/test/P1D/test-2020_04_12-00:00:00.gz',
+            'content_type': 'test'
+        },
+        {
+            'df': ANY,
+            'filepath': 's3://test/amc/test/P1D/test-2020_04_11-00:00:00.gz',
+            'content_type': 'test'
+        },
+        {
+            'df': ANY,
+            'filepath': 's3://test/amc/test/P1D/test-2020_04_10-00:00:00.gz',
+            'content_type': 'test'
+        }
+    ]
+
     test_file.save_fact_output()
+
     assert mock_write_to_s3.call_count == 3
+    
+    check = expected_arguments[0]
+    mock_write_to_s3.assert_any_call(**check)
+    check = expected_arguments[1]
+    mock_write_to_s3.assert_any_call(**check)
+    check = expected_arguments[2]
+    mock_write_to_s3.assert_any_call(**check)
