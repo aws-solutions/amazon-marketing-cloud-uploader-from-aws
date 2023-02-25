@@ -29,6 +29,7 @@ def test_configs():
         "data_set_id": "test_data_set_id",
         "period": "autodetect",
         "content_type": "application/json",
+        "destination_endpoint": "example123.execute-api.us-east-1.amazonaws.com/prod/",
     }
 
 
@@ -137,7 +138,7 @@ def test_delete_dataset(mock_response, test_configs):
         response = client.http.post(
             "/delete_dataset",
             headers={"Content-Type": content_type},
-            body=json.dumps({"dataSetId": test_configs["data_set_id"]}),
+            body=json.dumps({"destination_endpoint": test_configs["destination_endpoint"],"dataSetId": test_configs["data_set_id"]}),
         )
         assert response.status_code == 200
         assert response.json_body == {}
@@ -162,6 +163,7 @@ def test_upload_status(mock_response, test_configs):
             headers={"Content-Type": content_type},
             body=json.dumps(
                 {
+                    "destination_endpoint": test_configs["destination_endpoint"],
                     "dataSetId": test_configs["data_set_id"],
                     "uploadId": "123456",
                 }
@@ -223,6 +225,7 @@ def test_get_etl_jobs(test_configs):
 @patch("chalicelib.sigv4.requests.post")
 def test_create_dataset(mock_response, test_configs):
     payload = {
+        "destination_endpoint": test_configs["destination_endpoint"],
         "body": {
             "period": "autodetect",
             "dataSetId": test_configs["data_set_id"],
@@ -280,6 +283,7 @@ def test_start_amc_transformation(test_configs):
                         "datasetId": test_configs["data_set_id"],
                         "period": test_configs["period"],
                         "countryCode": "USA",
+                        "destination_endpoints": test_configs["destination_endpoint"],
                     }
                 ),
             )
