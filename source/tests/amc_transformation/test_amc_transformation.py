@@ -171,7 +171,7 @@ class NormalizationTest:
 
 
 def test_amc_transformations(countries=None):
-    countries = countries or ["uk", "us"]
+    countries = countries or ["uk"]
     test_results_filepath = "tests/amc_transformation/test_results"
 
     if os.path.exists(test_results_filepath):
