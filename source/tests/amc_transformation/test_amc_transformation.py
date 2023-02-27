@@ -81,15 +81,17 @@ def _return_results(invalid: pd.DataFrame, raw: pd.DataFrame):
     lst = []
     for _, row in df_concat.iterrows():
         invalid_field = row.loc["field"]
-        lst.append(
-            [
-                row.loc["id"],
-                invalid_field,
-                row.loc[invalid_field],
-                row.loc["test"],
-                row.loc["check"],
-            ]
-        )
+        # if phone number is invalid based on AMC criteria, we do not count this as a normalization mismatch
+        if not (invalid_field == "phone" and row.loc["check"] == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"):
+            lst.append(
+                [
+                    row.loc["id"],
+                    invalid_field,
+                    row.loc[invalid_field],
+                    row.loc["test"],
+                    row.loc["check"],
+                ]
+            )
 
     results = pd.DataFrame(data=lst, columns=cols)
     return results
