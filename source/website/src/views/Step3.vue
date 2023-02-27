@@ -22,7 +22,7 @@ SPDX-License-Identifier: Apache-2.0
         >
           Missing s3key. Go back and select a file.
         </b-alert>
-        <b-alert 
+        <b-alert
           v-model="showBadRequestError"
           variant="danger"
           dismissible
@@ -89,7 +89,7 @@ SPDX-License-Identifier: Apache-2.0
               </b-row>
               <b-table
                 :items="items"
-                :fields="fields" 
+                :fields="fields"
                 :busy="busy_getting_datafile_columns"
                 head-variant="light"
                 small
@@ -104,17 +104,17 @@ SPDX-License-Identifier: Apache-2.0
                   </b-link>
                 </template>
                 <template #cell(description)="data">
-                  <b-form-input 
+                  <b-form-input
                     :value="data.item.description"
                     @change="x => changeDescription(x, data.index)"
                   >
                   </b-form-input>
                 </template>
                 <template #cell(data_type)="data">
-                  <b-form-select 
-                    id="dropdown-1" 
+                  <b-form-select
+                    id="dropdown-1"
                     :options="data_type_options"
-                    :value="data.item.data_type" 
+                    :value="data.item.data_type"
                     @change="x => changeDataType(x, data.index)"
                   >
                   </b-form-select>
@@ -128,10 +128,10 @@ SPDX-License-Identifier: Apache-2.0
                   </b-form-checkbox>
                 </template>
                 <template #cell(column_type)="data">
-                  <b-form-select 
-                    id="dropdown-column-type" 
+                  <b-form-select
+                    id="dropdown-column-type"
                     :options="column_type_options"
-                    :value="data.item.column_type" 
+                    :value="data.item.column_type"
                     @change="x => changeColumnType(x, data.index)"
                   >
                   </b-form-select>
@@ -188,8 +188,8 @@ SPDX-License-Identifier: Apache-2.0
                   </button> &nbsp;
                   <button
                     :disabled="missing_columns.length > 0"
-                    type="submit" 
-                    class="btn btn-primary mb-2" 
+                    type="submit"
+                    class="btn btn-primary mb-2"
                     @click="onSubmit"
                   >
                     Next
@@ -411,7 +411,7 @@ SPDX-License-Identifier: Apache-2.0
         // schema into the web form and disable any changes:
         this.describe_dataset()
       }
-      // Otherwise prompt the user to specify the schema for the new dataset 
+      // Otherwise prompt the user to specify the schema for the new dataset
       // that they want to create:
       this.new_dataset_definition = this.dataset_definition
       if (!this.s3key) {
@@ -474,7 +474,7 @@ SPDX-License-Identifier: Apache-2.0
           this.dataset_definition.dataSetType = this.selected_dataset_type
           this.dataset_definition.period = this.selected_dataset_period
         }
-        if (!this.validateForm()) {console.log(this.validateForm()) 
+        if (!this.validateForm()) {console.log(this.validateForm())
           return }
 
         // remove the nullable attribute if it is false
@@ -696,8 +696,14 @@ SPDX-License-Identifier: Apache-2.0
           this.selected_dataset_type = response.dataSetType
           this.selected_dataset_description = response.description
           this.selected_dataset_period = response.period
-          // read schema for PII fields
-          this.selected_dataset_items = this.selected_dataset_items.concat(response.columns.filter(x => "externalUserIdType" in x).map(x => ({"name": x.name, "description": x.description, "data_type": x.dataType, "column_type": "PII", "nullable": x.isNullable, "pii_type": x.externalUserIdType.identifierType})))
+
+          const resolveType = {
+            "LiveRamp": "LiveRamp ID",
+            "HashedIdentifier": "PII"
+          }
+
+          // read schema for externalUserIdType fields
+          this.selected_dataset_items = this.selected_dataset_items.concat(response.columns.filter(x => "externalUserIdType" in x).map(x => ({"name": x.name, "description": x.description, "data_type": x.dataType, "column_type": resolveType[x.externalUserIdType.type], "nullable": x.isNullable, "pii_type": x.externalUserIdType.identifierType})))
           // read schema for Timestamp field
           this.selected_dataset_items = this.selected_dataset_items.concat(response.columns.filter(x => x.isMainEventTime === true).map(x => ({"name": x.name, "description": x.description, "data_type": x.dataType, "column_type": "isMainEventTime", "pii_type":""})))
           // read schema for Dimension fields
