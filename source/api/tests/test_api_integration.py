@@ -21,8 +21,8 @@
 #   export CUSTOMER_MANAGED_KEY=""
 #   export AWS_DEFAULT_PROFILE=""
 #   export AWS_REGION=""
-#   export TEST_S3_BUCKET_NAME=""
-#   export TEST_OUTPUT_BUCKET=""
+#   export DATA_BUCKET_NAME=""
+#   export ARTIFACT_BUCKET=""
 #   pytest test_api_integration.py -vv
 ###############################################################################
 
@@ -44,8 +44,8 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 _test_configs = {
-    "s3bucket": os.environ["TEST_S3_BUCKET_NAME"],
-    "outputBucket": os.environ["TEST_OUTPUT_BUCKET"],
+    "s3bucket": os.environ["DATA_BUCKET_NAME"],
+    "outputBucket": os.environ["ARTIFACT_BUCKET"],
 }
 
 _test_data = [
