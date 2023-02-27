@@ -268,9 +268,9 @@ jobs:
           echo "AMC_GLUE_JOB_ROLE_NAME=$AMC_GLUE_JOB_ROLE_NAME" >> $GITHUB_OUTPUT
           export AMC_GLUE_JOB_NAME=$AMC_GLUE_JOB_NAME
           export AMC_API_ROLE_ARN="arn:aws:iam::$TEST_ACCOUNT_ID:role/$ROLE_NAME"
-          export TEST_S3_BUCKET_NAME=${{ secrets.DATA_BUCKET_NAME }}
+          export DATA_BUCKET_NAME=${{ secrets.DATA_BUCKET_NAME }}
+          export ARTIFACT_BUCKET=$ARTIFACT_BUCKET
           export AMC_ENDPOINT_URL=${{ secrets.AMC_API_ENDPOINT }}
-          export TEST_OUTPUT_BUCKET=$ARTIFACT_BUCKET
           export SOLUTION_NAME=$SOLUTION_NAME
           export CUSTOMER_MANAGED_KEY=''
           export AWS_XRAY_CONTEXT_MISSING='LOG_ERROR'
