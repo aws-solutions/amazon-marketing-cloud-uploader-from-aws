@@ -8,6 +8,7 @@ from library.email_normalizer import EmailNormalizer
 from library.phone_normalizer import PhoneNormalizer
 from library.state_normalizer import StateNormalizer
 from library.zip_normalizer import ZipNormalizer
+from library.city_normalizer import CityNormalizer
 
 ###############################
 # HELPER FUNCTIONS
@@ -32,6 +33,7 @@ class NormalizationPatterns:
             "ZIP": ZipNormalizer(country_code),
             "PHONE": PhoneNormalizer(country_code),
             "EMAIL": EmailNormalizer(),
+            "CITY": CityNormalizer(),
         }
         self.normalizer = field_map.get(field, DefaultNormalizer())
 
