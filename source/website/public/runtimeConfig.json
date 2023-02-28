@@ -1,4 +1,5 @@
 {
+  "API_ENDPOINT": "",
   "AWS_REGION": "",
   "USER_POOL_ID": "",
   "USER_POOL_CLIENT_ID": "",

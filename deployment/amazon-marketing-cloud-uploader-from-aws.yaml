@@ -660,6 +660,7 @@ Resources:
         UserPoolId: !GetAtt AuthStack.Outputs.UserPoolId
         IdentityPoolId: !GetAtt AuthStack.Outputs.IdentityPoolId
         PoolClientId: !GetAtt AuthStack.Outputs.UserPoolClientId
+        ApiEndpoint: !GetAtt ApiStack.Outputs.EndpointURL
         RestAPIId: !GetAtt ApiStack.Outputs.RestAPIId
         CustomerManagedKey: !Ref CustomerManagedKey
 
