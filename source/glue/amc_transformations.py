@@ -76,6 +76,7 @@ try:
             "dataset_id",
             "period",
             "country_code",
+            "destination_endpoints"
         ],
     )
 except GlueArgumentError as e:
