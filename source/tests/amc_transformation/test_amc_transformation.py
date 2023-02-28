@@ -173,7 +173,7 @@ class NormalizationTest:
 
 
 def test_amc_transformations(countries=None):
-    countries = countries or ["uk"]
+    countries = countries or ["us", "uk", "jp", "in", "it", "es", "ca", "de", "fr"]
     test_results_filepath = "tests/amc_transformation/test_results"
 
     if os.path.exists(test_results_filepath):
@@ -184,7 +184,7 @@ def test_amc_transformations(countries=None):
         test._normalization_matching()
         test._export_results(fp=test_results_filepath)
 
-        assert len(test.results) < 10, item
+        assert len(test.results) == 0, item
 
 
 ###############################
