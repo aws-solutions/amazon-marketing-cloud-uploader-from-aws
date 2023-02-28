@@ -126,7 +126,6 @@ def copy_source(event, context):
                 region = os.environ["AwsRegion"]
                 client_id = os.environ["PoolClientId"]
                 identity_id = os.environ["IdentityPoolId"]
-                api_endpoint = os.environ["ApiEndpoint"]
                 data_bucket_name = os.environ["DataBucketName"]
                 artifact_bucket_name = os.environ["ArtifactBucketName"]
                 encryption_mode = os.environ["EncryptionMode"]
@@ -134,7 +133,6 @@ def copy_source(event, context):
                 replace_env_variables = False
             else:
                 new_variables = {
-                    "API_ENDPOINT": api_endpoint,
                     "AWS_REGION": region,
                     "USER_POOL_ID": user_pool_id,
                     "USER_POOL_CLIENT_ID": client_id,
