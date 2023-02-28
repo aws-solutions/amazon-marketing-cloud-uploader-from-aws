@@ -62,7 +62,7 @@ SPDX-License-Identifier: Apache-2.0
         </b-alert>
         <b-row style="text-align: left">
           <b-col cols="2">
-            <Sidebar :is-step3-active="true" />
+            <Sidebar :is-step4-active="true" />
           </b-col>
           <b-col cols="10">
             <div v-if="selected_dataset === null">
@@ -79,7 +79,7 @@ SPDX-License-Identifier: Apache-2.0
                   Fill in the table to define properties for each field in the input data.
                 </b-col>
                 <b-col sm="3" align="right" class="row align-items-end">
-                  <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push('Step2')">
+                  <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push({path: '/step3'})">
                     Previous
                   </button> &nbsp;
                   <button type="submit" class="btn btn-primary mb-2" @click="onSubmit">
@@ -183,7 +183,7 @@ SPDX-License-Identifier: Apache-2.0
                   </div>
                 </b-col>
                 <b-col sm="3" align="right" class="row align-items-end">
-                  <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push('Step2')">
+                  <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push({path: '/step3'})">
                     Previous
                   </button> &nbsp;
                   <button
@@ -286,7 +286,7 @@ SPDX-License-Identifier: Apache-2.0
   import {mapState} from "vuex";
 
   export default {
-    name: "Step3",
+    name: "Step4",
     components: {
       Header, Sidebar
     },
@@ -352,11 +352,12 @@ SPDX-License-Identifier: Apache-2.0
           { value: 'ZIP', text: 'ZIP', disabled: false},
           { value: 'STATE', text: 'STATE', disabled: false}
         ],
-        isStep3Active: true
+        results: {},
+        isStep4Active: true
       }
     },
     computed: {
-      ...mapState(['deleted_columns','dataset_definition', 's3key', 'step3_form_input', 'selected_dataset']),
+      ...mapState(['deleted_columns','dataset_definition', 's3key', 'step3_form_input', 'selected_dataset', 'destination_endpoints']),
       extra_columns() {
         const dataset_columns = this.selected_dataset_items.map(x => x.name)
         const file_columns = this.items.map(x => x.name)
@@ -551,7 +552,7 @@ SPDX-License-Identifier: Apache-2.0
           this.showServerError = true;
 
         this.$store.commit('updateDatasetDefinition', this.new_dataset_definition)
-        this.$router.push('Step4')
+        this.$router.push({path: '/step5'})
       },
       changeDescription(value, index) {
         this.items[index].description = value;
@@ -606,6 +607,7 @@ SPDX-License-Identifier: Apache-2.0
         this.$store.commit('saveStep3FormInput', this.items)
       },
       async get_datafile_columns(method, resource, data) {
+        data['destination_endpoint'] = this.destination_endpoints[0]
         console.log("sending " + method + " " + resource + " " + JSON.stringify(data))
         this.items = []
         this.$store.commit('updateDeletedColumns', [])
@@ -657,7 +659,7 @@ SPDX-License-Identifier: Apache-2.0
         let response = ""
         const method = 'POST'
         const resource = 'describe_dataset'
-        const data = {'dataSetId': this.selected_dataset}
+        const data = {'dataSetId': this.selected_dataset, 'destination_endpoint': this.destination_endpoints[0]}
         this.busy_getting_dataset_definition = true;
         try {
           console.log("sending " + method + " " + resource + " " + JSON.stringify(data))

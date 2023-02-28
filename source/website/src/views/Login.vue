@@ -21,7 +21,7 @@ export default {
   mounted() {
     AmplifyEventBus.$on("authState", eventInfo => {
       if (eventInfo === "signedIn") {
-        this.$router.push({ name: "Step5" });
+        this.$router.push({ path: "/step6" });
       } else if (eventInfo === "signedOut") {
         this.$router.push({ name: "Login" });
       }
