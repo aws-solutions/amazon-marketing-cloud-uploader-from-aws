@@ -263,7 +263,7 @@ jobs:
           AMC_GLUE_JOB_ROLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $NESTED_STACK_ID --logical-resource-id "AmcGlueJobRole" --query "StackResources[0].PhysicalResourceId")
           AMC_GLUE_JOB_ROLE_NAME=$(echo $AMC_GLUE_JOB_ROLE_NAME | tr -d '"')
           SYSTEM_TABLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id "SystemTable" --query "StackResources[0].PhysicalResourceId")
-          SYSTEM_TABLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id "SystemTable" --query "StackResources[0].PhysicalResourceId")
+          SYSTEM_TABLE_NAME=$(echo $SYSTEM_TABLE_NAME | tr -d '"')
           echo "AMC_GLUE_JOB_ROLE_NAME=$AMC_GLUE_JOB_ROLE_NAME" >> $GITHUB_ENV
           echo "AMC_GLUE_JOB_ROLE_NAME=$AMC_GLUE_JOB_ROLE_NAME" >> $GITHUB_OUTPUT
           export AMC_GLUE_JOB_NAME=$AMC_GLUE_JOB_NAME

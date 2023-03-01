@@ -17,7 +17,7 @@ import app
 import boto3
 import pytest
 from chalice.test import Client
-from moto import mock_glue, mock_s3, mock_sts
+from moto import mock_glue, mock_s3, mock_sts, mock_dynamodb, mock_iam
 
 
 @pytest.fixture
@@ -294,3 +294,76 @@ def test_start_amc_transformation(test_configs):
                 RunId=response.json_body["JobRunId"],
             )
             assert glue_resp["JobRun"]["Id"] == response.json_body["JobRunId"]
+
+@patch("chalicelib.sigv4.requests.post")
+def test_system_configuration(mock_response, test_configs):
+
+    with mock_iam(), mock_s3(), mock_dynamodb():
+        content_type = test_configs["content_type"]
+
+        iam = boto3.client("iam", region_name=os.environ["AWS_REGION"])
+        policy_doc = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Sid": "AmcEndpointAccessPolicy",
+                    "Action": [
+                        "execute-api:Invoke"
+                    ],
+                    "Resource": [
+                        "arn:aws:execute-api:*:*:test/*"
+                    ],
+                    "Effect": "Allow"
+                }
+            ]
+        }
+        iam.create_policy(PolicyName="AmcApiAccess", PolicyDocument=json.dumps(policy_doc))
+        s3 = boto3.client("s3", region_name=os.environ["AWS_REGION"])
+        s3.create_bucket(Bucket=os.environ["ARTIFACT_BUCKET"])
+        s3 = boto3.resource("s3")
+        s3_object = s3.Object(
+            test_configs["s3bucket"], test_configs["source_key"]
+        )
+        s3_object.put(Body="{}", ContentType=content_type)
+    
+        dynamodb = boto3.client('dynamodb', region_name=os.environ["AWS_REGION"])
+        params = {
+        'TableName': os.environ["SYSTEM_TABLE_NAME"],
+        'KeySchema': [
+            {'AttributeName': 'Name', 'KeyType': 'HASH'},
+        ],
+        'AttributeDefinitions': [
+                {'AttributeName': 'Name', 'AttributeType': 'S'},
+        ],
+        }
+        dynamodb.create_table(**params)
+        dynamodb.wait_until_exists()
+
+        content_type = test_configs["content_type"]
+        with Client(app.app) as client:
+            response = client.http.post(
+                "/system/configuration",
+                headers={"Content-Type": content_type},
+                body=json.dumps(
+                {
+                    "Name": "AmcInstances",
+                    "Value": [{
+                        "data_upload_account_id": "123456789012",
+                        "endpoint": "https://test-endpoint.test/beta",
+                        "tag_list": "testCom, test_tester",
+                        "tags": [
+                            {
+                                "value": "testCom",
+                                "key": ""
+                            },
+                            {
+                                "value": "test_tester",
+                                "key": ""
+                            }
+                        ]
+                    }],
+                }
+            ),
+        )
+        assert response.status_code == 200
+        assert response.json_body == {}

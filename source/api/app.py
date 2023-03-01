@@ -560,8 +560,7 @@ def save_system_configuration():
                 if "data_upload_account_id" not in amc_instances[i]:
                     raise BadRequestError("AmcInstance value must contain key, 'data_upload_account_id'")
     except Exception as ex:
-        logger.error("Exception {}".format(ex))
-        raise ChaliceViewError("Exception '%s'" % ex)
+        logger.error("Exception: {}".format(ex))
         return {"Status": "Error", "Message": str(ex)}
     system_table.put_item(Item=system_parameter)
     try:
@@ -625,7 +624,6 @@ def save_system_configuration():
             )
     except Exception as ex:
         logger.error("Exception {}".format(ex))
-        raise ChaliceViewError("Exception '%s'" % ex)
         return {"Status": "Error", "Message": str(ex)}
     return {}
 
