@@ -277,7 +277,7 @@ def test_data_set_type():
                     headers={"Content-Type": "application/json"},
                     body=json.dumps(
                         {
-                            "destination_endpoint": _test_configs["destination_endpoint"],
+                            "destination_endpoint": test_configs["destination_endpoint"],
                             "body": {
                                 "dataSetId": data_set_id,
                                 "fileFormat": file_format,
@@ -363,7 +363,7 @@ def test_data_set_type():
                     body=json.dumps(
                         {
                             "dataSetId": data_set_id,
-                            "destination_endpoint": _test_configs["destination_endpoint"],
+                            "destination_endpoint": test_configs["destination_endpoint"],
                         }
                     )
                 )
@@ -388,7 +388,7 @@ def test_data_set_type():
                             "datasetId": data_set_id,
                             "period": period,
                             "countryCode": "US",
-                            "destination_endpoints": str([_test_configs["destination_endpoint"]]).replace("'", '"')
+                            "destination_endpoints": str([test_configs["destination_endpoint"]]).replace("'", '"')
                         }
                     ),
                 )
@@ -418,6 +418,7 @@ def test_data_set_type():
                     ):
                         break
                     else:
+                        breakpoint()
                         assert (
                             get_etl_data_by_job_id(
                                 response.json_body["JobRunId"]
@@ -438,7 +439,7 @@ def test_data_set_type():
                 response = client.http.post(
                     "/list_datasets",
                     headers={"Content-Type": "application/json"},
-                    body=json.dumps({"destination_endpoint": _test_configs["destination_endpoint"]}),
+                    body=json.dumps({"destination_endpoint": test_configs["destination_endpoint"]}),
                 )
                 assert response.status_code == 200
                 assert len(response.json_body["dataSets"]) > 0
@@ -448,7 +449,7 @@ def test_data_set_type():
                 response = client.http.post(
                     "/list_uploads",
                     headers={"Content-Type": "application/json"},
-                    body=json.dumps({"dataSetId": data_set_id, "destination_endpoint": _test_configs["destination_endpoint"]}),
+                    body=json.dumps({"dataSetId": data_set_id, "destination_endpoint": test_configs["destination_endpoint"]}),
                 )
                 assert response.status_code == 200
                 assert len(response.json_body["uploads"]) > 0
@@ -472,7 +473,7 @@ def test_data_set_type():
                                 response.json_body["uploads"][0]["uploadId"]
                             ),
                             "dataSetId": data_set_id,
-                            "destination_endpoint": _test_configs["destination_endpoint"]
+                            "destination_endpoint": test_configs["destination_endpoint"]
                         }
                     ),
                 )
@@ -487,7 +488,7 @@ def test_data_set_type():
             logger.debug(f"Cleaning up s3 {test_source_key}.")
 
             s3 = boto3.resource("s3")
-            s3.Object(_test_configs["s3bucket"], test_source_key).delete()
+            s3.Object(test_configs["s3bucket"], test_source_key).delete()
 
             logger.debug(f"Cleaning up dataset {data_set_id}.")
 
@@ -500,7 +501,7 @@ def test_data_set_type():
                         body=json.dumps(
                             {
                                 "dataSetId": data_set_id,
-                                "destination_endpoint": _test_configs["destination_endpoint"]
+                                "destination_endpoint": test_configs["destination_endpoint"]
                             }
                         ),
                     )
@@ -600,3 +601,59 @@ def test_create_upload_delete_dataset_FACT_JSON_SUB_DIRECTORY(
         generate_random_test_files_to_s3_bucket,
         s3_key_sub_dir="integ_test_data/",
     )
+
+
+def test_system_configuration():
+    with Client(app.app) as client:
+        breakpoint()
+        response = client.http.post(
+            "/system/configuration",
+            headers={"Content-Type": "application/json"},
+            body=json.dumps(
+                {
+                    "Name": "AmcInstances",
+                    "Value": [{
+                        "data_upload_account_id": "123456789012",
+                        "endpoint": "https://test-endpoint.test/beta",
+                        "tag_list": "testCom, test_tester",
+                        "tags": [
+                            {
+                                "value": "testCom",
+                                "key": ""
+                            },
+                            {
+                                "value": "test_tester",
+                                "key": ""
+                            }
+                        ]
+                    }],
+                }
+            ),
+        )
+        assert response.status_code == 200
+        assert response.json_body == {}
+
+        response = client.http.get(
+            "/system/configuration",
+            headers={"Content-Type": "application/json"},
+        )
+        assert response.status_code == 200
+        if "Name" not in response.json_body:
+            raise AssertionError("Missing system parameter Name")
+        if response.json_body["Name"] != "AmcInstances":
+            raise AssertionError("Unrecognized system parameter, " + response.json_body["Name"])
+        if response.json_body["Name"] == "AmcInstances":
+            if "Value" not in response.json_body:
+                raise AssertionError("Value is required.")
+            amc_instances = response.json_body["Value"]
+            if not isinstance(amc_instances, list):
+                raise AssertionError("AmcInstances value must be of type list")
+        
+        expected_item = [value_item for value_item in response.json_body["Value"] if value_item.get("data_upload_account_id") == "123456789012"]
+        assert len(expected_item) > 0
+        if not isinstance(expected_item, dict):
+            raise AssertionError("AmcInstance value must be of type dict")
+        if "endpoint" not in expected_item:
+            raise AssertionError("AmcInstance value must contain key, 'endpoint'")
+        if "data_upload_account_id" not in expected_item:
+            raise AssertionError("AmcInstance value must contain key, 'data_upload_account_id'")
