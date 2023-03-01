@@ -512,7 +512,7 @@ def get_data_columns():
     content_types=[APPLICATION_JSON],
     authorizer=authorizer,
 )
-def save_settings():
+def save_system_configuration():
     """Add a new system configuration parameter
     - Updates the system configuration with a new parameter or changes the value of
       existing parameters
@@ -631,7 +631,7 @@ def save_settings():
 
 
 @app.route("/system/configuration", cors=True, methods=["GET"], authorizer=authorizer)
-def get_system_configuration_api():
+def get_system_configuration():
     """ Get the current system configuration
     - Gets the current system configuration parameter settings
     Returns:
