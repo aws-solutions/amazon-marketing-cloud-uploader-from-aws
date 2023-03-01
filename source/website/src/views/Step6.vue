@@ -558,7 +558,6 @@ SPDX-License-Identifier: Apache-2.0
           do {
             const response = await this.$Amplify.API.post(apiName, resource, requestOpts);
             this.uploads.push(...response.uploads);
-            console.log(this.uploads)
             data.nextToken = response.nextToken;
             requestOpts.body = data;
           } while (data.nextToken);
@@ -584,7 +583,11 @@ SPDX-License-Identifier: Apache-2.0
             body: data
           };
           const response = await this.$Amplify.API.post(apiName, resource, requestOpts);
-          this.datasets = response.dataSets
+          if (response.Status === "Error") {
+            this.showAmcApiError = true  
+          } else {
+            this.datasets = response.dataSets
+          }
         }
         catch (e) {
           console.log("ERROR: " + e)
