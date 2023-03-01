@@ -27,7 +27,7 @@ SPDX-License-Identifier: Apache-2.0
                 <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push({path: '/step4'})">
                   Previous
                 </button> &nbsp;
-                <button type="submit" class="btn btn-primary mb-2" :disabled="!isValid || isBusy" @click="onSubmit">
+                <button type="submit" class="btn btn-primary mb-2" :disabled="!isValid || isBusy || disable_submit" @click="onSubmit">
                   Submit
                   <b-spinner v-if="isBusy" style="vertical-align: sub" small label="Spinning"></b-spinner>
                 </button>
@@ -126,6 +126,7 @@ SPDX-License-Identifier: Apache-2.0
     },
     data() {
       return {
+        disable_submit: false,
         destination_fields: [
           {key: 'endpoint', label: 'AMC Endpoint', sortable: true},
           {key: 'actions', label: 'Actions'},
@@ -199,6 +200,7 @@ SPDX-License-Identifier: Apache-2.0
         }
       },
       onSubmit() {
+        this.disable_submit = true
         // Send a request to create datasets to each endpoint in parallel.
         if (this.selected_dataset === null) {
           this.create_datasets(this.destination_endpoints)
