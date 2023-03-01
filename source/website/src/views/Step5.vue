@@ -87,6 +87,9 @@ SPDX-License-Identifier: Apache-2.0
             <b-row>
               <b-col cols="10">
                 <h5>Columns:</h5>
+                <div v-if="deleted_columns.length > 0">
+                  Excluding columns {{ deleted_columns }} in {{ s3key }} from upload.
+                </div>
                 <b-table 
                   v-if="dataset.columns && dataset.columns.length > 0"
                   small
@@ -136,7 +139,7 @@ SPDX-License-Identifier: Apache-2.0
       }
     },
     computed: {
-      ...mapState(['deleted_columns', 'dataset_definition', 's3key', 'destination_endpoints']),
+      ...mapState(['deleted_columns', 'dataset_definition', 's3key', 'selected_dataset', 'destination_endpoints']),
       isBusy() {
         // if any endpoint is busy then return true
         return this.endpoint_request_state.filter(x => x.is_busy === true).length > 0
@@ -197,7 +200,17 @@ SPDX-License-Identifier: Apache-2.0
       },
       onSubmit() {
         // Send a request to create datasets to each endpoint in parallel.
-        this.create_datasets(this.destination_endpoints)
+        if (this.selected_dataset === null) {
+          this.create_datasets(this.destination_endpoints)
+        } else {
+          // set busy status to show spinner for each endpoint
+          this.endpoint_request_state = this.destination_endpoints.map(x => ({
+            "endpoint": x,
+            "status": "{}",
+            "is_busy": false
+          }))
+          
+        }
         console.log("Finished defining datasets.")
         // Wait for all those requests to complete, then start the glue job.
         this.start_amc_transformation('POST', 'start_amc_transformation', {

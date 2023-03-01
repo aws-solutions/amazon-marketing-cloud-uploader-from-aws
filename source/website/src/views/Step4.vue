@@ -257,22 +257,6 @@ SPDX-License-Identifier: Apache-2.0
               </b-card>
               <br>
             </div>
-            <b-row>
-              <b-container fluid>
-                <b-col v-if="selected_dataset === null" sm="4" align="right" class="row align-items-end">
-                  <b-button v-b-tooltip.hover type="submit" title="Export column schema" variant="outline-primary" @click="onExport">
-                    Export
-                  </b-button> &nbsp;
-                  <b-button v-b-tooltip.hover type="submit" title="Import column schema" variant="outline-primary" @click="onBrowseImports">
-                    Import
-                  </b-button>&nbsp;
-                  <b-button type="submit" variant="outline-secondary" @click="onReset">
-                    Reset
-                  </b-button>
-                  <b-form-file id="importFile" ref="file" accept="application/json" type="file" style="visibility: hidden" @change="onImport" />
-                </b-col>
-              </b-container>
-            </b-row>
           </b-col>
         </b-row>
       </b-container>
