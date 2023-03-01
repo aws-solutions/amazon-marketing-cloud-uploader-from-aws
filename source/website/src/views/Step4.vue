@@ -60,6 +60,13 @@ SPDX-License-Identifier: Apache-2.0
         >
           DIMENSION datasets must not include a MainEventTime field.
         </b-alert>
+        <b-alert
+            :show="showImportError"
+            variant="danger"
+            dismissible
+        >
+          Import failed. Check data format.
+        </b-alert>
         <b-row style="text-align: left">
           <b-col cols="2">
             <Sidebar :is-step4-active="true" />
@@ -78,7 +85,7 @@ SPDX-License-Identifier: Apache-2.0
                 <b-col>
                   Fill in the table to define properties for each field in the input data.
                 </b-col>
-                <b-col sm="3" align="right" class="row align-items-end">
+                <b-col sm="3" align="right">
                   <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push({path: '/step3'})">
                     Previous
                   </button> &nbsp;
@@ -153,7 +160,24 @@ SPDX-License-Identifier: Apache-2.0
                   </div>
                 </template>
               </b-table>
-            </div><div v-if="selected_dataset !== null">
+              <b-row>
+                <b-col align="left">
+                  <b-button id="import_button" type="button" variant="outline-secondary" class="mb-2" @click="onImport">
+                    Import
+                  </b-button> &nbsp;
+                  <b-form-file id="importFile" v-model="importFilename" style="display:none;" accept="application/json" @input="importFile"></b-form-file>
+                  <b-button id="export_button" type="button" variant="outline-secondary" class="mb-2" @click="onExport">
+                    Export
+                  </b-button>
+                </b-col>
+                <b-col align="right">
+                  <b-button id="reset_button" type="reset" variant="outline-secondary" class="mb-2" @click="onReset">
+                    Reset
+                  </b-button>
+                </b-col>
+              </b-row>
+            </div>
+            <div v-if="selected_dataset !== null">
               <h3>Validate Columns</h3>
               <!-- The following two alerts are intended to help the user know
               when their data file does not have the same columns that were defined
@@ -277,6 +301,9 @@ SPDX-License-Identifier: Apache-2.0
     data() {
       return {
         new_dataset_definition: {},
+        importFilename: null,
+        showImportError: false,
+        dismissSecs: 5,
         busy_getting_datafile_columns: false,
         busy_getting_dataset_definition: false,
         showServerError: false,
@@ -390,6 +417,7 @@ SPDX-License-Identifier: Apache-2.0
       console.log('created')
     },
     mounted: function() {
+      this.new_dataset_definition = this.dataset_definition
       if (this.selected_dataset !== null) {
         // If the user opted to join to an existing dataset, then load that dataset's
         // schema into the web form and disable any changes:
@@ -397,14 +425,11 @@ SPDX-License-Identifier: Apache-2.0
       }
       // Otherwise prompt the user to specify the schema for the new dataset 
       // that they want to create:
-      this.new_dataset_definition = this.dataset_definition
       if (!this.s3key) {
         this.showMissingDataAlert = true
       }
-      else if (!this.step3_form_input.length|| this.selected_dataset !== null) {
-        this.get_datafile_columns('POST', 'get_data_columns', {'s3bucket': this.DATA_BUCKET_NAME, 's3key':this.s3key, 'file_format':this.dataset_definition.fileFormat})
-      } else if (this.selected_dataset === null) {
-        this.items = this.step3_form_input
+      else {
+        this.onReset()
       }
     },
     methods: {
@@ -414,10 +439,53 @@ SPDX-License-Identifier: Apache-2.0
         this.$store.commit('updateDeletedColumns', this.deleted_columns)
         console.log("deleted_columns: " + this.deleted_columns)
       },
+      onImport() {
+        this.importFilename = null
+        // dismiss success alert
+        this.showSuccessCountDown = 0
+        // dismiss error alert
+        this.showImportError = false
+        document.getElementById('importFile').click()
+      },
+      importFile() {
+        if (!this.importFilename) {
+          return;
+        }
+        const reader = new FileReader();
+        const vm = this;
+        reader.onload = function(e) {
+          try {
+            const contents = JSON.parse(e.target.result);
+            // validate contents
+            if (Array.isArray(contents) && contents.length > 0 && Object.keys(contents[0]).includes("name") && Object.keys(contents[0]).includes("description") && Object.keys(contents[0]).includes("data_type") && Object.keys(contents[0]).includes("column_type") && Object.keys(contents[0]).includes("pii_type")) {
+              vm.items = contents
+              vm.dismissCountDown = vm.dismissSecs
+            } else {
+              console.log("Invalid data:")
+              console.log(contents);
+              vm.showImportError = true
+            }
+          } catch (error) {
+            console.log(error)
+            vm.showImportError = true
+          }
+        };
+        reader.readAsText(this.importFilename);
+      },
+      onExport() {
+        const table_data = JSON.stringify(this.items);
+        const blob = new Blob([table_data], {type: 'text/plain'});
+        const e = document.createEvent('MouseEvents'),
+            a = document.createElement('a');
+        a.download = "column_definitions.json";
+        a.href = window.URL.createObjectURL(blob);
+        a.dataset.downloadurl = ['text/json', a.download, a.href].join(':');
+        e.initEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+        a.dispatchEvent(e);
+      },
       onReset() {
         this.$store.commit('updateDeletedColumns', [])
         this.get_datafile_columns('POST', 'get_data_columns', {'s3bucket': this.DATA_BUCKET_NAME, 's3key':this.s3key})
-        this.get_datafile_columns('POST', 'get_data_columns', {'s3bucket': this.DATA_BUCKET_NAME, 's3key':this.s3key, 'file_format':this.dataset_definition.fileFormat})
         this.column_type_options.forEach(x => x.disabled = false)
         this.pii_type_options.forEach(x => x.disabled = false)
       },
@@ -432,7 +500,7 @@ SPDX-License-Identifier: Apache-2.0
           this.showIncompleteFieldsError = false
         }
         // FACT datasets must have a field designated as the main event time.
-        if (this.dataset_definition.dataSetType === 'FACT'
+        if (this.new_dataset_definition.dataSetType === 'FACT'
             && this.mainEventTimeSelected === false) {
           this.showIncompleteTimeFieldError = true
           return false
@@ -440,7 +508,7 @@ SPDX-License-Identifier: Apache-2.0
           this.showIncompleteTimeFieldError = false
         }
         // DIMENSION datasets must not have a field designated as the main event time.
-        if (this.dataset_definition.dataSetType === 'DIMENSION'
+        if (this.new_dataset_definition.dataSetType === 'DIMENSION'
             && this.mainEventTimeSelected === true) {
           this.showUnexpectedTimeFieldError = true
           return false
@@ -453,10 +521,10 @@ SPDX-License-Identifier: Apache-2.0
         if (this.selected_dataset !== null) {
           this.extra_columns.forEach(x => this.deleteColumn(x))
           this.items = this.selected_dataset_items
-          this.dataset_definition.dataSetId = this.selected_dataset
-          this.dataset_definition.description = this.selected_dataset_description
-          this.dataset_definition.dataSetType = this.selected_dataset_type
-          this.dataset_definition.period = this.selected_dataset_period
+          this.new_dataset_definition.dataSetId = this.selected_dataset
+          this.new_dataset_definition.description = this.selected_dataset_description
+          this.new_dataset_definition.dataSetType = this.selected_dataset_type
+          this.new_dataset_definition.period = this.selected_dataset_period
         }
         if (!this.validateForm()) {console.log(this.validateForm()) 
           return }
