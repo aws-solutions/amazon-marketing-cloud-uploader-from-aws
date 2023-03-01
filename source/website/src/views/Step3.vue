@@ -55,26 +55,6 @@ SPDX-License-Identifier: Apache-2.0
             <br>
             <br>
             <div>
-              <b-form-group
-                id="bucket"
-                label-cols-lg="1"
-                label-align-lg="left"
-                content-cols-lg="9"
-                label="S3 Bucket:"
-                label-for="bucket"
-              >
-                <b-form-input id="bucket" plaintext :placeholder="bucket"></b-form-input>
-              </b-form-group>
-              <b-form-group
-                id="selected-file-field"
-                label-cols-lg="1"
-                label-align-lg="left"
-                content-cols-lg="5"
-                label="S3 Keys:"
-                label-for="s3key"
-              >
-                <b-form-input id="s3key" v-model="new_s3key" @change="updateS3key"></b-form-input>
-              </b-form-group>
               <b-form-radio-group
                 v-model="dataset_mode"
                 :options="dataset_mode_options"
@@ -257,7 +237,6 @@ export default {
         { value: 'CREATE', text: 'Create new dataset'},
         { value: 'JOIN', text: 'Add to existing dataset'}
       ],
-      new_s3key: '',
       new_selected_dataset: null,
       new_dataset_definition: {},
       dataset_id: '',
@@ -287,9 +266,6 @@ export default {
       if (this.dataset_id === '' || this.dataset_id === undefined) return null
       else return !this.datasets.includes(this.dataset_id)
     },
-    bucket() {
-      return "s3://"+this.DATA_BUCKET_NAME;
-    }
   },
   deactivated: function () {
     console.log('deactivated');
@@ -301,13 +277,14 @@ export default {
     console.log('created')
   },
   mounted: function() {
+    // Run list_datasets() so we can warn users when they enter 
+    // a dataset name which already exists.
     this.list_datasets()
     // pre-populate the form with previously selected values:
     if (this.selected_dataset !== null) {
       this.dataset_mode = 'JOIN'
       this.new_selected_dataset = this.selected_dataset
     }
-    this.new_s3key = this.s3key
     this.new_dataset_definition = this.dataset_definition
     this.dataset_id = this.new_dataset_definition['dataSetId']
     this.description = this.new_dataset_definition['description']
@@ -368,11 +345,6 @@ export default {
         this.$store.commit('updateSelectedDataset', this.new_selected_dataset)
       }
     },
-    updateS3key() {
-      console.log("Changing s3key to " + this.new_s3key)
-      this.$store.commit('updateS3key', this.new_s3key)
-      this.$store.commit('saveStep3FormInput', [])
-    },
     onSubmit() {
       this.showFormError = false;
       this.new_dataset_definition['dataSetId'] = this.dataset_id
@@ -397,8 +369,12 @@ export default {
       }
     },
     validForm() {
-      if (!this.s3key && !this.new_s3key) {
+      if (!this.s3key) {
         this.formErrorMessage = "Missing s3key."
+        return false
+      }
+      if (!this.new_dataset_definition['countryCode']  || this.new_dataset_definition['countryCode'].length === 0) {
+        this.formErrorMessage = "Missing country."
         return false
       }
       if (this.dataset_mode === 'JOIN' && this.new_selected_dataset != null) {
@@ -418,10 +394,6 @@ export default {
       }
       if (/^[a-zA-Z0-9_-]+$/.test(this.dataset_id) === false) {
         this.formErrorMessage = "Dataset name must match regex ^[a-zA-Z0-9_-]+$"
-        return false
-      }
-      if (!this.new_dataset_definition['countryCode']  || this.new_dataset_definition['countryCode'].length === 0) {
-        this.formErrorMessage = "Missing country."
         return false
       }
       if (!this.new_dataset_definition['dataSetType']  || this.new_dataset_definition['dataSetType'].length === 0) {
