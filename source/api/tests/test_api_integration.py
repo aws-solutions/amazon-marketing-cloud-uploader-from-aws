@@ -418,7 +418,6 @@ def test_data_set_type():
                     ):
                         break
                     else:
-                        breakpoint()
                         assert (
                             get_etl_data_by_job_id(
                                 response.json_body["JobRunId"]
@@ -605,7 +604,7 @@ def test_create_upload_delete_dataset_FACT_JSON_SUB_DIRECTORY(
 
 def test_system_configuration():
     with Client(app.app) as client:
-        breakpoint()
+        # breakpoint()
         response = client.http.post(
             "/system/configuration",
             headers={"Content-Type": "application/json"},
