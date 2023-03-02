@@ -54,7 +54,7 @@ SPDX-License-Identifier: Apache-2.0
                     </div>
                     <div v-else>
                       <div v-if="!endpoint_request(endpoint).status">
-                        {{ endpoint }} {{endpoint_request(endpoint).status}}
+                        {{ endpoint }} {{ endpoint_request(endpoint).status }}
                       </div>
                       <div v-else-if="endpoint_request(endpoint).status.toLowerCase().includes('error')">
                         {{ endpoint }} <p class="text-danger" style="display:inline">
@@ -63,8 +63,8 @@ SPDX-License-Identifier: Apache-2.0
                       </div>
                       <div v-else-if="JSON.stringify(endpoint_request(endpoint).status).length > 0">
                         {{ endpoint }} (<b-link variant="link" @click="onClickMonitor(endpoint)">
-                        monitor
-                      </b-link>)
+                          monitor
+                        </b-link>)
                       </div>
                     </div>
                   </li>
