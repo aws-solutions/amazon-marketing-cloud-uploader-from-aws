@@ -14,16 +14,16 @@ SPDX-License-Identifier: Apache-2.0
           </b-col>
           <b-col cols="10">
             <b-alert
-                v-model="showServerError"
-                variant="danger"
-                dismissible
+              v-model="showServerError"
+              variant="danger"
+              dismissible
             >
               Server error. See Cloudwatch logs for API resource, /system/configuration.
             </b-alert>
             <b-alert
-                v-model="showFormError"
-                variant="danger"
-                dismissible
+              v-model="showFormError"
+              variant="danger"
+              dismissible
             >
               You must select at least one AMC Instance.
             </b-alert>
@@ -55,19 +55,19 @@ SPDX-License-Identifier: Apache-2.0
               <b-row>
                 <b-col class="my-1">
                   <b-form-group
-                      label="Filter"
-                      label-for="filter-input"
-                      label-cols-sm="3"
-                      label-align-sm="right"
-                      label-size="sm"
-                      class="mb-0"
+                    label="Filter"
+                    label-for="filter-input"
+                    label-cols-sm="3"
+                    label-align-sm="right"
+                    label-size="sm"
+                    class="mb-0"
                   >
                     <b-input-group size="sm">
                       <b-form-input
-                          id="filter-input"
-                          v-model="filter"
-                          type="search"
-                          placeholder="Type to Search"
+                        id="filter-input"
+                        v-model="filter"
+                        type="search"
+                        placeholder="Type to Search"
                       ></b-form-input>
 
                       <b-input-group-append>
@@ -81,20 +81,20 @@ SPDX-License-Identifier: Apache-2.0
 
                 <b-col class="my-1">
                   <b-form-group
-                      v-slot="{ ariaDescribedby }"
-                      label="Filter On"
-                      description="Leave all unchecked to filter on all data"
-                      label-cols-sm="3"
-                      label-align-sm="right"
-                      label-size="sm"
-                      class="mb-0"
+                    v-slot="{ ariaDescribedby }"
+                    label="Filter On"
+                    description="Leave all unchecked to filter on all data"
+                    label-cols-sm="3"
+                    label-align-sm="right"
+                    label-size="sm"
+                    class="mb-0"
                   >
                     <b-form-checkbox-group
-                        v-model="filterOn"
-                        :aria-describedby="ariaDescribedby"
-                        class="mt-1"
+                      v-model="filterOn"
+                      :aria-describedby="ariaDescribedby"
+                      class="mt-1"
                     >
-                      <b-form-checkbox value="name">
+                      <b-form-checkbox value="endpoint">
                         Endpoint
                       </b-form-checkbox>
                       <b-form-checkbox value="tag_list">
@@ -107,17 +107,17 @@ SPDX-License-Identifier: Apache-2.0
             </div>
             <!-- Main table element -->
             <b-table
-                :items="formattedItems"
-                :fields="fields"
-                :filter="filter"
-                :filter-included-fields="filterOn"
-                :busy="isBusy"
-                :current-page="currentPage"
-                :per-page="perPage"
-                stacked="md"
-                show-empty
-                small
-                @filtered="onFiltered"
+              :items="formattedItems"
+              :fields="fields"
+              :filter="filter"
+              :filter-included-fields="filterOn"
+              :busy="isBusy"
+              :current-page="currentPage"
+              :per-page="perPage"
+              stacked="md"
+              show-empty
+              small
+              @filtered="onFiltered"
             >
               <template #table-busy>
                 <div class="text-center my-2">
@@ -135,12 +135,12 @@ SPDX-License-Identifier: Apache-2.0
               </template>
             </b-table>
             <b-pagination
-                v-if="formattedItems.length > perPage"
-                v-model="currentPage"
-                align="center"
-                :per-page="perPage"
-                :total-rows="formattedItems.length"
-                aria-controls="shotTable"
+              v-if="formattedItems.length > perPage"
+              v-model="currentPage"
+              align="center"
+              :per-page="perPage"
+              :total-rows="formattedItems.length"
+              aria-controls="shotTable"
             ></b-pagination>
             <div v-if="isBusy === false">
               <b-button size="sm" @click="selectAll">

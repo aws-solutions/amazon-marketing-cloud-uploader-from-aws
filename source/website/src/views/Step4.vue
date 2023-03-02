@@ -61,9 +61,9 @@ SPDX-License-Identifier: Apache-2.0
           DIMENSION datasets must not include a MainEventTime field.
         </b-alert>
         <b-alert
-            :show="showImportError"
-            variant="danger"
-            dismissible
+          :show="showImportError"
+          variant="danger"
+          dismissible
         >
           Import failed. Check data format.
         </b-alert>

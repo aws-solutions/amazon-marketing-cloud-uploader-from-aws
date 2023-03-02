@@ -54,7 +54,7 @@ SPDX-License-Identifier: Apache-2.0
                   </b-form-group>
                 </b-col>
                 <b-col sm="2" align="right">
-                  <button type="submit" class="btn btn-primary mb-2" @click="onSubmit">
+                  <button type="submit" class="btn btn-primary mb-2" :disabled="!new_s3key" @click="onSubmit">
                     Next
                   </button>
                   <br>
