@@ -313,7 +313,8 @@ SPDX-License-Identifier: Apache-2.0
                 :per-page="perPage3"
                 :current-page="currentPage3"
                 sort-by="StartedOn"
-                :sort-desc="true"
+                :sort-desc="false"
+                :sort-compare="datetimeSortCompare"
                 show-empty
               >
                 <template #cell(id)="data">
@@ -492,6 +493,15 @@ SPDX-License-Identifier: Apache-2.0
       this.amc_selector_visible = this.amc_selector_visible_state
     },
     methods: {
+      datetimeSortCompare(a, b, key) {
+        // this function is used to sort the StartedOn column
+        if (key === 'StartedOn') {
+          return new Date(b["StartedOn"]) - new Date(a["StartedOn"]);
+        } else {
+          // Let b-table handle sorting other fields (other than `StartedOn` field)
+          return false
+        }
+      },
       changeAmcSelectorVisibility() {
         this.$store.commit('updateAmcSelectorVisibility', !this.amc_selector_visible)
       },
