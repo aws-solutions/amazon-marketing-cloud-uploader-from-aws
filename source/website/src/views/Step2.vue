@@ -94,7 +94,7 @@ SPDX-License-Identifier: Apache-2.0
                       :aria-describedby="ariaDescribedby"
                       class="mt-1"
                     >
-                      <b-form-checkbox value="name">
+                      <b-form-checkbox value="endpoint">
                         Endpoint
                       </b-form-checkbox>
                       <b-form-checkbox value="tag_list">
