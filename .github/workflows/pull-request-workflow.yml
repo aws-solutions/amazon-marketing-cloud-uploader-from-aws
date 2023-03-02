@@ -255,6 +255,7 @@ jobs:
           CURRENT_ASSUME_ROLE_POLICY2=$(aws iam get-role --role-name $ROLE_NAME --query "Role.AssumeRolePolicyDocument.Statement[1]")
           TEST_ACCOUNT_ID=$(aws sts get-caller-identity --query Account)
           TEST_ACCOUNT_ID=$(echo $TEST_ACCOUNT_ID | tr -d '"')
+          export TEST_ACCOUNT_ID=$TEST_ACCOUNT_ID
           TEST_USER_ARN="arn:aws:iam::${TEST_ACCOUNT_ID}:user/githubBuilderBot"
           TEST_USER_ASSUME_ROLE_POLICY='{"Effect":"Allow","Principal":{"AWS":"'"$TEST_USER_ARN"'"},"Action":"sts:AssumeRole"}'
           echo "TEST_USER_ASSUME_ROLE_POLICY=$TEST_USER_ASSUME_ROLE_POLICY" >> $GITHUB_OUTPUT
@@ -278,6 +279,7 @@ jobs:
           export botoConfig="{}"
           export VERSION=$VERSION
           export AWS_REGION="us-east-1"
+          export TEST_DATA_UPLOAD_ACCOUNT_ID=${{secrets.DATA_UPLOAD_ACCOUNT_ID}}
           aws iam attach-role-policy --role-name $AMC_GLUE_JOB_ROLE_NAME --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess"
           VENV=$(mktemp -d) && echo "$VENV"
           python3.10 -m venv "$VENV"
@@ -286,33 +288,33 @@ jobs:
           pip3 install -r source/api/tests/requirements-test.txt
           pytest source/api/tests/test_api_integration.py -vv
 
-  # cleanup:
-  #   if: always()
-  #   needs:
-  #     - deploy
-  #     - build
-  #     - integration_test
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Initialize AWS credentials
-  #       uses: aws-actions/configure-aws-credentials@v1
-  #       with:
-  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  #         aws-region: ${{needs.build.outputs.REGION}}
-  #     - name: Remove build artifacts
-  #       if: needs.deploy.result == 'success' || needs.deploy.result == 'failure'
-  #       run: |
-  #         aws s3 rb s3://${{needs.build.outputs.DIST_OUTPUT_BUCKET}}-${{needs.build.outputs.REGION}} --force
-  #         aws s3 rb s3://${{needs.build.outputs.TEMPLATE_OUTPUT_BUCKET}} --force
-  #     - name: Detach s3 role
-  #       if: needs.integration_test.result == 'success' || needs.integration_test.result == 'failure'
-  #       run: |
-  #         aws iam detach-role-policy --role-name ${{needs.integration_test.outputs.AMC_GLUE_JOB_ROLE_NAME}} --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-  #     - name: Remove stack
-  #       if: needs.deploy.result == 'success'
-  #       run: |
-  #         STACK_NAME=${{needs.deploy.outputs.STACK_NAME}}
-  #         echo "Removing stack $STACK_NAME"
-  #         aws cloudformation delete-stack --stack-name $STACK_NAME
-  #         aws cloudformation wait stack-delete-complete --stack-name $STACK_NAME
+  cleanup:
+    if: always()
+    needs:
+      - deploy
+      - build
+      - integration_test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Initialize AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{needs.build.outputs.REGION}}
+      - name: Remove build artifacts
+        if: needs.deploy.result == 'success' || needs.deploy.result == 'failure'
+        run: |
+          aws s3 rb s3://${{needs.build.outputs.DIST_OUTPUT_BUCKET}}-${{needs.build.outputs.REGION}} --force
+          aws s3 rb s3://${{needs.build.outputs.TEMPLATE_OUTPUT_BUCKET}} --force
+      - name: Detach s3 role
+        if: needs.integration_test.result == 'success' || needs.integration_test.result == 'failure'
+        run: |
+          aws iam detach-role-policy --role-name ${{needs.integration_test.outputs.AMC_GLUE_JOB_ROLE_NAME}} --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+      - name: Remove stack
+        if: needs.deploy.result == 'success'
+        run: |
+          STACK_NAME=${{needs.deploy.outputs.STACK_NAME}}
+          echo "Removing stack $STACK_NAME"
+          aws cloudformation delete-stack --stack-name $STACK_NAME
+          aws cloudformation wait stack-delete-complete --stack-name $STACK_NAME

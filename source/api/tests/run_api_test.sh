@@ -56,14 +56,17 @@ then
     python3.10 -m venv "$VENV"
     source "$VENV"/bin/activate
 
+    # Fill all values here
     STACK_NAME=""
     AWS_REGION="us-east-1"
     AWS_DEFAULT_PROFILE=""
     DATA_BUCKET_NAME=""
     CUSTOMER_MANAGED_KEY=""
+    AMC_ENDPOINT_URL=""
     AWS_XRAY_SDK_ENABLED=false
     AWS_XRAY_CONTEXT_MISSING=LOG_ERROR
-    AMC_ENDPOINT_URL=""
+    TEST_DATA_UPLOAD_ACCOUNT_ID=""
+    # End
 
     
     export AMC_API_ENDPOINT=$AMC_ENDPOINT_URL
@@ -76,6 +79,7 @@ then
     export CUSTOMER_MANAGED_KEY=$CUSTOMER_MANAGED_KEY
     export AWS_REGION=$AWS_REGION
     export AWS_DEFAULT_PROFILE=$AWS_DEFAULT_PROFILE
+    export TEST_DATA_UPLOAD_ACCOUNT_ID=$TEST_DATA_UPLOAD_ACCOUNT_ID
 
     RESOURCE_ID=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id GlueStack --query "StackResources[0].PhysicalResourceId" --region $AWS_REGION --profile $AWS_DEFAULT_PROFILE)
     echo $RESOURCE_ID
@@ -96,6 +100,7 @@ then
     CURRENT_ASSUME_ROLE_POLICY2=$(aws iam get-role --role-name $ROLE_NAME --query "Role.AssumeRolePolicyDocument.Statement[1]" --region $AWS_REGION --profile $AWS_DEFAULT_PROFILE)
     TEST_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --region $AWS_REGION --profile $AWS_DEFAULT_PROFILE)
     TEST_ACCOUNT_ID=$(echo $TEST_ACCOUNT_ID | tr -d '"')
+    export TEST_ACCOUNT_ID
     TEST_USER_ARN="arn:aws:iam::$TEST_ACCOUNT_ID"
     TEST_USER_ASSUME_ROLE_POLICY='{"Effect":"Allow","Principal":{"AWS":"'"$TEST_USER_ARN"':root"},"Action":"sts:AssumeRole"}'
     echo "TEST_USER_ASSUME_ROLE_POLICY: $TEST_USER_ASSUME_ROLE_POLICY"
