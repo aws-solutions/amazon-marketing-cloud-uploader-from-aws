@@ -341,7 +341,7 @@ SPDX-License-Identifier: Apache-2.0
           { value: 'DIMENSION', text: 'Dimension', disabled: false},
           { value: 'METRIC', text: 'Metric', disabled: false},
           { value: 'isMainEventTime', text: 'MainEventTime', disabled: false},
-          { value: 'LiveRamp ID', text: 'ramp_id', disabled: false},
+          { value: 'LiveRamp ID', text: 'LiveRamp ID', disabled: false},
         ],
         pii_type_options: [
           { value: 'EMAIL', text: 'EMAIL', disabled: false},
@@ -601,7 +601,7 @@ SPDX-License-Identifier: Apache-2.0
         if (value === 'LiveRamp ID') {
           let idx = this.column_type_options.findIndex((x => x.value === 'LiveRamp ID'))
           this.column_type_options[idx].disabled = true
-           // automatically set data type to string if column type is ramp_id
+           // automatically set data type to string if column type is LiveRamp ID
           this.items[index].data_type = "STRING"
         }
         // if changing from PII column to another, the PII Type and Nullable columns should be reset
