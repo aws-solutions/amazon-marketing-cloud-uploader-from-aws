@@ -90,7 +90,7 @@ SPDX-License-Identifier: Apache-2.0
                 <div v-if="deleted_columns.length > 0">
                   Excluding columns {{ deleted_columns }} in {{ s3key }} from upload.
                 </div>
-                <b-table 
+                <b-table
                   v-if="dataset.columns && dataset.columns.length > 0"
                   small
                   outlined
@@ -160,7 +160,7 @@ SPDX-License-Identifier: Apache-2.0
       },
       timestamp_column_name() {
         const timestamp_column = this.dataset.columns.filter(x => x.isMainEventTime).map(x => x.name)
-        // The Glue ETL job requires timestamp_column_name to be an empty string 
+        // The Glue ETL job requires timestamp_column_name to be an empty string
         // for all DIMENSION datasets.
         const dataset_type = this.dataset_definition['dataSetType']
         if (dataset_type == 'FACT' && timestamp_column && timestamp_column.length > 0)

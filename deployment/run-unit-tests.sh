@@ -7,7 +7,7 @@
 #   Verify that pytest scripts achieve a minimum threshold for code coverage.
 #
 # USAGE:
-#  ./run-unit-tests.sh [-h] [-v] 
+#  ./run-unit-tests.sh [-h] [-v]
 #
 #    The following options are available:
 #
@@ -21,7 +21,7 @@ trap cleanup_and_die SIGINT SIGTERM ERR
 usage() {
   msg "$msg"
   cat <<EOF
-Usage: $(basename "${BASH_SOURCE[0]}") [-h] [-v] 
+Usage: $(basename "${BASH_SOURCE[0]}") [-h] [-v]
 
 Available options:
 
@@ -49,7 +49,7 @@ cleanup() {
     rm -rf $VENV
     rm -rf  __pycache__
     rm -rf .pytest_cache
-    cd $template_dir    
+    cd $template_dir
     echo "------------------------------------------------------------------------------"
     echo "Cleaning up complete"
     echo "------------------------------------------------------------------------------"

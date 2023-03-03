@@ -6,25 +6,7 @@
 #   * Integration test for project api endpoints and workflow.
 #
 # USAGE:
-#   VENV=$(mktemp -d) && echo "$VENV"
-#   python3.10 -m venv "$VENV"
-#   source "$VENV"/bin/activate
-#   cd tests
-#   pip install -r requirements-test.txt
-#   export AMC_API_ENDPOINT=""
-#   export AMC_API_ROLE_ARN=""
-#   export SOLUTION_NAME=""
-#   export VERSION=""
-#   export botoConfig="{}"
-#   export AWS_XRAY_CONTEXT_MISSING=LOG_ERROR
-#   export AMC_GLUE_JOB_NAME=""
-#   export CUSTOMER_MANAGED_KEY=""
-#   export AWS_DEFAULT_PROFILE=""
-#   export AWS_REGION=""
-#   export DATA_BUCKET_NAME=""
-#   export ARTIFACT_BUCKET=""
-#   export DESTINATION_ENDPOINT=""
-#   pytest test_api_integration.py -vv
+#   $ ./run_api_test.sh -rit
 ###############################################################################
 
 import datetime
@@ -38,7 +20,6 @@ import boto3
 import pandas as pd
 import pytest
 from chalice.test import Client
-from chalicelib import sigv4
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -48,6 +29,8 @@ _test_configs = {
     "s3bucket": os.environ["DATA_BUCKET_NAME"],
     "outputBucket": os.environ["ARTIFACT_BUCKET"],
     "destination_endpoint": os.environ["AMC_API_ENDPOINT"],
+    "account_id": os.environ["TEST_ACCOUNT_ID"],
+    "data_upload_account_id": os.environ["TEST_DATA_UPLOAD_ACCOUNT_ID"],
 }
 
 _test_data = [
@@ -196,6 +179,66 @@ def test_configs():
     return _test_configs
 
 
+@pytest.mark.run(order=1)
+def test_setup_amc_instance(test_configs):
+    # This test must run before all other test
+    endpoint = test_configs["destination_endpoint"]
+    data_upload_account_id = test_configs["data_upload_account_id"]
+    with Client(app.app) as client:
+        response = client.http.post(
+            "/system/configuration",
+            headers={"Content-Type": "application/json"},
+            body=json.dumps(
+                {
+                    "Name": "AmcInstances",
+                    "Value": [
+                        {
+                            "data_upload_account_id": data_upload_account_id,
+                            "endpoint": endpoint,
+                            "tag_list": "integ_test, integ_test_tester",
+                            "tags": [
+                                {"value": "integ_test", "key": ""},
+                                {"value": "integ_test", "key": ""},
+                            ],
+                        }
+                    ],
+                }
+            ),
+        )
+        assert response.status_code == 200
+        assert response.json_body == {}
+
+        response = client.http.get(
+            "/system/configuration",
+            headers={"Content-Type": "application/json"},
+        )
+        assert response.status_code == 200
+        expected_item = [
+            item
+            for item in [
+                value_item for value_item in response.json_body[0]["Value"]
+            ]
+            if item.get("data_upload_account_id") == data_upload_account_id
+        ]
+        assert len(expected_item) >= 1
+        expected_item = expected_item[0]
+        if not isinstance(expected_item, dict):
+            raise AssertionError("AmcInstance value must be of type dict")
+        if "endpoint" not in expected_item:
+            raise AssertionError(
+                "AmcInstance value must contain key, 'endpoint'"
+            )
+        if "data_upload_account_id" not in expected_item:
+            raise AssertionError(
+                "AmcInstance value must contain key, 'data_upload_account_id'"
+            )
+        assert (
+            expected_item["data_upload_account_id"] == data_upload_account_id
+        )
+        assert expected_item["endpoint"] == endpoint
+        time.sleep(10) # Allow some time for iam roles to be provisioned.
+
+
 def test_version():
     with Client(app.app) as client:
         response = client.http.get(
@@ -277,7 +320,9 @@ def test_data_set_type():
                     headers={"Content-Type": "application/json"},
                     body=json.dumps(
                         {
-                            "destination_endpoint": test_configs["destination_endpoint"],
+                            "destination_endpoint": test_configs[
+                                "destination_endpoint"
+                            ],
                             "body": {
                                 "dataSetId": data_set_id,
                                 "fileFormat": file_format,
@@ -347,7 +392,7 @@ def test_data_set_type():
                                         "columnType": "DIMENSION",
                                     },
                                 ],
-                            }
+                            },
                         }
                     ),
                 )
@@ -356,16 +401,18 @@ def test_data_set_type():
 
                 time.sleep(5)  # give dataset time to be created
 
-                # check if it exists in AMC                
+                # check if it exists in AMC
                 response = client.http.post(
-                    '/describe_dataset',
-                    headers={'Content-Type': 'application/json'},
+                    "/describe_dataset",
+                    headers={"Content-Type": "application/json"},
                     body=json.dumps(
                         {
                             "dataSetId": data_set_id,
-                            "destination_endpoint": test_configs["destination_endpoint"],
+                            "destination_endpoint": test_configs[
+                                "destination_endpoint"
+                            ],
                         }
-                    )
+                    ),
                 )
                 assert response.status_code == 200
                 is_data_set_created = True
@@ -388,7 +435,9 @@ def test_data_set_type():
                             "datasetId": data_set_id,
                             "period": period,
                             "countryCode": "US",
-                            "destination_endpoints": str([test_configs["destination_endpoint"]]).replace("'", '"')
+                            "destination_endpoints": str(
+                                [test_configs["destination_endpoint"]]
+                            ).replace("'", '"'),
                         }
                     ),
                 )
@@ -433,12 +482,21 @@ def test_data_set_type():
                 )
                 assert response.status_code == 200
                 assert len(response.json_body["JobRuns"]) > 0
-                assert response.json_body["JobRuns"][0]["JobName"] == os.environ["AMC_GLUE_JOB_NAME"]
+                assert (
+                    response.json_body["JobRuns"][0]["JobName"]
+                    == os.environ["AMC_GLUE_JOB_NAME"]
+                )
 
                 response = client.http.post(
                     "/list_datasets",
                     headers={"Content-Type": "application/json"},
-                    body=json.dumps({"destination_endpoint": test_configs["destination_endpoint"]}),
+                    body=json.dumps(
+                        {
+                            "destination_endpoint": test_configs[
+                                "destination_endpoint"
+                            ]
+                        }
+                    ),
                 )
                 assert response.status_code == 200
                 assert len(response.json_body["dataSets"]) > 0
@@ -448,7 +506,14 @@ def test_data_set_type():
                 response = client.http.post(
                     "/list_uploads",
                     headers={"Content-Type": "application/json"},
-                    body=json.dumps({"dataSetId": data_set_id, "destination_endpoint": test_configs["destination_endpoint"]}),
+                    body=json.dumps(
+                        {
+                            "dataSetId": data_set_id,
+                            "destination_endpoint": test_configs[
+                                "destination_endpoint"
+                            ],
+                        }
+                    ),
                 )
                 assert response.status_code == 200
                 assert len(response.json_body["uploads"]) > 0
@@ -472,7 +537,9 @@ def test_data_set_type():
                                 response.json_body["uploads"][0]["uploadId"]
                             ),
                             "dataSetId": data_set_id,
-                            "destination_endpoint": test_configs["destination_endpoint"]
+                            "destination_endpoint": test_configs[
+                                "destination_endpoint"
+                            ],
                         }
                     ),
                 )
@@ -500,7 +567,9 @@ def test_data_set_type():
                         body=json.dumps(
                             {
                                 "dataSetId": data_set_id,
-                                "destination_endpoint": test_configs["destination_endpoint"]
+                                "destination_endpoint": test_configs[
+                                    "destination_endpoint"
+                                ],
                             }
                         ),
                     )
@@ -600,59 +669,3 @@ def test_create_upload_delete_dataset_FACT_JSON_SUB_DIRECTORY(
         generate_random_test_files_to_s3_bucket,
         s3_key_sub_dir="integ_test_data/",
     )
-
-
-# def test_system_configuration():
-#     with Client(app.app) as client:
-#         # breakpoint()
-#         response = client.http.post(
-#             "/system/configuration",
-#             headers={"Content-Type": "application/json"},
-#             body=json.dumps(
-#                 {
-#                     "Name": "AmcInstances",
-#                     "Value": [{
-#                         "data_upload_account_id": "123456789012",
-#                         "endpoint": "https://test-endpoint.test/beta",
-#                         "tag_list": "testCom, test_tester",
-#                         "tags": [
-#                             {
-#                                 "value": "testCom",
-#                                 "key": ""
-#                             },
-#                             {
-#                                 "value": "test_tester",
-#                                 "key": ""
-#                             }
-#                         ]
-#                     }],
-#                 }
-#             ),
-#         )
-#         assert response.status_code == 200
-#         assert response.json_body == {}
-
-#         response = client.http.get(
-#             "/system/configuration",
-#             headers={"Content-Type": "application/json"},
-#         )
-#         assert response.status_code == 200
-#         if "Name" not in response.json_body:
-#             raise AssertionError("Missing system parameter Name")
-#         if response.json_body["Name"] != "AmcInstances":
-#             raise AssertionError("Unrecognized system parameter, " + response.json_body["Name"])
-#         if response.json_body["Name"] == "AmcInstances":
-#             if "Value" not in response.json_body:
-#                 raise AssertionError("Value is required.")
-#             amc_instances = response.json_body["Value"]
-#             if not isinstance(amc_instances, list):
-#                 raise AssertionError("AmcInstances value must be of type list")
-        
-#         expected_item = [value_item for value_item in response.json_body["Value"] if value_item.get("data_upload_account_id") == "123456789012"]
-#         assert len(expected_item) > 0
-#         if not isinstance(expected_item, dict):
-#             raise AssertionError("AmcInstance value must be of type dict")
-#         if "endpoint" not in expected_item:
-#             raise AssertionError("AmcInstance value must contain key, 'endpoint'")
-#         if "data_upload_account_id" not in expected_item:
-#             raise AssertionError("AmcInstance value must contain key, 'data_upload_account_id'")
