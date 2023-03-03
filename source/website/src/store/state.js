@@ -6,5 +6,8 @@ export default {
   deleted_columns: [],
   dataset_definition: {},
   step3_form_input: {},
-  selected_dataset: null
+  selected_dataset: null,
+  destination_endpoints: [],
+  amc_monitor: '',
+  amc_selector_visible_state: true
 }

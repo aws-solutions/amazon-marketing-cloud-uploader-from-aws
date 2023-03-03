@@ -17,4 +17,13 @@ export default {
   updateSelectedDataset (state, value) {
     state.selected_dataset = value
   },
+  updateDestinations (state, value) {
+    state.destination_endpoints = value
+  },
+  updateAmcMonitor (state, value) {
+    state.amc_monitor = value
+  },
+  updateAmcSelectorVisibility (state, value) {
+    state.amc_selector_visible_state = value
+  }
 }

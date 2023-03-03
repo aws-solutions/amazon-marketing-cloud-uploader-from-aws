@@ -8,12 +8,6 @@ Parameters:
   DataBucketName:
     Description: "Name of the S3 bucket from which source data will be uploaded. Bucket is NOT created by this CFT."
     Type: String
-  AmcEndpointUrl:
-    Description: "AMC API Endpoint URL"
-    Type: String
-  DataUploadAccountId:
-    Description: "AMC data upload AWS account ID."
-    Type: String
   CustomerManagedKey:
     Description: "(Optional) ARN of a customer managed KMS encryption key (CMK) to use for encryption and decryption of original data files during the ETL pipeline and query computation in AMC."
     Type: String
@@ -42,6 +36,54 @@ Mappings:
 
 Resources:
 
+  # Encryption
+
+  SystemKey:
+    Type: 'AWS::KMS::Key'
+    Properties:
+      Description: KMS key for encrypting stack resources
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Effect: Allow
+            Principal:
+              Service: "s3.amazonaws.com"
+            Action:
+              - 'kms:Decrypt'
+              - 'kms:GenerateDataKey*'
+            Resource: '*'
+            Condition:
+              StringEquals:
+                'aws:SourceAccount': !Ref 'AWS::AccountId'
+          - Effect: Allow
+            Principal:
+              Service: 'dynamodb.amazonaws.com'
+            # At a minimum, DynamoDB requires the following permissions on a customer managed key:
+            # (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/encryption.usagenotes.html)
+            Action:
+              - 'kms:Encrypt'
+              - 'kms:Decrypt'
+              - 'kms:ReEncrypt*'
+              - 'kms:GenerateDataKey*'
+              - 'kms:DescribeKey'
+              - 'kms:CreateGrant'
+            Resource: '*'
+            Condition:
+              StringEquals:
+                'aws:SourceAccount': !Ref 'AWS::AccountId'
+
+  SystemKeyAlias:
+    Type: 'AWS::KMS::Alias'
+    Properties:
+      AliasName: !Sub alias/${AWS::StackName}
+      TargetKeyId: !Ref SystemKey
+
   # S3
 
   ArtifactBucketPolicy:
@@ -51,19 +93,6 @@ Resources:
       PolicyDocument:
         Version: 2012-10-17
         Statement:
-          - Effect: Allow
-            Principal:
-              AWS: !Sub 'arn:aws:iam::${DataUploadAccountId}:root'
-            Action:
-              - 's3:GetObject'
-              - 's3:GetObjectVersion'
-            Resource: !Sub "arn:aws:s3:::${ArtifactBucket}/*"
-          - Effect: Allow
-            Principal:
-              AWS: !Sub 'arn:aws:iam::${DataUploadAccountId}:root'
-            Action:
-              - 's3:ListBucket'
-            Resource: !Sub "arn:aws:s3:::${ArtifactBucket}"
           - Effect: Deny
             Principal: "*"
             Action: "*"
@@ -99,7 +128,9 @@ Resources:
               -
                 SSEAlgorithm: "aws:kms"
                 KMSMasterKeyID: !Ref CustomerManagedKey
-              - SSEAlgorithm: "AES256"
+              -
+                SSEAlgorithm: "aws:kms"
+                KMSMasterKeyID: !Ref SystemKeyAlias
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -175,6 +206,30 @@ Resources:
         - Key: "Environment"
           Value: "amcufa"
 
+  # Tables
+
+  SystemTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEType: KMS
+        SSEEnabled: true
+        KMSMasterKeyId: !Ref SystemKeyAlias
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: Name
+          AttributeType: S
+      KeySchema:
+        - AttributeName: Name
+          KeyType: HASH
+      Tags:
+        - Key: "Environment"
+          Value: "amcufa"
+
+  # Lambda
+
   AmcUploadLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -247,59 +302,6 @@ Resources:
                 Resource:
                   !Sub "arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-AmcApiAccessRole"
 
-  AmcApiAccessRole:
-    Metadata:
-      cfn_nag:
-        rules_to_suppress:
-          - id: W28
-            reason: "Role name is constructed with stack name. Updates will keep the existing role name."
-    Type: AWS::IAM::Role
-    Properties:
-      Description: "IAM role to grant access to the AMC API."
-      RoleName: !Join [ "-", [ { "Ref": "AWS::StackName" }, "AmcApiAccessRole" ] ]
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              AWS: !GetAtt ApiStack.Outputs.ApiHandlerRoleArn
-            Action:
-              - sts:AssumeRole
-          - Effect: Allow
-            Principal:
-              AWS: !GetAtt AmcUploadLambdaExecutionRole.Arn
-            Action:
-              - sts:AssumeRole
-      Policies:
-        - PolicyName: AmcApiAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - "execute-api:Invoke"
-                Resource:
-                  - !Join [
-                    "",
-                    [
-                      "arn:aws:execute-api:*:*:",
-                      "Fn::Select": [
-                        0,
-                        "Fn::Split": [
-                          ".",
-                          "Fn::Select": [
-                            2,
-                            "Fn::Split": [
-                                "/",
-                                !Ref AmcEndpointUrl
-                            ]
-                          ]
-                        ]
-                      ],
-                      "/*"
-                    ]
-                  ]
-
   LambdaLayer:
     Type: "AWS::Lambda::LayerVersion"
     Properties:
@@ -365,7 +367,6 @@ Resources:
       Environment:
         Variables:
           AMC_API_ROLE_ARN: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-AmcApiAccessRole'
-          AMC_ENDPOINT_URL: !Ref AmcEndpointUrl
           SOLUTION_NAME: !FindInMap ["Application", "Solution", "Name"]
           SOLUTION_VERSION: !FindInMap ["Application", "Solution", "Version"]
           botoConfig: !Join
@@ -664,6 +665,42 @@ Resources:
         CustomerManagedKey: !Ref CustomerManagedKey
 
   # API stack
+
+  AmcApiAccessRole:
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W28
+            reason: "Role name is constructed with stack name. Updates will keep the existing role name."
+    Type: AWS::IAM::Role
+    Properties:
+      Description: "IAM role to grant access to the AMC API."
+      RoleName: !Join [ "-", [ { "Ref": "AWS::StackName" }, "AmcApiAccessRole" ] ]
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !GetAtt ApiStack.Outputs.ApiHandlerRoleArn
+            Action:
+              - sts:AssumeRole
+          - Effect: Allow
+            Principal:
+              AWS: !GetAtt AmcUploadLambdaExecutionRole.Arn
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: AmcApiAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: "AmcEndpointAccessPolicy"
+                Effect: Deny
+                Action:
+                  - "execute-api:Invoke"
+                Resource:
+                  - "arn:aws:execute-api:*:*:*/*"
+
   ApiStack:
     Type: "AWS::CloudFormation::Stack"
     Properties:
@@ -718,15 +755,18 @@ Resources:
               - SourceCode
               - CodeKeyPrefix
             - "api.zip"
+        ArtifactBucket: !Ref ArtifactBucket
         DataBucketName: !Ref DataBucketName
-        AmcEndpointUrl: !Ref AmcEndpointUrl
         AmcApiRoleArn: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-AmcApiAccessRole'
         AmcGlueJobName: !GetAtt GlueStack.Outputs.AmcGlueJobName
         TracingConfigMode: "Active"
         CustomerManagedKey: !Ref CustomerManagedKey
         LambdaLayer: !Ref LambdaLayer
+        SystemTableName: !Ref SystemTable
+        SystemKmsKeyId: !Ref SystemKey
 
   # Resources for sending anonymous operational metrics to AWS
+
   AnonymousDataCustomResourceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -809,6 +849,7 @@ Resources:
       Version: !FindInMap ["Application", "Solution", "Version"]
 
   # App Registry
+
   Application:
     Type: AWS::ServiceCatalogAppRegistry::Application
     Properties:

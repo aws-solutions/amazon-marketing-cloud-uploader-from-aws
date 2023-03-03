@@ -21,17 +21,21 @@
       "Type": "String",
       "Description": "S3 Key of the deployment package for Lambda API handlers"
     },
+    "ArtifactBucket": {
+      "Type": "String",
+      "Description": "S3 bucket containing normalized and hashed data objects ready for ingest"
+    },
     "DataBucketName": {
       "Type": "String",
       "Description": "S3 bucket containing first-party data object for ingest"
     },
-    "AmcEndpointUrl": {
-      "Type": "String",
-      "Description": "AMC endpoint URL"
-    },
     "AmcApiRoleArn": {
       "Type": "String",
       "Description": "AMC API Role"
+    },
+    "SystemTableName": {
+      "Type": "String",
+      "Description": "Table used for storing global settings"
     },
     "AmcGlueJobName": {
       "Type": "String",
@@ -44,6 +48,10 @@
     "CustomerManagedKey": {
       "Type": "String",
       "Description": "(Optional) ARN of a customer managed KMS encryption key (CMK) to use for encryption and decryption of original data files during the ETL pipeline and query computation in AMC."
+    },
+    "SystemKmsKeyId": {
+      "Type": "String",
+      "Description": "ID of the stack KMS Key"
     },
     "LambdaLayer": {
       "Type": "String",
@@ -128,11 +136,45 @@
                 {
                   "Effect": "Allow",
                   "Action": [
+                    "s3:GetBucketPolicy",
+                    "s3:PutBucketPolicy"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:aws:s3:::${ArtifactBucket}"
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "iam:GetRolePolicy",
+                    "iam:PutRolePolicy"
+                  ],
+                  "Resource": {
+                    "Ref": "AmcApiRoleArn"
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
                     "glue:StartJobRun",
                     "glue:GetJobRuns"
                   ],
                   "Resource": {
                     "Fn::Sub": "arn:aws:glue:${AWS::Region}:${AWS::AccountId}:job/${AmcGlueJobName}"
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:GetItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:Query",
+                    "dynamodb:Scan"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${SystemTableName}"
                   }
                 },
                 {
@@ -183,6 +225,16 @@
                       "Ref": "AWS::NoValue"
                     }
                   ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "kms:Decrypt",
+                    "kms:GenerateDataKey"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/${SystemKmsKeyId}"
+                  }
                 }
               ]
             },
@@ -219,14 +271,17 @@
             "SOLUTION_NAME": {
               "Ref": "Name"
             },
-            "AMC_ENDPOINT_URL": {
-              "Ref": "AmcEndpointUrl"
-            },
             "AMC_API_ROLE_ARN": {
               "Ref": "AmcApiRoleArn"
             },
             "AMC_GLUE_JOB_NAME": {
               "Ref": "AmcGlueJobName"
+            },
+            "ARTIFACT_BUCKET": {
+              "Ref": "ArtifactBucket"
+            },
+            "SYSTEM_TABLE_NAME": {
+              "Ref": "SystemTableName"
             },
             "CUSTOMER_MANAGED_KEY": {
               "Ref": "CustomerManagedKey"

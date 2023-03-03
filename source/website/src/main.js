@@ -2,11 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import Vue from 'vue'
-import { BootstrapVue, BIconQuestionCircleFill } from 'bootstrap-vue'
-
+import { BootstrapVue, BIconQuestionCircleFill, BIconXCircle, BIconPlusSquare } from 'bootstrap-vue'
 import 'bootstrap/dist/css/bootstrap.css'
 import 'bootstrap-vue/dist/bootstrap-vue.css'
-
 import App from './App.vue'
 import store from './store'
 import router from './router.js'
@@ -46,6 +44,8 @@ getRuntimeConfig().then(function(json) {
   Amplify.configure(awsconfig);
   Vue.config.productionTip = false;
   Vue.component('BIconQuestionCircleFill', BIconQuestionCircleFill)
+  Vue.component('BIconXCircle', BIconXCircle)
+  Vue.component('BIconPlusSquare', BIconPlusSquare)
   Vue.mixin({
     data() {
       return {

@@ -12,11 +12,12 @@
 #
 # REQUIREMENTS:
 #   Input files should be in a location like this:
-#     s3://[bucket_name]/[dataset_id]/[timeseries_partition_size]/[filename]
+#     s3://[bucket_name]/[dataset_id]/[timeseries_partition_size]/[base64_encoded_destination_endpoint]/[filename]
 #   Such as,
-#     s3://my_etl_artifacts/myDataset123/P1D/amc-data-mid.json-2014_03_12-19:06:00.gz
+#     s3://my_etl_artifacts/myDataset123/P1D/aHR0cHM6Ly9hYmNkZTEyMzQ1LmV4ZWN1dGUtYXBpLnVzLWVhc3QtMS5hbWF6b25hd3MuY29tL3Byb2Q=/amc-data-mid.json-2014_03_12-19:06:00.gz
 ###############################################################################
 
+import base64
 import json
 import logging
 import os
@@ -75,8 +76,8 @@ def _is_timeseries(key):
         "P7D",
     )
     # Time series datasets will have the following s3key pattern:
-    #   amc/[dataset_id]/[timeseries_partition_size]/[filename]
-    return (len(key.split("/")) == 4) and (
+    #   amc/[dataset_id]/[timeseries_partition_size]/[base64_encoded_destination_endpoint][filename]
+    return (len(key.split("/")) == 5) and (
         key.split("/")[2].endswith(supported_time_partitions)
     )
 
@@ -85,10 +86,14 @@ def _start_fact_upload(bucket, key):
     try:
         logger.info("Uploading FACT dataset")
         # Key parsing assume s3Key is in the following format:
-        #   amc/[datasetId]/[amc time resolution code][datafile].gz
+        #   amc/[datasetId]/[amc time resolution code]/[base64_encoded_destination_endpoint]/[datafile].gz
         dataset_id = key.split("/")[1]
         time_partition = key.split("/")[2]
-        filename = urllib.parse.unquote(key.split("/")[3])
+        base64_encoded_destination_endpoint = key.split("/")[3]
+        destination_endpoint = base64.b64decode(
+            base64_encoded_destination_endpoint
+        ).decode("ascii")
+        filename = urllib.parse.unquote(key.split("/")[-1])
         # Parse the filename to get the time window for that data.
         # Filenames should look like this, "etl_output_data.json-2022_01_06-09:01:00.gz"
         dt_str = (
@@ -116,7 +121,9 @@ def _start_fact_upload(bucket, key):
         # detected a different time period.
         path = "/dataSets/" + dataset_id
         logger.info("Validating dataset time period.")
-        dataset_definition = json.loads(sigv4.get(path).text)
+        dataset_definition = json.loads(
+            sigv4.get(destination_endpoint, path).text
+        )
         if dataset_definition["period"] != time_partition:
             logger.info(
                 "Changing dataset time period from "
@@ -127,8 +134,12 @@ def _start_fact_upload(bucket, key):
             dataset_definition["period"] = time_partition
             logger.info("PUT " + path + " " + json.dumps(dataset_definition))
             # Send request to update time period:
-            sigv4.put(path, json.dumps(dataset_definition))
-            dataset_definition = json.loads(sigv4.get(path).text)
+            sigv4.put(
+                destination_endpoint, path, json.dumps(dataset_definition)
+            )
+            dataset_definition = json.loads(
+                sigv4.get(destination_endpoint, path).text
+            )
             # Validate updated time period:
             if dataset_definition["period"] != time_partition:
                 raise AssertionError("Failed to update dataset time period.")
@@ -148,7 +159,7 @@ def _start_fact_upload(bucket, key):
         }
         path = "/data/" + dataset_id + "/uploads"
         logger.info("POST " + path + " " + json.dumps(data))
-        response = sigv4.post(path, json.dumps(data))
+        response = sigv4.post(destination_endpoint, path, json.dumps(data))
         logger.info("Response: " + response.text)
         return response.text
     except Exception as ex:
@@ -160,9 +171,13 @@ def _start_dimension_upload(bucket, key):
     try:
         logger.info("Uploading DIMENSION dataset")
         # Key parsing assume s3Key is in the following format:
-        #   amc/[datasetId]/dimension//[datafile].gz
+        #   amc/[datasetId]/dimension/base64_encoded_destination_endpoint/[datafile].gz
         dataset_id = key.split("/")[1]
-        filename = urllib.parse.unquote(key.split("/")[2])
+        base64_encoded_destination_endpoint = key.split("/")[3]
+        destination_endpoint = base64.b64decode(
+            base64_encoded_destination_endpoint
+        ).decode("ascii")
+        filename = urllib.parse.unquote(key.split("/")[-1])
         logger.info("key: " + key)
         logger.info("dataset_id " + dataset_id)
         logger.info("filename " + filename)
@@ -170,7 +185,7 @@ def _start_dimension_upload(bucket, key):
         data = {"sourceS3Bucket": bucket, "sourceFileS3Key": key}
         path = "/data/" + dataset_id + "/uploads"
         logger.info("POST " + path + " " + json.dumps(data))
-        response = sigv4.post(path, json.dumps(data))
+        response = sigv4.post(destination_endpoint, path, json.dumps(data))
         return response.text
     except Exception as ex:
         logger.error(ex)

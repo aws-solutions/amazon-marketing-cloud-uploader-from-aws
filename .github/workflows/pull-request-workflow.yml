@@ -202,12 +202,10 @@ jobs:
           echo "EMAIL=${{secrets.EMAIL_ADDRESS}}" >> $GITHUB_ENV
           echo "TEMPLATE=${{needs.build.outputs.TEMPLATE}}" >> $GITHUB_ENV
           echo "DATA_BUCKET_NAME=${{secrets.DATA_BUCKET_NAME}}" >> $GITHUB_ENV
-          echo "AMC_API_ENDPOINT=${{secrets.AMC_API_ENDPOINT}}" >> $GITHUB_ENV
-          echo "DATA_UPLOAD_ACCOUNT_ID=${{secrets.DATA_UPLOAD_ACCOUNT_ID}}" >> $GITHUB_ENV
       - name: Deploy
         run: |
           echo "Creating the stack"
-          aws cloudformation create-stack --stack-name $STACK_NAME --template-url $TEMPLATE --parameters ParameterKey=AdminEmail,ParameterValue=$EMAIL ParameterKey=DataBucketName,ParameterValue=$DATA_BUCKET_NAME ParameterKey=AmcEndpointUrl,ParameterValue=$AMC_API_ENDPOINT ParameterKey=DataUploadAccountId,ParameterValue=$DATA_UPLOAD_ACCOUNT_ID --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --disable-rollback
+          aws cloudformation create-stack --stack-name $STACK_NAME --template-url $TEMPLATE --parameters ParameterKey=AdminEmail,ParameterValue=$EMAIL ParameterKey=DataBucketName,ParameterValue=$DATA_BUCKET_NAME --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --disable-rollback
           aws cloudformation wait stack-create-complete --stack-name $STACK_NAME
 
   integration_test:
@@ -257,26 +255,32 @@ jobs:
           CURRENT_ASSUME_ROLE_POLICY2=$(aws iam get-role --role-name $ROLE_NAME --query "Role.AssumeRolePolicyDocument.Statement[1]")
           TEST_ACCOUNT_ID=$(aws sts get-caller-identity --query Account)
           TEST_ACCOUNT_ID=$(echo $TEST_ACCOUNT_ID | tr -d '"')
-          TEST_USER_ARN="arn:aws:iam::$TEST_ACCOUNT_ID:user/githubBuilderBot"
+          export TEST_ACCOUNT_ID=$TEST_ACCOUNT_ID
+          TEST_USER_ARN="arn:aws:iam::${TEST_ACCOUNT_ID}:user/githubBuilderBot"
           TEST_USER_ASSUME_ROLE_POLICY='{"Effect":"Allow","Principal":{"AWS":"'"$TEST_USER_ARN"'"},"Action":"sts:AssumeRole"}'
           echo "TEST_USER_ASSUME_ROLE_POLICY=$TEST_USER_ASSUME_ROLE_POLICY" >> $GITHUB_OUTPUT
           TEST_IAM_USER_POLICY='{"Version":"2012-10-17","Statement":['$CURRENT_ASSUME_ROLE_POLICY1', '$CURRENT_ASSUME_ROLE_POLICY2', '$TEST_USER_ASSUME_ROLE_POLICY']}'
           aws iam update-assume-role-policy --role-name $ROLE_NAME --policy-document "$TEST_IAM_USER_POLICY"
           AMC_GLUE_JOB_ROLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $NESTED_STACK_ID --logical-resource-id "AmcGlueJobRole" --query "StackResources[0].PhysicalResourceId")
           AMC_GLUE_JOB_ROLE_NAME=$(echo $AMC_GLUE_JOB_ROLE_NAME | tr -d '"')
+          SYSTEM_TABLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id "SystemTable" --query "StackResources[0].PhysicalResourceId")
+          SYSTEM_TABLE_NAME=$(echo $SYSTEM_TABLE_NAME | tr -d '"')
           echo "AMC_GLUE_JOB_ROLE_NAME=$AMC_GLUE_JOB_ROLE_NAME" >> $GITHUB_ENV
           echo "AMC_GLUE_JOB_ROLE_NAME=$AMC_GLUE_JOB_ROLE_NAME" >> $GITHUB_OUTPUT
           export AMC_GLUE_JOB_NAME=$AMC_GLUE_JOB_NAME
-          export AMC_API_ROLE_ARN="arn:aws:iam::$TEST_ACCOUNT_ID:role/$ROLE_NAME"
-          export TEST_S3_BUCKET_NAME=${{ secrets.DATA_BUCKET_NAME }}
-          export AMC_ENDPOINT_URL=${{ secrets.AMC_API_ENDPOINT }}
-          export TEST_OUTPUT_BUCKET=$ARTIFACT_BUCKET
+          export AMC_API_ROLE_ARN="arn:aws:iam::${TEST_ACCOUNT_ID}:role/$ROLE_NAME"
+          export DATA_BUCKET_NAME=${{ secrets.DATA_BUCKET_NAME }}
+          export ARTIFACT_BUCKET=$ARTIFACT_BUCKET
+          export SYSTEM_TABLE_NAME=$SYSTEM_TABLE_NAME
+          export AMC_API_ENDPOINT=${{ secrets.AMC_API_ENDPOINT }}
           export SOLUTION_NAME=$SOLUTION_NAME
           export CUSTOMER_MANAGED_KEY=''
           export AWS_XRAY_CONTEXT_MISSING='LOG_ERROR'
           export botoConfig="{}"
           export VERSION=$VERSION
           export AWS_REGION="us-east-1"
+          export TEST_DATA_UPLOAD_ACCOUNT_ID=${{secrets.DATA_UPLOAD_ACCOUNT_ID}}
+          export AWS_XRAY_SDK_ENABLED=false
           aws iam attach-role-policy --role-name $AMC_GLUE_JOB_ROLE_NAME --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess"
           VENV=$(mktemp -d) && echo "$VENV"
           python3.10 -m venv "$VENV"
