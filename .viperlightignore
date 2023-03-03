@@ -11,5 +11,5 @@ source/tests/*
 source/api/tests/*
 
 # Account Id is public and available through an AWS Lambda Managed layer for AWS Data Wrangler Lambda
-deployment/amazon-marketing-cloud-uploader-from-aws.yaml:296
-source/api/external_resources.json:294
+deployment/amazon-marketing-cloud-uploader-from-aws.yaml:331
+source/api/external_resources.json:296
