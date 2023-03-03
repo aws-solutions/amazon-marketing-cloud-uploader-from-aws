@@ -535,6 +535,7 @@ def save_system_configuration():
     iam_client = boto3.client("iam", config=config)
     s3_client = boto3.client("s3", config=config)
     dynamo_resource = boto3.resource("dynamodb", config=config)
+
     try:
         system_parameter = json.loads(app.current_request.raw_body.decode())
         logger.info(json.loads(app.current_request.raw_body.decode()))
@@ -562,6 +563,7 @@ def save_system_configuration():
     except Exception as ex:
         logger.error("Exception: {}".format(ex))
         return {"Status": "Error", "Message": str(ex)}
+    
     system_table.put_item(Item=system_parameter)
     try:
         logger.info("reading bucket policy")

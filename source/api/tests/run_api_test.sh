@@ -34,7 +34,6 @@ then
 
     export AMC_API_ROLE_ARN="arn:aws:iam::999999999999:role/SomeTestRole"
     export SOLUTION_NAME="amcufa test"
-    export ARTIFACT_BUCKET="test_bucket"
     export SYSTEM_TABLE_NAME="test_table"
     export VERSION="0.0.0"
     export botoConfig='{"region_name": "us-east-1"}'
@@ -63,11 +62,46 @@ then
     DATA_BUCKET_NAME=""
     CUSTOMER_MANAGED_KEY=""
     AMC_ENDPOINT_URL=""
+    TEST_DATA_UPLOAD_ACCOUNT_ID=""
     AWS_XRAY_SDK_ENABLED=false
     AWS_XRAY_CONTEXT_MISSING=LOG_ERROR
-    TEST_DATA_UPLOAD_ACCOUNT_ID=""
     # End
 
+    if [ -z $STACK_NAME ]
+    then
+    echo "ERROR: You must set the variable 'STACK_NAME'"
+    exit 1
+    fi
+
+    if [ -z $AWS_REGION ]
+    then
+    echo "ERROR: You must set the variable 'AWS_REGION'"
+    exit 1
+    fi
+
+    if [ -z $AWS_DEFAULT_PROFILE ]
+    then
+    echo "ERROR: You must set the variable 'AWS_DEFAULT_PROFILE'"
+    exit 1
+    fi
+
+    if [ -z $DATA_BUCKET_NAME ]
+    then
+    echo "ERROR: You must set the variable 'DATA_BUCKET_NAME'"
+    exit 1
+    fi
+
+    if [ -z $AMC_ENDPOINT_URL ]
+    then
+    echo "ERROR: You must set the variable 'AMC_ENDPOINT_URL'"
+    exit 1
+    fi
+
+    if [ -z $TEST_DATA_UPLOAD_ACCOUNT_ID ]
+    then
+    echo "ERROR: You must set the variable 'TEST_DATA_UPLOAD_ACCOUNT_ID'"
+    exit 1
+    fi
     
     export AMC_API_ENDPOINT=$AMC_ENDPOINT_URL
     export SOLUTION_NAME="Amc integ testing"
