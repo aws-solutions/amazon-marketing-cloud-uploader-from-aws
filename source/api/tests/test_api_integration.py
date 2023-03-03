@@ -179,6 +179,7 @@ def test_configs():
     return _test_configs
 
 
+@pytest.mark.run(order=1)
 def test_setup_amc_instance(test_configs):
     # This test must run before all other test
     endpoint = test_configs["destination_endpoint"]
@@ -235,6 +236,7 @@ def test_setup_amc_instance(test_configs):
             expected_item["data_upload_account_id"] == data_upload_account_id
         )
         assert expected_item["endpoint"] == endpoint
+        time.sleep(10) # Allow some time for iam roles to be provisioned.
 
 
 def test_version():
