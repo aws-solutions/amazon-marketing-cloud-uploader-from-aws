@@ -53,18 +53,18 @@ SPDX-License-Identifier: Apache-2.0
                       {{ endpoint }} <b-spinner small></b-spinner>
                     </div>
                     <div v-else>
-                      <div v-if="endpoint_request(endpoint).status === '{}'">
-                        {{ endpoint }} (<b-link variant="link" @click="onClickMonitor(endpoint)">
-                          monitor
-                        </b-link>)
+                      <div v-if="!endpoint_request(endpoint).status">
+                        {{ endpoint }} {{ endpoint_request(endpoint).status }}
                       </div>
                       <div v-else-if="endpoint_request(endpoint).status.toLowerCase().includes('error')">
                         {{ endpoint }} <p class="text-danger" style="display:inline">
                           <br>{{ endpoint_request(endpoint).status }}
                         </p>
                       </div>
-                      <div v-else>
-                        {{ endpoint }}
+                      <div v-else-if="JSON.stringify(endpoint_request(endpoint).status).length > 0">
+                        {{ endpoint }} (<b-link variant="link" @click="onClickMonitor(endpoint)">
+                          monitor
+                        </b-link>)
                       </div>
                     </div>
                   </li>
@@ -184,7 +184,7 @@ SPDX-License-Identifier: Apache-2.0
       console.log('created')
       this.endpoint_request_state = this.destination_endpoints.map(x => ({
         "endpoint": x,
-        "status": "",
+        "status": null,
         "is_busy": false
       }))
     },
@@ -205,13 +205,7 @@ SPDX-License-Identifier: Apache-2.0
         if (this.selected_dataset === null) {
           this.create_datasets(this.destination_endpoints)
         } else {
-          // set busy status to show spinner for each endpoint
-          this.endpoint_request_state = this.destination_endpoints.map(x => ({
-            "endpoint": x,
-            "status": "{}",
-            "is_busy": false
-          }))
-
+          this.check_dataset_exists(this.destination_endpoints, this.selected_dataset)
         }
         console.log("Finished defining datasets.")
         // Wait for all those requests to complete, then start the glue job.
@@ -228,6 +222,29 @@ SPDX-License-Identifier: Apache-2.0
           'destination_endpoints': JSON.stringify(this.destination_endpoints)
         })
       },
+      check_dataset_exists(destination_endpoints, dataset_id) {
+        // set busy status to show spinner for each endpoint
+        this.endpoint_request_state = this.destination_endpoints.map(x => ({
+          "endpoint": x,
+          "status": "",
+          "is_busy": true
+        }))
+        destination_endpoints.forEach(endpoint => {
+          this.send_request('POST', 'describe_dataset', {
+            'body': this.dataset_definition,
+            'dataSetId': dataset_id,
+            'destination_endpoint': endpoint
+          }).then(result => {
+            console.log("describe_dataset() result for " + endpoint + ":")
+            console.log(JSON.stringify(result))
+            const j = this.endpoint_request_state.findIndex(x => x.endpoint === endpoint)
+            if (j != null) {
+              this.endpoint_request_state[j].is_busy = false
+              this.endpoint_request_state[j].status = JSON.stringify(result)
+            }
+          })
+        })
+      },
       create_datasets(destination_endpoints) {
         // set busy status to show spinner for each endpoint
         this.endpoint_request_state = this.destination_endpoints.map(x => ({
@@ -236,7 +253,7 @@ SPDX-License-Identifier: Apache-2.0
           "is_busy": true
         }))
         destination_endpoints.forEach(endpoint => {
-          this.create_dataset('POST', 'create_dataset', {
+          this.send_request('POST', 'create_dataset', {
             'body': this.dataset_definition,
             'destination_endpoint': endpoint
           }).then(result => {
@@ -250,7 +267,7 @@ SPDX-License-Identifier: Apache-2.0
           })
         })
       },
-      async create_dataset(method, resource, data) {
+      async send_request(method, resource, data) {
         this.modal_title = ''
         this.response = ''
         console.log("sending " + method + " " + resource + " " + JSON.stringify(data))

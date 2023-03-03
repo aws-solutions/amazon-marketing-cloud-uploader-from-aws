@@ -170,9 +170,9 @@ SPDX-License-Identifier: Apache-2.0
         perPage: 5,
         amcInstances: [{"endpoint": "","data_upload_account_id": "", "tags": []}],
         fields: [
-          {key: 'endpoint', label: 'AMC Endpoint', sortable: true, thStyle: { width: '50%'}},
-          {key: 'data_upload_account_id', label: 'Data Upload Account Id', sortable: true},
-          {key: 'tags', label: 'Tags', sortable: false}
+          {key: 'endpoint', label: 'AMC Endpoint', thStyle: { width: '50%'}},
+          {key: 'data_upload_account_id', label: 'Data Upload Account Id'},
+          {key: 'tags', label: 'Tags'}
         ],
         isSettingsActive: true
       }
