@@ -218,7 +218,7 @@ SPDX-License-Identifier: Apache-2.0
         if (index < this.amcInstances.length) {
           this.amcInstances.splice(index+1, 0, {})
         } else {
-          this.amcInstances.splice(index-this.amcInstances.length, 0, {})      
+          this.amcInstances.splice(index-this.amcInstances.length, 0, {})
         }
       },
       delete_row(index) {

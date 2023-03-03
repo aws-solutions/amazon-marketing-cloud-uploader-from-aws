@@ -34,7 +34,6 @@ then
 
     export AMC_API_ROLE_ARN="arn:aws:iam::999999999999:role/SomeTestRole"
     export SOLUTION_NAME="amcufa test"
-    export ARTIFACT_BUCKET="test_bucket"
     export SYSTEM_TABLE_NAME="test_table"
     export VERSION="0.0.0"
     export botoConfig='{"region_name": "us-east-1"}'
@@ -56,16 +55,54 @@ then
     python3.10 -m venv "$VENV"
     source "$VENV"/bin/activate
 
+    # Fill all values here
     STACK_NAME=""
     AWS_REGION="us-east-1"
     AWS_DEFAULT_PROFILE=""
     DATA_BUCKET_NAME=""
     CUSTOMER_MANAGED_KEY=""
+    AMC_ENDPOINT_URL=""
+    TEST_DATA_UPLOAD_ACCOUNT_ID=""
     AWS_XRAY_SDK_ENABLED=false
     AWS_XRAY_CONTEXT_MISSING=LOG_ERROR
-    AMC_ENDPOINT_URL=""
+    # End
 
-    
+    if [ -z $STACK_NAME ]
+    then
+    echo "ERROR: You must set the variable 'STACK_NAME'"
+    exit 1
+    fi
+
+    if [ -z $AWS_REGION ]
+    then
+    echo "ERROR: You must set the variable 'AWS_REGION'"
+    exit 1
+    fi
+
+    if [ -z $AWS_DEFAULT_PROFILE ]
+    then
+    echo "ERROR: You must set the variable 'AWS_DEFAULT_PROFILE'"
+    exit 1
+    fi
+
+    if [ -z $DATA_BUCKET_NAME ]
+    then
+    echo "ERROR: You must set the variable 'DATA_BUCKET_NAME'"
+    exit 1
+    fi
+
+    if [ -z $AMC_ENDPOINT_URL ]
+    then
+    echo "ERROR: You must set the variable 'AMC_ENDPOINT_URL'"
+    exit 1
+    fi
+
+    if [ -z $TEST_DATA_UPLOAD_ACCOUNT_ID ]
+    then
+    echo "ERROR: You must set the variable 'TEST_DATA_UPLOAD_ACCOUNT_ID'"
+    exit 1
+    fi
+
     export AMC_API_ENDPOINT=$AMC_ENDPOINT_URL
     export SOLUTION_NAME="Amc integ testing"
     export VERSION="0.0.1"
@@ -76,12 +113,13 @@ then
     export CUSTOMER_MANAGED_KEY=$CUSTOMER_MANAGED_KEY
     export AWS_REGION=$AWS_REGION
     export AWS_DEFAULT_PROFILE=$AWS_DEFAULT_PROFILE
+    export TEST_DATA_UPLOAD_ACCOUNT_ID=$TEST_DATA_UPLOAD_ACCOUNT_ID
 
     RESOURCE_ID=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id GlueStack --query "StackResources[0].PhysicalResourceId" --region $AWS_REGION --profile $AWS_DEFAULT_PROFILE)
     echo $RESOURCE_ID
     NESTED_STACK_ID=$(echo $RESOURCE_ID | cut -d "/" -f 2)
     echo $NESTED_STACK_ID
-    
+
     AMC_GLUE_JOB_NAME=$(aws cloudformation describe-stack-resources --stack-name $NESTED_STACK_ID --logical-resource-id "AmcGlueJob" --query "StackResources[0].PhysicalResourceId" --region $AWS_REGION --profile $AWS_DEFAULT_PROFILE)
     AMC_GLUE_JOB_NAME=$(echo "$AMC_GLUE_JOB_NAME" | tr -d '"')
     export AMC_GLUE_JOB_NAME=$AMC_GLUE_JOB_NAME
@@ -96,6 +134,7 @@ then
     CURRENT_ASSUME_ROLE_POLICY2=$(aws iam get-role --role-name $ROLE_NAME --query "Role.AssumeRolePolicyDocument.Statement[1]" --region $AWS_REGION --profile $AWS_DEFAULT_PROFILE)
     TEST_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --region $AWS_REGION --profile $AWS_DEFAULT_PROFILE)
     TEST_ACCOUNT_ID=$(echo $TEST_ACCOUNT_ID | tr -d '"')
+    export TEST_ACCOUNT_ID
     TEST_USER_ARN="arn:aws:iam::$TEST_ACCOUNT_ID"
     TEST_USER_ASSUME_ROLE_POLICY='{"Effect":"Allow","Principal":{"AWS":"'"$TEST_USER_ARN"':root"},"Action":"sts:AssumeRole"}'
     echo "TEST_USER_ASSUME_ROLE_POLICY: $TEST_USER_ASSUME_ROLE_POLICY"

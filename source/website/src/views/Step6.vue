@@ -156,7 +156,7 @@ SPDX-License-Identifier: Apache-2.0
                 </p>
               </div>
               <div v-else>
-                <b-table 
+                <b-table
                   ref="datasetTable"
                   select-mode="single"
                   selectable
@@ -349,7 +349,7 @@ SPDX-License-Identifier: Apache-2.0
                   </div>
                 </template>
               </b-table>
-              <b-pagination 
+              <b-pagination
                 v-if="etl_jobs.length > perPage3"
                 v-model="currentPage3"
                 align="center"
@@ -370,7 +370,7 @@ SPDX-License-Identifier: Apache-2.0
   import Header from '@/components/Header.vue'
   import Sidebar from '@/components/Sidebar.vue'
   import {mapState} from "vuex";
-  
+
   export default {
     name: "Step6",
     components: {
@@ -563,7 +563,7 @@ SPDX-License-Identifier: Apache-2.0
           console.log("sending " + method + " " + resource + " " + JSON.stringify(data))
           let requestOpts = {
             headers: {'Content-Type': 'application/json'},
-            body: data  
+            body: data
           };
           do {
             const response = await this.$Amplify.API.post(apiName, resource, requestOpts);
@@ -594,7 +594,7 @@ SPDX-License-Identifier: Apache-2.0
           };
           const response = await this.$Amplify.API.post(apiName, resource, requestOpts);
           if (response.Status === "Error") {
-            this.showAmcApiError = true  
+            this.showAmcApiError = true
           } else {
             this.datasets = response.dataSets
           }
@@ -620,7 +620,7 @@ SPDX-License-Identifier: Apache-2.0
           if ('JobRuns' in response) {
             this.etl_jobs = response.JobRuns.map(x => {
               x["filename"] = x.Arguments["--source_key"];
-              if ("StartedOn" in x) x["StartedOn"] = new Date(x["StartedOn"]).toLocaleString() 
+              if ("StartedOn" in x) x["StartedOn"] = new Date(x["StartedOn"]).toLocaleString()
               return x
             })
           }
@@ -642,7 +642,7 @@ SPDX-License-Identifier: Apache-2.0
           response = await this.$Amplify.API.get(apiName, resource);
           if (response.length > 0 && "Value" in response[0]) {
             this.available_amc_instances = response[0]["Value"]
-            // If there is only one registered AMC Instance, then select that one by default: 
+            // If there is only one registered AMC Instance, then select that one by default:
             if (this.available_amc_instances.length === 1) {
               this.selected_endpoint = this.available_amc_instances[0].endpoint
             }

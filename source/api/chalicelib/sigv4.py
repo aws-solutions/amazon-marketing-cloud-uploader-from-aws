@@ -106,7 +106,12 @@ def get_authorization_header(
 
 class Sigv4:
     def __init__(
-        self, base_url, http_method, path, request_parameters=None, payload=None
+        self,
+        base_url,
+        http_method,
+        path,
+        request_parameters=None,
+        payload=None,
     ) -> None:
         self.base_url = base_url
         self.http_method = http_method.upper()
@@ -232,15 +237,16 @@ class Sigv4:
 
 
 def delete(base_url, path):
-    sig_response = Sigv4(
-        base_url=base_url, path=path, http_method="DELETE"
-    )
+    sig_response = Sigv4(base_url=base_url, path=path, http_method="DELETE")
     return sig_response.process_request()
 
 
 def get(base_url, path, request_parameters=None):
     sig_response = Sigv4(
-        base_url=base_url, path=path, http_method="GET", request_parameters=request_parameters
+        base_url=base_url,
+        path=path,
+        http_method="GET",
+        request_parameters=request_parameters,
     )
     return sig_response.process_request()
 
