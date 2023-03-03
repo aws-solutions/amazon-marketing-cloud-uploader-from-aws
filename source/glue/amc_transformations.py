@@ -39,10 +39,11 @@
 #
 ###############################################################################
 
+import base64
 import json
 import sys
 from datetime import datetime
-import base64
+
 import awswrangler as wr
 import boto3
 import pandas as pd
@@ -76,7 +77,7 @@ try:
             "dataset_id",
             "period",
             "country_code",
-            "destination_endpoints"
+            "destination_endpoints",
         ],
     )
 except GlueArgumentError as e:
@@ -98,13 +99,13 @@ else:
     sys.exit(1)
 destination_endpoints = []
 if "destination_endpoints" in args:
-    destination_endpoints = json.loads(args['destination_endpoints'])
+    destination_endpoints = json.loads(args["destination_endpoints"])
 else:
     print("Missing required arg: destination_endpoints")
-    exit(1)
+    sys.exit(1)
 if len(destination_endpoints) == 0:
     print("destination_endpoints cannot be empty")
-    exit(1)
+    sys.exit(1)
 pii_fields = []
 if "pii_fields" in args:
     pii_fields = json.loads(args["pii_fields"])
@@ -364,27 +365,34 @@ if timestamp_column:
                     # via the S3 key. But we can't put forward slashes, like "https://" in the S3
                     # key. So, we encode the endpoint here and use that in the s3key.
                     # The amc_uploader.py can use base64 decode to get the original endpoint URL.
-                    destination_endpoint_encoded = base64.b64encode(destination_endpoint.encode('ascii')).decode('ascii')
+                    destination_endpoint_encoded = base64.b64encode(
+                        destination_endpoint.encode("ascii")
+                    ).decode("ascii")
                     # write the old df_partition to s3
                     output_file = (
-                            "s3://"
-                            + output_bucket
-                            + "/"
-                            + amc_str
-                            + "/"
-                            + dataset_id
-                            + "/"
-                            + timeseries_partition_size
-                            + "/"
-                            + destination_endpoint_encoded
-                            + "/"
-                            + filename
-                            + "-"
-                            + timestamp_str_old
-                            + ".gz"
+                        "s3://"
+                        + output_bucket
+                        + "/"
+                        + amc_str
+                        + "/"
+                        + dataset_id
+                        + "/"
+                        + timeseries_partition_size
+                        + "/"
+                        + destination_endpoint_encoded
+                        + "/"
+                        + filename
+                        + "-"
+                        + timestamp_str_old
+                        + ".gz"
                     )
                     output_files.append(output_file)
-                    print(writing + str(len(df_partition)) + rows_to + output_file)
+                    print(
+                        writing
+                        + str(len(df_partition))
+                        + rows_to
+                        + output_file
+                    )
                     num_rows += len(df_partition)
                     if content_type == json_content_type:
                         wr.s3.to_json(
@@ -434,23 +442,25 @@ if timestamp_column:
             # via the S3 key. But we can't put forward slashes, like "https://" in the S3
             # key. So, we encode the endpoint here and use that in the s3key.
             # The amc_uploader.py can use base64 decode to get the original endpoint URL.
-            destination_endpoint_encoded = base64.b64encode(destination_endpoint.encode('ascii')).decode('ascii')
+            destination_endpoint_encoded = base64.b64encode(
+                destination_endpoint.encode("ascii")
+            ).decode("ascii")
             output_file = (
-                    "s3://"
-                    + output_bucket
-                    + "/"
-                    + amc_str
-                    + "/"
-                    + dataset_id
-                    + "/"
-                    + timeseries_partition_size
-                    + "/"
-                    + destination_endpoint_encoded
-                    + "/"
-                    + filename
-                    + "-"
-                    + timestamp_str_old
-                    + ".gz"
+                "s3://"
+                + output_bucket
+                + "/"
+                + amc_str
+                + "/"
+                + dataset_id
+                + "/"
+                + timeseries_partition_size
+                + "/"
+                + destination_endpoint_encoded
+                + "/"
+                + filename
+                + "-"
+                + timestamp_str_old
+                + ".gz"
             )
             output_files.append(output_file)
             print(writing + str(len(df_partition)) + rows_to + output_file)
@@ -485,19 +495,21 @@ else:
         # via the S3 key. But we can't put forward slashes, like "https://" in the S3
         # key. So, we encode the endpoint here and use that in the s3key.
         # The amc_uploader.py can use base64 decode to get the original endpoint URL.
-        destination_endpoint_encoded = base64.b64encode(destination_endpoint.encode('ascii')).decode('ascii')
+        destination_endpoint_encoded = base64.b64encode(
+            destination_endpoint.encode("ascii")
+        ).decode("ascii")
         output_file = (
-                "s3://"
-                + output_bucket
-                + "/"
-                + amc_str
-                + "/"
-                + dataset_id
-                + "/dimension/"
-                + destination_endpoint_encoded
-                + "/"
-                + filename
-                + ".gz"
+            "s3://"
+            + output_bucket
+            + "/"
+            + amc_str
+            + "/"
+            + dataset_id
+            + "/dimension/"
+            + destination_endpoint_encoded
+            + "/"
+            + filename
+            + ".gz"
         )
         output_files.append(output_file)
         print(writing + str(len(hashed_df)) + rows_to + output_file)

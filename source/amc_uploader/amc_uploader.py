@@ -17,11 +17,11 @@
 #     s3://my_etl_artifacts/myDataset123/P1D/aHR0cHM6Ly9hYmNkZTEyMzQ1LmV4ZWN1dGUtYXBpLnVzLWVhc3QtMS5hbWF6b25hd3MuY29tL3Byb2Q=/amc-data-mid.json-2014_03_12-19:06:00.gz
 ###############################################################################
 
+import base64
 import json
 import logging
 import os
 import urllib.parse
-import base64
 from datetime import datetime
 
 # Patch libraries to instrument downstream calls
@@ -90,7 +90,9 @@ def _start_fact_upload(bucket, key):
         dataset_id = key.split("/")[1]
         time_partition = key.split("/")[2]
         base64_encoded_destination_endpoint = key.split("/")[3]
-        destination_endpoint = base64.b64decode(base64_encoded_destination_endpoint).decode("ascii")
+        destination_endpoint = base64.b64decode(
+            base64_encoded_destination_endpoint
+        ).decode("ascii")
         filename = urllib.parse.unquote(key.split("/")[-1])
         # Parse the filename to get the time window for that data.
         # Filenames should look like this, "etl_output_data.json-2022_01_06-09:01:00.gz"
@@ -119,7 +121,9 @@ def _start_fact_upload(bucket, key):
         # detected a different time period.
         path = "/dataSets/" + dataset_id
         logger.info("Validating dataset time period.")
-        dataset_definition = json.loads(sigv4.get(destination_endpoint, path).text)
+        dataset_definition = json.loads(
+            sigv4.get(destination_endpoint, path).text
+        )
         if dataset_definition["period"] != time_partition:
             logger.info(
                 "Changing dataset time period from "
@@ -130,8 +134,12 @@ def _start_fact_upload(bucket, key):
             dataset_definition["period"] = time_partition
             logger.info("PUT " + path + " " + json.dumps(dataset_definition))
             # Send request to update time period:
-            sigv4.put(destination_endpoint, path, json.dumps(dataset_definition))
-            dataset_definition = json.loads(sigv4.get(destination_endpoint, path).text)
+            sigv4.put(
+                destination_endpoint, path, json.dumps(dataset_definition)
+            )
+            dataset_definition = json.loads(
+                sigv4.get(destination_endpoint, path).text
+            )
             # Validate updated time period:
             if dataset_definition["period"] != time_partition:
                 raise AssertionError("Failed to update dataset time period.")
@@ -166,7 +174,9 @@ def _start_dimension_upload(bucket, key):
         #   amc/[datasetId]/dimension/base64_encoded_destination_endpoint/[datafile].gz
         dataset_id = key.split("/")[1]
         base64_encoded_destination_endpoint = key.split("/")[3]
-        destination_endpoint = base64.b64decode(base64_encoded_destination_endpoint).decode("ascii")
+        destination_endpoint = base64.b64decode(
+            base64_encoded_destination_endpoint
+        ).decode("ascii")
         filename = urllib.parse.unquote(key.split("/")[-1])
         logger.info("key: " + key)
         logger.info("dataset_id " + dataset_id)

@@ -277,7 +277,7 @@ export default {
     console.log('created')
   },
   mounted: function() {
-    // Run list_datasets() so we can warn users when they enter 
+    // Run list_datasets() so we can warn users when they enter
     // a dataset name which already exists.
     this.list_datasets()
     // pre-populate the form with previously selected values:
@@ -333,13 +333,13 @@ export default {
     updateDatasetMode() {
       console.log("Changing dataset mode to: " + this.dataset_mode)
       if (this.dataset_mode === 'CREATE') {
-        // reset form fields for JOIN 
+        // reset form fields for JOIN
         this.new_selected_dataset = null
         this.$store.commit('updateSelectedDataset', this.new_selected_dataset)
       }
       if (this.dataset_mode === 'JOIN') {
         this.list_datasets()
-        // reset form fields for CREATE 
+        // reset form fields for CREATE
         this.dataset_id = ''
         this.dataset_type = ''
         this.$store.commit('updateSelectedDataset', this.new_selected_dataset)

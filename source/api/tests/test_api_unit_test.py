@@ -17,7 +17,7 @@ import app
 import boto3
 import pytest
 from chalice.test import Client
-from moto import mock_glue, mock_s3, mock_sts, mock_dynamodb, mock_iam
+from moto import mock_dynamodb, mock_glue, mock_iam, mock_s3, mock_sts
 
 
 @pytest.fixture
@@ -142,7 +142,14 @@ def test_delete_dataset(mock_response, test_configs):
         response = client.http.post(
             "/delete_dataset",
             headers={"Content-Type": content_type},
-            body=json.dumps({"destination_endpoint": test_configs["destination_endpoint"],"dataSetId": test_configs["data_set_id"]}),
+            body=json.dumps(
+                {
+                    "destination_endpoint": test_configs[
+                        "destination_endpoint"
+                    ],
+                    "dataSetId": test_configs["data_set_id"],
+                }
+            ),
         )
         assert response.status_code == 200
         assert response.json_body == {}
@@ -167,7 +174,9 @@ def test_upload_status(mock_response, test_configs):
             headers={"Content-Type": content_type},
             body=json.dumps(
                 {
-                    "destination_endpoint": test_configs["destination_endpoint"],
+                    "destination_endpoint": test_configs[
+                        "destination_endpoint"
+                    ],
                     "dataSetId": test_configs["data_set_id"],
                     "uploadId": "123456",
                 }
@@ -236,7 +245,7 @@ def test_create_dataset(mock_response, test_configs):
             "dataSetType": "DIMENSION",
             "compressionFormat": "GZIP",
             "columns": [],
-        }
+        },
     }
     mock_response.return_value = MagicMock(
         status_code=200, text="{}", data=payload
@@ -287,7 +296,9 @@ def test_start_amc_transformation(test_configs):
                         "datasetId": test_configs["data_set_id"],
                         "period": test_configs["period"],
                         "countryCode": "USA",
-                        "destination_endpoints": test_configs["destination_endpoint"],
+                        "destination_endpoints": test_configs[
+                            "destination_endpoint"
+                        ],
                     }
                 ),
             )
@@ -299,9 +310,9 @@ def test_start_amc_transformation(test_configs):
             )
             assert glue_resp["JobRun"]["Id"] == response.json_body["JobRunId"]
 
+
 @patch("chalicelib.sigv4.requests.post")
 def test_system_configuration(mock_response, test_configs):
-
     with mock_iam(), mock_s3(), mock_dynamodb():
         content_type = test_configs["content_type"]
 
@@ -311,15 +322,11 @@ def test_system_configuration(mock_response, test_configs):
             "Statement": [
                 {
                     "Sid": "AmcEndpointAccessPolicy",
-                    "Action": [
-                        "execute-api:Invoke"
-                    ],
-                    "Resource": [
-                        "arn:aws:execute-api:*:*:test/*"
-                    ],
-                    "Effect": "Allow"
+                    "Action": ["execute-api:Invoke"],
+                    "Resource": ["arn:aws:execute-api:*:*:test/*"],
+                    "Effect": "Allow",
                 }
-            ]
+            ],
         }
         policy_name = "AmcApiAccess"
         role_name = test_configs["amc_role"].split("/")[1]
@@ -327,10 +334,14 @@ def test_system_configuration(mock_response, test_configs):
             RoleName=role_name,
             AssumeRolePolicyDocument=policy_name,
         )
-        iam.put_role_policy(RoleName=role_name, PolicyName=policy_name, PolicyDocument=json.dumps(policy_doc))
+        iam.put_role_policy(
+            RoleName=role_name,
+            PolicyName=policy_name,
+            PolicyDocument=json.dumps(policy_doc),
+        )
 
         s3 = boto3.client("s3", region_name=os.environ["AWS_REGION"])
-        
+
         s3.create_bucket(Bucket=test_configs["s3_artifact_bucket"])
         s3 = boto3.resource("s3")
         s3_object = s3.Object(
@@ -339,31 +350,37 @@ def test_system_configuration(mock_response, test_configs):
         s3_object.put(Body="{}", ContentType=content_type)
 
         bucket_policy = {
-            'Version': '2012-10-17',
-            'Statement': [{
-            'Sid': 'Some Bucket Policy',
-            'Effect': 'Allow',
-            'Principal': '*',
-            'Action': ['s3:GetObject'],
-            'Resource': f'arn:aws:s3:::{test_configs["s3_artifact_bucket"]}/*'
-        }]
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Sid": "Some Bucket Policy",
+                    "Effect": "Allow",
+                    "Principal": "*",
+                    "Action": ["s3:GetObject"],
+                    "Resource": f'arn:aws:s3:::{test_configs["s3_artifact_bucket"]}/*',
+                }
+            ],
         }
 
         # Convert the policy from JSON dict to string
         bucket_policy = json.dumps(bucket_policy)
-        s3 = boto3.client('s3')
-        s3.put_bucket_policy(Bucket=test_configs["s3_artifact_bucket"], Policy=bucket_policy)
-    
-        dynamodb = boto3.client('dynamodb', region_name=os.environ["AWS_REGION"])
+        s3 = boto3.client("s3")
+        s3.put_bucket_policy(
+            Bucket=test_configs["s3_artifact_bucket"], Policy=bucket_policy
+        )
+
+        dynamodb = boto3.client(
+            "dynamodb", region_name=os.environ["AWS_REGION"]
+        )
         params = {
-        'TableName': os.environ["SYSTEM_TABLE_NAME"],
-        'KeySchema': [
-            {'AttributeName': 'Name', 'KeyType': 'HASH'},
-        ],
-        'AttributeDefinitions': [
-                {'AttributeName': 'Name', 'AttributeType': 'S'},
-        ],
-        "BillingMode": "PAY_PER_REQUEST"
+            "TableName": os.environ["SYSTEM_TABLE_NAME"],
+            "KeySchema": [
+                {"AttributeName": "Name", "KeyType": "HASH"},
+            ],
+            "AttributeDefinitions": [
+                {"AttributeName": "Name", "AttributeType": "S"},
+            ],
+            "BillingMode": "PAY_PER_REQUEST",
         }
         dynamodb.create_table(**params)
 
@@ -373,25 +390,24 @@ def test_system_configuration(mock_response, test_configs):
                 "/system/configuration",
                 headers={"Content-Type": content_type},
                 body=json.dumps(
-                {
-                    "Name": "AmcInstances",
-                    "Value": [{
-                        "data_upload_account_id": test_configs["data_upload_account_id"],
-                        "endpoint": test_configs["amc_endpoint"],
-                        "tag_list": "testCom, test_tester",
-                        "tags": [
+                    {
+                        "Name": "AmcInstances",
+                        "Value": [
                             {
-                                "value": "testCom",
-                                "key": ""
-                            },
-                            {
-                                "value": "test_tester",
-                                "key": ""
+                                "data_upload_account_id": test_configs[
+                                    "data_upload_account_id"
+                                ],
+                                "endpoint": test_configs["amc_endpoint"],
+                                "tag_list": "testCom, test_tester",
+                                "tags": [
+                                    {"value": "testCom", "key": ""},
+                                    {"value": "test_tester", "key": ""},
+                                ],
                             }
-                        ]
-                    }],
-                }
-            ))
+                        ],
+                    }
+                ),
+            )
             assert response.status_code == 200
             assert response.json_body == {}
 
@@ -399,11 +415,17 @@ def test_system_configuration(mock_response, test_configs):
             response = client.http.get(
                 "/system/configuration",
                 headers={"Content-Type": content_type},
-        )
-            
+            )
+
             assert response.status_code == 200
             assert response.json_body[0]["Name"] == "AmcInstances"
-            assert response.json_body[0]["Value"][0]["data_upload_account_id"] == test_configs["data_upload_account_id"]
-            assert response.json_body[0]["Value"][0]["endpoint"] == test_configs["amc_endpoint"]
+            assert (
+                response.json_body[0]["Value"][0]["data_upload_account_id"]
+                == test_configs["data_upload_account_id"]
+            )
+            assert (
+                response.json_body[0]["Value"][0]["endpoint"]
+                == test_configs["amc_endpoint"]
+            )
             assert response.json_body[0]["Value"][0]["tag_list"] is not None
             assert response.json_body[0]["Value"][0]["tags"] is not None

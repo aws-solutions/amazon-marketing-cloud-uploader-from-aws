@@ -102,7 +102,7 @@ then
     echo "ERROR: You must set the variable 'TEST_DATA_UPLOAD_ACCOUNT_ID'"
     exit 1
     fi
-    
+
     export AMC_API_ENDPOINT=$AMC_ENDPOINT_URL
     export SOLUTION_NAME="Amc integ testing"
     export VERSION="0.0.1"
@@ -119,7 +119,7 @@ then
     echo $RESOURCE_ID
     NESTED_STACK_ID=$(echo $RESOURCE_ID | cut -d "/" -f 2)
     echo $NESTED_STACK_ID
-    
+
     AMC_GLUE_JOB_NAME=$(aws cloudformation describe-stack-resources --stack-name $NESTED_STACK_ID --logical-resource-id "AmcGlueJob" --query "StackResources[0].PhysicalResourceId" --region $AWS_REGION --profile $AWS_DEFAULT_PROFILE)
     AMC_GLUE_JOB_NAME=$(echo "$AMC_GLUE_JOB_NAME" | tr -d '"')
     export AMC_GLUE_JOB_NAME=$AMC_GLUE_JOB_NAME

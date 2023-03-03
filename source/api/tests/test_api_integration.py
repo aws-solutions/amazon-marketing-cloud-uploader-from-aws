@@ -190,21 +190,17 @@ def test_setup_amc_instance(test_configs):
             body=json.dumps(
                 {
                     "Name": "AmcInstances",
-                    "Value": [{
-                        "data_upload_account_id": data_upload_account_id,
-                        "endpoint": endpoint,
-                        "tag_list": "integ_test, integ_test_tester",
-                        "tags": [
-                            {
-                                "value": "integ_test",
-                                "key": ""
-                            },
-                            {
-                                "value": "integ_test",
-                                "key": ""
-                            }
-                        ]
-                    }],
+                    "Value": [
+                        {
+                            "data_upload_account_id": data_upload_account_id,
+                            "endpoint": endpoint,
+                            "tag_list": "integ_test, integ_test_tester",
+                            "tags": [
+                                {"value": "integ_test", "key": ""},
+                                {"value": "integ_test", "key": ""},
+                            ],
+                        }
+                    ],
                 }
             ),
         )
@@ -216,16 +212,28 @@ def test_setup_amc_instance(test_configs):
             headers={"Content-Type": "application/json"},
         )
         assert response.status_code == 200
-        expected_item = [item for item in [value_item for value_item in response.json_body[0]["Value"]] if item.get("data_upload_account_id") == data_upload_account_id]
+        expected_item = [
+            item
+            for item in [
+                value_item for value_item in response.json_body[0]["Value"]
+            ]
+            if item.get("data_upload_account_id") == data_upload_account_id
+        ]
         assert len(expected_item) >= 1
         expected_item = expected_item[0]
         if not isinstance(expected_item, dict):
             raise AssertionError("AmcInstance value must be of type dict")
         if "endpoint" not in expected_item:
-            raise AssertionError("AmcInstance value must contain key, 'endpoint'")
+            raise AssertionError(
+                "AmcInstance value must contain key, 'endpoint'"
+            )
         if "data_upload_account_id" not in expected_item:
-            raise AssertionError("AmcInstance value must contain key, 'data_upload_account_id'")
-        assert expected_item["data_upload_account_id"] == data_upload_account_id
+            raise AssertionError(
+                "AmcInstance value must contain key, 'data_upload_account_id'"
+            )
+        assert (
+            expected_item["data_upload_account_id"] == data_upload_account_id
+        )
         assert expected_item["endpoint"] == endpoint
 
 
@@ -310,7 +318,9 @@ def test_data_set_type():
                     headers={"Content-Type": "application/json"},
                     body=json.dumps(
                         {
-                            "destination_endpoint": test_configs["destination_endpoint"],
+                            "destination_endpoint": test_configs[
+                                "destination_endpoint"
+                            ],
                             "body": {
                                 "dataSetId": data_set_id,
                                 "fileFormat": file_format,
@@ -380,7 +390,7 @@ def test_data_set_type():
                                         "columnType": "DIMENSION",
                                     },
                                 ],
-                            }
+                            },
                         }
                     ),
                 )
@@ -389,16 +399,18 @@ def test_data_set_type():
 
                 time.sleep(5)  # give dataset time to be created
 
-                # check if it exists in AMC                
+                # check if it exists in AMC
                 response = client.http.post(
-                    '/describe_dataset',
-                    headers={'Content-Type': 'application/json'},
+                    "/describe_dataset",
+                    headers={"Content-Type": "application/json"},
                     body=json.dumps(
                         {
                             "dataSetId": data_set_id,
-                            "destination_endpoint": test_configs["destination_endpoint"],
+                            "destination_endpoint": test_configs[
+                                "destination_endpoint"
+                            ],
                         }
-                    )
+                    ),
                 )
                 assert response.status_code == 200
                 is_data_set_created = True
@@ -421,7 +433,9 @@ def test_data_set_type():
                             "datasetId": data_set_id,
                             "period": period,
                             "countryCode": "US",
-                            "destination_endpoints": str([test_configs["destination_endpoint"]]).replace("'", '"')
+                            "destination_endpoints": str(
+                                [test_configs["destination_endpoint"]]
+                            ).replace("'", '"'),
                         }
                     ),
                 )
@@ -466,12 +480,21 @@ def test_data_set_type():
                 )
                 assert response.status_code == 200
                 assert len(response.json_body["JobRuns"]) > 0
-                assert response.json_body["JobRuns"][0]["JobName"] == os.environ["AMC_GLUE_JOB_NAME"]
+                assert (
+                    response.json_body["JobRuns"][0]["JobName"]
+                    == os.environ["AMC_GLUE_JOB_NAME"]
+                )
 
                 response = client.http.post(
                     "/list_datasets",
                     headers={"Content-Type": "application/json"},
-                    body=json.dumps({"destination_endpoint": test_configs["destination_endpoint"]}),
+                    body=json.dumps(
+                        {
+                            "destination_endpoint": test_configs[
+                                "destination_endpoint"
+                            ]
+                        }
+                    ),
                 )
                 assert response.status_code == 200
                 assert len(response.json_body["dataSets"]) > 0
@@ -481,10 +504,16 @@ def test_data_set_type():
                 response = client.http.post(
                     "/list_uploads",
                     headers={"Content-Type": "application/json"},
-                    body=json.dumps({"dataSetId": data_set_id, "destination_endpoint": test_configs["destination_endpoint"]}),
+                    body=json.dumps(
+                        {
+                            "dataSetId": data_set_id,
+                            "destination_endpoint": test_configs[
+                                "destination_endpoint"
+                            ],
+                        }
+                    ),
                 )
                 assert response.status_code == 200
-                breakpoint()
                 assert len(response.json_body["uploads"]) > 0
                 assert (
                     response.json_body["uploads"][0]["sourceFileS3Key"]
@@ -506,7 +535,9 @@ def test_data_set_type():
                                 response.json_body["uploads"][0]["uploadId"]
                             ),
                             "dataSetId": data_set_id,
-                            "destination_endpoint": test_configs["destination_endpoint"]
+                            "destination_endpoint": test_configs[
+                                "destination_endpoint"
+                            ],
                         }
                     ),
                 )
@@ -534,7 +565,9 @@ def test_data_set_type():
                         body=json.dumps(
                             {
                                 "dataSetId": data_set_id,
-                                "destination_endpoint": test_configs["destination_endpoint"]
+                                "destination_endpoint": test_configs[
+                                    "destination_endpoint"
+                                ],
                             }
                         ),
                     )
