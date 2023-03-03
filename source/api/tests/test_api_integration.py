@@ -582,7 +582,7 @@ def test_create_upload_delete_dataset_DIMENSION_JSON_LIVE_RAMP(
             "nullable": True,
         },
         {
-            "name": "LiveRamp ID",
+            "name": "ramp_id",
             "description": "The user's LiveRamp ID",
             "dataType": "STRING",
             "nullable": True,
@@ -637,7 +637,7 @@ def test_create_upload_delete_dataset_FACT_JSON_LIVE_RAMP(
             "isMainEventTime": True,
         },
         {
-            "name": "LiveRamp ID",
+            "name": "ramp_id",
             "description": "The user's LiveRamp ID",
             "dataType": "STRING",
             "nullable": True,
