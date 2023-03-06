@@ -156,7 +156,7 @@ SPDX-License-Identifier: Apache-2.0
         }
       },
       pii_fields() {
-         return (this.dataset.columns.filter(x => x.externalUserIdType).map(x => (new Object( {'column_name':x.name, 'pii_type': x.externalUserIdType.identifierType}))))
+         return (this.dataset.columns.filter(x => x.externalUserIdType && x.externalUserIdType.identifierType).map(x => (new Object( {'column_name':x.name, 'pii_type': x.externalUserIdType.identifierType}))))
       },
       timestamp_column_name() {
         const timestamp_column = this.dataset.columns.filter(x => x.isMainEventTime).map(x => x.name)
