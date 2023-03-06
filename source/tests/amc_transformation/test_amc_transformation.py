@@ -15,7 +15,7 @@ from unittest.mock import patch, ANY
 
 
 ###############################
-# TEST HELPER UTILS
+# TEST NORMALIZER UTILS
 ###############################
 from glue.library.address_normalizer import load_address_map_helper
 
@@ -188,7 +188,7 @@ def test_amc_transformations(countries=None):
 
 
 ###############################
-# OTHER TESTS
+# TEST READING & WRITING
 ###############################
 from glue.library import read_write as rw
 
@@ -208,6 +208,7 @@ test_args = {
     "uuid": "test",
     "enable_anonymous_data": "true",
     "anonymous_data_logger": "test",
+    "destination_endpoints": '["endpoint1"]'
 }
 
 @patch('awswrangler.s3.to_json')
@@ -306,6 +307,8 @@ def test_save_dimension_output(mock_write_to_s3):
                 + "/"
                 + "test"
                 + "/dimension/"
+                + "ZW5kcG9pbnQx"
+                + "/"
                 + "test"
                 + ".gz"
             )
@@ -319,6 +322,7 @@ def test_save_fact_output(mock_write_to_s3):
     test_file = rw.FactDataset(test_args)
     test_file.content_type = "test"
     test_file.timeseries_partition_size = "P1D"
+    test_file.destination_endpoints = ["endpoint1", "endpoint2"]
 
     timestamp_1 = "2020-04-10T20:00:00Z"
     timestamp_2 = "2020-04-11T20:00:00Z"
@@ -349,24 +353,40 @@ def test_save_fact_output(mock_write_to_s3):
     expected_arguments = [
         {
             'df': ANY,
-            'filepath': 's3://test/amc/test/P1D/test-2020_04_12-00:00:00.gz',
+            'filepath': 's3://test/amc/test/P1D/ZW5kcG9pbnQx/test-2020_04_12-00:00:00.gz',
             'content_type': 'test'
         },
         {
             'df': ANY,
-            'filepath': 's3://test/amc/test/P1D/test-2020_04_11-00:00:00.gz',
+            'filepath': 's3://test/amc/test/P1D/ZW5kcG9pbnQy/test-2020_04_12-00:00:00.gz',
             'content_type': 'test'
         },
         {
             'df': ANY,
-            'filepath': 's3://test/amc/test/P1D/test-2020_04_10-00:00:00.gz',
+            'filepath': 's3://test/amc/test/P1D/ZW5kcG9pbnQx/test-2020_04_11-00:00:00.gz',
+            'content_type': 'test'
+        },
+        {
+            'df': ANY,
+            'filepath': 's3://test/amc/test/P1D/ZW5kcG9pbnQy/test-2020_04_11-00:00:00.gz',
+            'content_type': 'test'
+        },
+        {
+            'df': ANY,
+            'filepath': 's3://test/amc/test/P1D/ZW5kcG9pbnQx/test-2020_04_10-00:00:00.gz',
+            'content_type': 'test'
+        }
+        ,
+        {
+            'df': ANY,
+            'filepath': 's3://test/amc/test/P1D/ZW5kcG9pbnQy/test-2020_04_10-00:00:00.gz',
             'content_type': 'test'
         }
     ]
 
     test_file.save_fact_output()
 
-    assert mock_write_to_s3.call_count == 3
+    assert mock_write_to_s3.call_count == 6
 
     check = expected_arguments[0]
     mock_write_to_s3.assert_any_call(**check)
@@ -374,3 +394,9 @@ def test_save_fact_output(mock_write_to_s3):
     mock_write_to_s3.assert_any_call(**check)
     check = expected_arguments[2]
     mock_write_to_s3.assert_any_call(**check)
+
+def test_encode_endpoint():
+    expected = "ZW5kcG9pbnQy"
+    actual = rw.encode_endpoint("endpoint2")
+
+    assert expected == actual
