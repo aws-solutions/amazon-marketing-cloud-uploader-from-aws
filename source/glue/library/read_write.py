@@ -5,6 +5,7 @@ from datetime import datetime
 import awswrangler as wr
 import boto3
 import pandas as pd
+import base64
 
 ###############################
 # CONSTANTS
@@ -40,6 +41,13 @@ def write_to_s3(df: pd.DataFrame, filepath: str, content_type: str) -> None:
             index=False,
         )
 
+def encode_endpoint(text: str) -> str:
+    destination_endpoint_encoded = base64.b64encode(
+        text.encode("ascii")
+    ).decode("ascii")
+
+    return destination_endpoint_encoded
+
 ###############################
 # CLASSES & METHODS
 ###############################
@@ -60,6 +68,7 @@ class DataFile:
         self.deleted_fields = list(json.loads(args["deleted_fields"]))
         self.dataset_id = args["dataset_id"]
         self.country_code = args["country_code"]
+        self.destination_endpoints = list(json.loads(args["destination_endpoints"]))
 
         # other attributes
         self.data = pd.DataFrame()
@@ -154,7 +163,7 @@ class FactDataset(DataFile):
         self.timestamp_str_old = ""
         self.dataset_type = "FACT"
 
-    def _format_output(self):
+    def _format_output(self, destination_endpoint_encoded):
         return (
             "s3://"
             + self.output_bucket
@@ -164,6 +173,8 @@ class FactDataset(DataFile):
             + self.dataset_id
             + "/"
             + self.timeseries_partition_size
+            + "/"
+            + destination_endpoint_encoded
             + "/"
             + self.filename
             + "-"
@@ -243,7 +254,34 @@ class FactDataset(DataFile):
 
         self.data = df
 
-    def save_fact_output(self):
+    def upload_dataset(self, df: pd.DataFrame) -> list:
+        uploads = []
+        for destination_endpoint in self.destination_endpoints:
+            # The destination endpoints are URLs.
+            # We're going to pass these endpoints to the amc_uploader.py Lambda function
+            # via the S3 key. But we can't put forward slashes, like "https://" in the S3
+            # key. So, we encode the endpoint here and use that in the s3key.
+            # The amc_uploader.py can use base64 decode to get the original endpoint URL.
+            destination_endpoint_encoded = encode_endpoint(destination_endpoint)
+            # write the old df_partition to s3
+            output_file = self._format_output(destination_endpoint_encoded)
+            print(
+                WRITING
+                + str(len(df))
+                + ROWS_TO
+                + output_file
+            )
+            self.num_rows += len(df)
+            write_to_s3(
+                df=df,
+                filepath=output_file,
+                content_type=self.content_type
+            )
+            uploads.append(output_file)
+
+        return uploads
+
+    def save_fact_output(self) -> None:
         df = self.data
 
         # Partition the timeseries dataset into separate files for each
@@ -288,10 +326,8 @@ class FactDataset(DataFile):
                     ].dt.strftime(DATETIME_FORMAT)
                     # Now proceed to the next unique timestamp.
                     continue
-                # write the old df_partition to s3
-                output_file = self._format_output()
+
                 if len(df_partition) > 0:
-                    output_files.append(output_file)
                     # Earlier, we rounded the timestamp_column to minute (60s) granularity.
                     # Now we need to revert it back to full precision in order to avoid data loss.
                     df_partition[self.timestamp_column] = df_partition[
@@ -300,13 +336,8 @@ class FactDataset(DataFile):
                     df_partition.drop(
                         "timestamp_full_precision", axis=1, inplace=True
                     )
-                    print(WRITING + str(len(df_partition)) + ROWS_TO + output_file)
-                    self.num_rows += len(df_partition)
-                    write_to_s3(
-                        df=df_partition,
-                        filepath=output_file,
-                        content_type=self.content_type
-                    )
+                    uploads = self.upload_dataset(df=df_partition)
+                    output_files.extend(uploads)
                 # reset df_partition for the new timestamp string
                 self.timestamp_str_old = timestamp_str
                 # Get all the events that occurred at this timestamp
@@ -314,6 +345,7 @@ class FactDataset(DataFile):
                 df_partition[self.timestamp_column] = df_partition[
                     self.timestamp_column
                 ].dt.strftime(DATETIME_FORMAT)
+                
             else:
                 # Append all the events that occurred at this timestamp to df_partition
                 df_partition2 = df[df[self.timestamp_column] == timestamp]
@@ -323,23 +355,17 @@ class FactDataset(DataFile):
                 df_partition = df_partition.append(
                     df_partition2, ignore_index=True
                 )
+
         # write the last timestamp to s3
-        output_file = self._format_output()
         if len(df_partition) > 0:
-            output_files.append(output_file)
             # Earlier, we rounded the timestamp_column to minute (60s) granularity.
             # Now we need to revert it back to full precision in order to avoid data loss.
             df_partition[self.timestamp_column] = df_partition[
                 "timestamp_full_precision"
             ].dt.strftime(DATETIME_FORMAT)
             df_partition.drop("timestamp_full_precision", axis=1, inplace=True)
-            print(WRITING + str(len(df_partition)) + ROWS_TO + output_file)
-            self.num_rows += len(df_partition)
-            write_to_s3(
-                df=df_partition,
-                filepath=output_file,
-                content_type=self.content_type
-            )
+            uploads = self.upload_dataset(df=df_partition)
+            output_files.extend(uploads)
 
         output = {
             "timeseries granularity": self.timeseries_partition_size,
@@ -355,19 +381,32 @@ class DimensionDataset(DataFile):
 
     def save_dimension_output(self):
         df = self.data
-        output_file = (
-                "s3://"
-                + self.output_bucket
-                + "/"
-                + AMC_STR
-                + "/"
-                + self.dataset_id
-                + "/dimension/"
-                + self.filename
-                + ".gz"
-            )
-
-        print(WRITING + str(len(df)) + ROWS_TO + output_file)
+        for destination_endpoint in self.destination_endpoints:
+            # The destination endpoints are URLs.
+            # We're going to pass these endpoints to the amc_uploader.py Lambda function
+            # via the S3 key. But we can't put forward slashes, like "https://" in the S3
+            # key. So, we encode the endpoint here and use that in the s3key.
+            # The amc_uploader.py can use base64 decode to get the original endpoint URL.
+            destination_endpoint_encoded = encode_endpoint(destination_endpoint)
+            output_file = (
+                    "s3://"
+                    + self.output_bucket
+                    + "/"
+                    + AMC_STR
+                    + "/"
+                    + self.dataset_id
+                    + "/dimension/"
+                    + destination_endpoint_encoded
+                    + "/"
+                    + self.filename
+                    + ".gz"
+                )
+        print(
+            WRITING 
+            + str(len(df)) 
+            + ROWS_TO 
+            + output_file
+        )
         self.num_rows += len(df)
         write_to_s3(
             df=df,

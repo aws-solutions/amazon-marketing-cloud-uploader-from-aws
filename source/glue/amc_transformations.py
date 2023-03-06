@@ -40,7 +40,6 @@
 ###############################################################################
 
 import sys
-
 from awsglue.utils import GlueArgumentError, getResolvedOptions
 from library import transform
 from library import read_write as rw
@@ -57,7 +56,8 @@ REQUIRED_PARAMS = [
     "pii_fields",
     "deleted_fields",
     "dataset_id",
-    "country_code"
+    "country_code",
+    "destination_endpoints"
 ]
 OPTIONAL_PARAMS = [
     'period',
@@ -108,6 +108,9 @@ def check_params(required: list, optional: list) -> dict:
             ):
         print("ERROR: Invalid user-defined value for country:")
         print(args["country_code"])
+        sys.exit(1)
+    if len(args["destination_endpoints"]) == 0:
+        print("destination_endpoints cannot be empty")
         sys.exit(1)
 
     return args
