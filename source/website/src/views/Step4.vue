@@ -352,6 +352,7 @@ SPDX-License-Identifier: Apache-2.0
           { value: 'DIMENSION', text: 'Dimension', disabled: false},
           { value: 'METRIC', text: 'Metric', disabled: false},
           { value: 'isMainEventTime', text: 'MainEventTime', disabled: false},
+          { value: 'LiveRamp ID', text: 'LiveRamp ID', disabled: false},
         ],
         pii_type_options: [
           { value: 'EMAIL', text: 'EMAIL', disabled: false},
@@ -568,6 +569,21 @@ SPDX-License-Identifier: Apache-2.0
             this.columns.push(column_definition)
           }
         )
+        // add liveramp identifier
+        this.items.filter(x => x.column_type === 'LiveRamp ID')
+          .forEach(x => {
+            const column_definition = {
+              "name": x.name,
+              "description": x.description,
+              "dataType": x.data_type,
+              "externalUserIdType": {
+                "type": "LiveRamp"
+              }
+            }
+            if (x.nullable === true) column_definition.nullable = true
+            this.columns.push(column_definition)
+
+          })
         // add identifier for main event timestamp column
         this.items.filter(x => x.column_type === 'isMainEventTime')
           .forEach(x => {
@@ -582,7 +598,7 @@ SPDX-License-Identifier: Apache-2.0
           })
 
         // add identifiers for non-PII columns
-        this.items.filter(x => (x.pii_type === "" && x.column_type !== 'isMainEventTime'))
+        this.items.filter(x => (x.pii_type === "" && (x.column_type !== 'isMainEventTime' && x.column_type !== 'LiveRamp ID')))
           .forEach(x => {
             const column_definition = {
               "name": x.name,
@@ -623,12 +639,23 @@ SPDX-License-Identifier: Apache-2.0
           let idx = this.column_type_options.findIndex((x => x.value === 'isMainEventTime'))
           this.column_type_options[idx].disabled = false
         }
+        // enable live ramp option if that was just deselected
+        if (this.items[index].column_type === 'LiveRamp ID') {
+          let idx = this.column_type_options.findIndex((x => x.value === 'LiveRamp ID'))
+          this.column_type_options[idx].disabled = false
+        }
         // disable timestamp option if that was just selected
         if (value === 'isMainEventTime') {
           let idx = this.column_type_options.findIndex((x => x.value === 'isMainEventTime'))
           this.column_type_options[idx].disabled = true
-          // automatically set data type to timestamp if column type is timestamp
+          // automatically set data type to timestamp if column type is MainEventTime
           this.items[index].data_type = "TIMESTAMP"
+        }
+        if (value === 'LiveRamp ID') {
+          let idx = this.column_type_options.findIndex((x => x.value === 'LiveRamp ID'))
+          this.column_type_options[idx].disabled = true
+           // automatically set data type to string if column type is LiveRamp ID
+          this.items[index].data_type = "STRING"
         }
         // if changing from PII column to another, the PII Type and Nullable columns should be reset
         if (value !== 'PII' && this.items[index].column_type === 'PII') {
@@ -723,8 +750,14 @@ SPDX-License-Identifier: Apache-2.0
           this.selected_dataset_type = response.dataSetType
           this.selected_dataset_description = response.description
           this.selected_dataset_period = response.period
-          // read schema for PII fields
-          this.selected_dataset_items = this.selected_dataset_items.concat(response.columns.filter(x => "externalUserIdType" in x).map(x => ({"name": x.name, "description": x.description, "data_type": x.dataType, "column_type": "PII", "nullable": x.isNullable, "pii_type": x.externalUserIdType.identifierType})))
+
+          const resolveType = {
+            "LiveRamp": "LiveRamp ID",
+            "HashedIdentifier": "PII"
+          }
+
+          // read schema for externalUserIdType fields
+          this.selected_dataset_items = this.selected_dataset_items.concat(response.columns.filter(x => "externalUserIdType" in x).map(x => ({"name": x.name, "description": x.description, "data_type": x.dataType, "column_type": resolveType[x.externalUserIdType.type], "nullable": x.isNullable, "pii_type": x.externalUserIdType.identifierType})))
           // read schema for Timestamp field
           this.selected_dataset_items = this.selected_dataset_items.concat(response.columns.filter(x => x.isMainEventTime === true).map(x => ({"name": x.name, "description": x.description, "data_type": x.dataType, "column_type": "isMainEventTime", "pii_type":""})))
           // read schema for Dimension fields
