@@ -38,7 +38,6 @@ logger.setLevel(logging.INFO)
 logger.addHandler(handler)
 
 # Environment variables
-AMC_ENDPOINT = os.environ["AMC_ENDPOINT_URL"]
 AMC_API_ROLE = os.environ["AMC_API_ROLE_ARN"]
 SOLUTION_NAME = os.environ["SOLUTION_NAME"]
 SOLUTION_VERSION = os.environ["SOLUTION_VERSION"]
@@ -107,8 +106,14 @@ def get_authorization_header(
 
 class Sigv4:
     def __init__(
-        self, http_method, path, request_parameters=None, payload=None
+        self,
+        base_url,
+        http_method,
+        path,
+        request_parameters=None,
+        payload=None,
     ) -> None:
+        self.base_url = base_url
         self.http_method = http_method.upper()
         self.payload = payload
         self.path = path
@@ -121,7 +126,7 @@ class Sigv4:
         method = self.http_method
         service = "execute-api"
         region = os.environ["AWS_REGION"]
-        endpoint = f"{AMC_ENDPOINT}{self.path}"
+        endpoint = f"{self.base_url}{self.path}"
         domain_name = endpoint.split("/")[2]
 
         # Read AWS access key from env. variables or configuration file. Best practice is NOT
@@ -231,23 +236,30 @@ class Sigv4:
         )
 
 
-def delete(path):
-    sig_response = Sigv4(path=path, http_method="DELETE")
+def delete(base_url, path):
+    sig_response = Sigv4(base_url=base_url, path=path, http_method="DELETE")
     return sig_response.process_request()
 
 
-def get(path, request_parameters=None):
+def get(base_url, path, request_parameters=None):
     sig_response = Sigv4(
-        path=path, http_method="GET", request_parameters=request_parameters
+        base_url=base_url,
+        path=path,
+        http_method="GET",
+        request_parameters=request_parameters,
     )
     return sig_response.process_request()
 
 
-def put(path, body_data):
-    sig_response = Sigv4(path=path, http_method="PUT", payload=body_data)
+def put(base_url, path, body_data):
+    sig_response = Sigv4(
+        base_url=base_url, path=path, http_method="PUT", payload=body_data
+    )
     return sig_response.process_request()
 
 
-def post(path, body_data):
-    sig_response = Sigv4(path=path, http_method="POST", payload=body_data)
+def post(base_url, path, body_data):
+    sig_response = Sigv4(
+        base_url=base_url, path=path, http_method="POST", payload=body_data
+    )
     return sig_response.process_request()

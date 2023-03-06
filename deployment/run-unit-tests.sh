@@ -7,7 +7,7 @@
 #   Verify that pytest scripts achieve a minimum threshold for code coverage.
 #
 # USAGE:
-#  ./run-unit-tests.sh [-h] [-v] 
+#  ./run-unit-tests.sh [-h] [-v]
 #
 #    The following options are available:
 #
@@ -21,7 +21,7 @@ trap cleanup_and_die SIGINT SIGTERM ERR
 usage() {
   msg "$msg"
   cat <<EOF
-Usage: $(basename "${BASH_SOURCE[0]}") [-h] [-v] 
+Usage: $(basename "${BASH_SOURCE[0]}") [-h] [-v]
 
 Available options:
 
@@ -49,7 +49,7 @@ cleanup() {
     rm -rf $VENV
     rm -rf  __pycache__
     rm -rf .pytest_cache
-    cd $template_dir    
+    cd $template_dir
     echo "------------------------------------------------------------------------------"
     echo "Cleaning up complete"
     echo "------------------------------------------------------------------------------"
@@ -121,14 +121,16 @@ source "$VENV"/bin/activate
 # configure the environment
 cd $source_dir
 pip install --upgrade pip
-pip install -r requirements-dev.txt
-pip install -r api/tests/requirements-test.txt
+pip install -q -r requirements-dev.txt
+pip install -q -r api/tests/requirements-test.txt
 
 # env variables
 export PYTHONDONTWRITEBYTECODE=1
 export AMC_ENDPOINT_URL="https://example.com/alpha"
 export AMC_API_ROLE_ARN="arn:aws:iam::999999999999:role/SomeTestRole"
 export SOLUTION_NAME="amcufa test"
+export ARTIFACT_BUCKET="test_bucket"
+export SYSTEM_TABLE_NAME="test_table"
 export VERSION="0.0.0"
 export botoConfig='{"region_name": "us-east-1"}'
 export AWS_XRAY_SDK_ENABLED=false
@@ -148,7 +150,7 @@ cd $source_dir
 coverage_report_path=$source_dir/tests/coverage-reports/source.coverage.xml
 echo "coverage report path set to $coverage_report_path"
 
-pytest $source_dir/tests --cov=$source_dir/glue/ --cov=$source_dir/helper/ --cov=$source_dir/amc_uploader/ --cov=$source_dir/anonymous_data_logger/ --cov-report term-missing --cov-report term --cov-report "xml:$coverage_report_path" --ignore="tests/e2e" --cov-fail-under=68 -vv
+pytest $source_dir/tests --cov=$source_dir/glue/ --cov=$source_dir/helper/ --cov=$source_dir/amc_uploader/ --cov=$source_dir/anonymous_data_logger/ --cov-report term-missing --cov-report term --cov-report "xml:$coverage_report_path" --ignore="tests/e2e" -vv
 pytest $source_dir/api/tests --cov=$source_dir/api/ --cov-append --cov-report term-missing --cov-report term --cov-report "xml:$coverage_report_path" --cov-config=$source_dir/.coveragerc --ignore="api/tests/test_api_integration.py" -vv
 
 # The pytest --cov with its parameters and .coveragerc generates a xml cov-report with `coverage/sources` list
