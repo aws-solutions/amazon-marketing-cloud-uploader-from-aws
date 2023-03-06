@@ -13,15 +13,25 @@ from unittest.mock import MagicMock, patch
 import pytest
 from moto import mock_sts
 
+BASE64_ENCODED_AMC_ENDPOINT = "aHR0cHM6Ly9hYmNkZTEyMzQ1LmV4ZWN1dGUtYXBpLnVzLWVhc3QtMS5hbWF6b25hd3MuY29tL3Byb2Q="
+
 
 @pytest.fixture
 def test_configs():
     return {
         "s3_bucket": "fake_s3_bucket",
-        "s3_fact_key": "amc/dataset_id/PT1M/etl_output_data.json-2022_01_06-09:01:00.gz",
-        "s3_fact_key2": "amc/dataset_id/PT1M/filename",
-        "s3_fact_key3": "amc/dataset_id/P1D/etl_output_data.json-2022_01_06-09:01:00.gz",
-        "s3_dimension_key": "amc/dataset_id/timeseries_partition_size/filename.gz",
+        "s3_fact_key": "amc/dataset_id/PT1M/"
+        + BASE64_ENCODED_AMC_ENDPOINT
+        + "/etl_output_data.json-2022_01_06-09:01:00.gz",
+        "s3_fact_key2": "amc/dataset_id/PT1M/"
+        + BASE64_ENCODED_AMC_ENDPOINT
+        + "/filename",
+        "s3_fact_key3": "amc/dataset_id/P1D/"
+        + BASE64_ENCODED_AMC_ENDPOINT
+        + "/etl_output_data.json-2022_01_06-09:01:00.gz",
+        "s3_dimension_key": "amc/dataset_id/dimension/"
+        + BASE64_ENCODED_AMC_ENDPOINT
+        + "/filename.gz",
     }
 
 
@@ -54,22 +64,50 @@ def test_is_timeseries():
     from amc_uploader.amc_uploader import _is_timeseries
 
     assert (
-        _is_timeseries("amc/dataset_id/timeseries_partition_size/filename")
+        _is_timeseries(
+            "amc/dataset_id/timeseries_partition_size/"
+            + BASE64_ENCODED_AMC_ENDPOINT
+            + "/filename"
+        )
         is False
     )
-    assert _is_timeseries("amc/dataset_id/PT1M/filename") is True
-    assert _is_timeseries("amc/dataset_id/PT1H/filename") is True
-    assert _is_timeseries("amc/dataset_id/P1D/filename") is True
-    assert _is_timeseries("amc/dataset_id/P7D/filename") is True
     assert (
         _is_timeseries(
-            "amc/dataset_id/P7D/etl_output_data.json-2022_01_06-09:01:00"
+            "amc/dataset_id/PT1M/" + BASE64_ENCODED_AMC_ENDPOINT + "/filename"
         )
         is True
     )
     assert (
         _is_timeseries(
-            "amc/dataset_id/etl_output_data.json-2022_01_06-09:01:00"
+            "amc/dataset_id/PT1H/" + BASE64_ENCODED_AMC_ENDPOINT + "/filename"
+        )
+        is True
+    )
+    assert (
+        _is_timeseries(
+            "amc/dataset_id/P1D/" + BASE64_ENCODED_AMC_ENDPOINT + "/filename"
+        )
+        is True
+    )
+    assert (
+        _is_timeseries(
+            "amc/dataset_id/P7D/" + BASE64_ENCODED_AMC_ENDPOINT + "/filename"
+        )
+        is True
+    )
+    assert (
+        _is_timeseries(
+            "amc/dataset_id/P7D/"
+            + BASE64_ENCODED_AMC_ENDPOINT
+            + "/etl_output_data.json-2022_01_06-09:01:00"
+        )
+        is True
+    )
+    assert (
+        _is_timeseries(
+            "amc/dataset_id/"
+            + BASE64_ENCODED_AMC_ENDPOINT
+            + "etl_output_data.json-2022_01_06-09:01:00"
         )
         is False
     )
@@ -95,9 +133,9 @@ def test_lambda_handler_dimension(
 
 @patch("amc_uploader.amc_uploader._start_fact_upload")
 def test_lambda_handler_fact(
-    mock_start_fact, fake_event, fake_context, test_configs
+    mock_start_fact_upload, fake_event, fake_context, test_configs
 ):
-    mock_start_fact.return_value = {}
+    mock_start_fact_upload.return_value = {}
     from amc_uploader.amc_uploader import lambda_handler
 
     fake_event["Records"][0]["s3"].update(
@@ -105,7 +143,7 @@ def test_lambda_handler_fact(
     )
 
     lambda_handler(fake_event, fake_context)
-    mock_start_fact.assert_called_with(
+    mock_start_fact_upload.assert_called_with(
         bucket=test_configs["s3_bucket"],
         key=fake_event["Records"][0]["s3"]["object"]["key"],
     )
