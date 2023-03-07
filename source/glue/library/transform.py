@@ -2,12 +2,13 @@ import hashlib
 
 import pandas as pd
 import regex as re
-from normalizers.address_normalizer import AddressNormalizer
-from normalizers.default_normalizer import DefaultNormalizer
-from normalizers.email_normalizer import EmailNormalizer
-from normalizers.phone_normalizer import PhoneNormalizer
-from normalizers.state_normalizer import StateNormalizer
-from normalizers.zip_normalizer import ZipNormalizer
+from library.address_normalizer import AddressNormalizer
+from library.city_normalizer import CityNormalizer
+from library.default_normalizer import DefaultNormalizer
+from library.email_normalizer import EmailNormalizer
+from library.phone_normalizer import PhoneNormalizer
+from library.state_normalizer import StateNormalizer
+from library.zip_normalizer import ZipNormalizer
 
 ###############################
 # HELPER FUNCTIONS
@@ -32,6 +33,7 @@ class NormalizationPatterns:
             "ZIP": ZipNormalizer(country_code),
             "PHONE": PhoneNormalizer(country_code),
             "EMAIL": EmailNormalizer(),
+            "CITY": CityNormalizer(),
         }
         self.normalizer = field_map.get(field, DefaultNormalizer())
 
@@ -45,15 +47,17 @@ class NormalizationPatterns:
 ###############################
 
 
-def transform_data(df, pii_fields, country_code):
+def transform_data(
+    data: pd.DataFrame, pii_fields: dict, country_code: str
+) -> pd.DataFrame:
     for field in pii_fields:
         column_name = field["column_name"]
         pii_type = field["pii_type"]
         field_normalizer = NormalizationPatterns(
             field=pii_type, country_code=country_code
         )
-        df[column_name] = (
-            df[column_name]
+        data[column_name] = (
+            data[column_name]
             .copy()
             .apply(
                 lambda x, field_normalizer=field_normalizer: x
@@ -61,7 +65,7 @@ def transform_data(df, pii_fields, country_code):
                 else field_normalizer.text_transformations(text=x)
             )
         )
-    return df
+    return data
 
 
 ###############################
@@ -69,11 +73,11 @@ def transform_data(df, pii_fields, country_code):
 ###############################
 
 
-def hash_data(df, pii_fields):
+def hash_data(data: pd.DataFrame, pii_fields: dict) -> pd.DataFrame:
     for field in pii_fields:
         column_name = field["column_name"]
-        df[column_name] = (
-            df[column_name]
+        data[column_name] = (
+            data[column_name]
             .copy()
             .apply(
                 lambda x: x
@@ -81,4 +85,4 @@ def hash_data(df, pii_fields):
                 else hashlib.sha256(x.encode()).hexdigest()
             )
         )
-    return df
+    return data

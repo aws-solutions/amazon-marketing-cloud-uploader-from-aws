@@ -1,16 +1,5 @@
 import phonenumbers
 
-# phone number cannot start with certain digits for the indicated country
-restrictedDigits = {"GB": ["4", "6"]}
-
-
-def check_if_valid(number: int, country_code: str):
-    if country_code in restrictedDigits:
-        if str(number)[0] in restrictedDigits[country_code]:
-            return False
-
-    return True
-
 
 class PhoneNormalizer:
     def __init__(self, country_code):
@@ -29,10 +18,7 @@ class PhoneNormalizer:
             self.normalized_record = ""
         else:
             is_possible = phonenumbers.is_possible_number(parsed_number)
-            is_valid = check_if_valid(
-                parsed_number.national_number, self.country_code
-            )
-            if is_possible and is_valid:
+            if is_possible:
                 self.normalized_record = phonenumbers.format_number(
                     parsed_number, phonenumbers.PhoneNumberFormat.E164
                 ).replace("+", "")
