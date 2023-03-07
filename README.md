@@ -171,7 +171,7 @@ this capability, please see the [implementation guide](https://docs.aws.amazon.c
 
 ## Integration with solution for file upload automation
 
-This solution's `start_amc_transformation` API endpoint can be integrated with other ETL pipelines to provide with the built-in normalization and timeseries partitioning before uploading data to Amazon Marketing Cloud (AMC).
+This solution's `start_amc_transformation` API endpoint can be integrated with other ETL pipelines to provide built-in normalization and time-series partitioning before uploading data to Amazon Marketing Cloud (AMC).
 
 The purpose of the endpoint is to normalize and hash clear-text PII and partition time series data sets for AMC. Timestamp columns must be formatted before using the endpoint according to ISO 8601.
 
@@ -182,6 +182,7 @@ The `start_amc_transformation` API endpoint starts an AWS Glue Job with the argu
 - `countryCode`: string
 	- The country code to be used for different country-specific normalizations to apply to all rows in the dataset
 	- 2-digit ISO country code
+  - The full list of supported country codes can be found in the solution's Implementation Guide
 	- Ex: `"countryCode": "US"`
 	
 - `datasetId`: string
@@ -197,7 +198,7 @@ The `start_amc_transformation` API endpoint starts an AWS Glue Job with the argu
 	- Ex: `"deletedFields": "[]"`
 	
 - `destination_endpoints`: string (array)
-	- The list of AMC endpoints to receive of uploads
+	- The list of AMC endpoints to receive uploads
 	- Ex: `destination_endpoints: "[\" https://rrhcd93zj3.execute-api.us-east-1.amazonaws.com/prod\"]"`
 	
 - `outputBucket`: string
@@ -205,16 +206,16 @@ The `start_amc_transformation` API endpoint starts an AWS Glue Job with the argu
 	- Ex: `"outputBucket": "myTestStack-etl-artifacts"`,
 	
 - `period`: string
-	- The time period of the data set
-	- If uploding a dimension type data set, this will be autodetected and set to `P1D`
-	- Ex: `"period": "P1D"`
-	- If a fact type data set, `autodetect` or a specific period can be selected
-		- Ex: `"period": "autodetect"`
-		- Ex: `"period": "PT1H"`
-	- Options:  One of `["autodetect","PT1M","PT1H","P1D","P7D"]`
+  - _Required_ for a `fact` data set
+  - _Not used_ and should be omitted for a `dimension` data set
+  - The time period of the data set
+  - If a fact type data set, `autodetect` or a specific period can be selected
+    - Ex: `"period": "autodetect"`
+    - Ex: `"period": "PT1H"`
+  - Options:  One of `["autodetect","PT1M","PT1H","P1D","P7D"]`
 
 - `piiFields`: string (array)
-	- A JSON formatted list of the names of PII columns to be hashed in normalization
+	- A JSON formatted list of the names of PII columns to be normalized and hashed
 	- Ex: `"piiFields": "[{\"column_name\":\"first_name\",\"pii_type\":\"FIRST_NAME\"},{\"column_name\":\"last_name\",\"pii_type\":\"LAST_NAME\"},{\"column_name\":\"email\",\"pii_type\":\"EMAIL\"}]"`
 	
 	- Can be an empty array string if no PII data is being uploaded
@@ -229,10 +230,7 @@ The `start_amc_transformation` API endpoint starts an AWS Glue Job with the argu
 	- Ex: `"sourceKey": "myTestData.json"`
 	
 - `timestampColumn`: string
-	- Column name containing timestamps for the time series data sets
-	- Can be left as an empty string if the data set is going to be a dimension type (not time series)
-	- Ex: `"timestampColumn": ""`
-	
+	- Column name containing timestamps for the time series data sets	
 	- If the data set is going to be a fact type (time series), then a `timestampColumn` must be defined to be one of the data set's columns
 	- Ex: `"timestampColumn": "timestamp"`
 
@@ -243,7 +241,7 @@ The `start_amc_transformation` API endpoint starts an AWS Glue Job with the argu
 
 ## Using Postman
 
-Postman can be used to send a request to the deployed instance's `start_amc_transformation` and begin.
+Postman can be used to send a request to the deployed instance's `start_amc_transformation` and begin a Glue job.
 
 The instance's endpoint will be the output `UserInterface` URL from the CloudFormation base stack followed by `/api/start_amc_transformation`. AWS Signature credentials are required to access the endpoint.
 
@@ -287,7 +285,7 @@ The object returned should look like below if the command works:
 - `Add authorization data to`: Request Headers
 - `Access Key`: generated from command
 - `Secret Key`: generated from command
-- `AWS Region`: us-east-1
+- `AWS Region`: deployed region (ex: us-east-1)
 - `Service Name`: can leave empty
 - `Session Token`: generated from command
 
@@ -300,11 +298,9 @@ Example body for uploading to a new dimension dataset:
 	"datasetId": "test-dataset1",
 	"deletedFields": "[]",
 	"outputBucket": "myStack-etl-artifacts",
-	"period": "P1D",
 	"piiFields": "[{\"column_name\":\"first_name\",\"pii_type\":\"FIRST_NAME\"},{\"column_name\":\"last_name\",\"pii_type\":\"LAST_NAME\"},{\"column_name\":\"email\",\"pii_type\":\"EMAIL\"}]",
 	"sourceBucket": "myBucket",
 	"sourceKey": "amc-data-1.json",
-	"timestampColumn": ""
 }
 ```
 
@@ -315,11 +311,9 @@ Example body for uploading to a new dimension dataset with deleted fields:
 	"datasetId": "test-dataset2",
 	"deletedFields": "[\"product_name\",\"product_quantity\",\"timestamp\"]",
 	"outputBucket": "myStack-etl-artifacts",
-	"period": "P1D",
 	"piiFields": "[{\"column_name\":\"first_name\",\"pii_type\":\"FIRST_NAME\"},{\"column_name\":\"last_name\",\"pii_type\":\"LAST_NAME\"},{\"column_name\":\"email\",\"pii_type\":\"EMAIL\"}]",
 	"sourceBucket": "myBucket",
 	"sourceKey": "amc-data-2.json",
-	"timestampColumn": ""
 }
 ```
 
@@ -330,11 +324,9 @@ Example body for uploading to an existing dimension dataset with deleted fields:
 	"datasetId": "test-dataset2",
 	"deletedFields": "[\"timestamp\",\"product_quantity\",\"product_name\"]",
 	"outputBucket": "myStack-etl-artifacts",
-	"period": "P1D",
 	"piiFields": "[{\"column_name\":\"first_name\",\"pii_type\":\"FIRST_NAME\"},{\"column_name\":\"last_name\",\"pii_type\":\"LAST_NAME\"},{\"column_name\":\"email\",\"pii_type\":\"EMAIL\"}]",
 	"sourceBucket": "myBucket",
 	"sourceKey": "amc-data-3.json",
-	"timestampColumn": ""
 }
 ```
 
