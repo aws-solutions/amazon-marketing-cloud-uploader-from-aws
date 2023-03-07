@@ -1,5 +1,6 @@
 import phonenumbers
 
+
 class PhoneNormalizer:
     def __init__(self, country_code):
         # library takes 'GB' instead of 'UK' as country_code

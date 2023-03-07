@@ -43,9 +43,7 @@ def load_address_map_helper():
                 zipFile.extractall(path=tempdir)
                 print(os.listdir(tempdir))
                 with open(
-                    os.path.join(
-                        f"{tempdir}/library/address_map_helper.json"
-                    ),
+                    os.path.join(f"{tempdir}/library/address_map_helper.json"),
                     "r",
                     encoding="utf-8",
                 ) as file:

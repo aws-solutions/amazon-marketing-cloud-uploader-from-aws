@@ -40,9 +40,10 @@
 ###############################################################################
 
 import sys
+
 from awsglue.utils import GlueArgumentError, getResolvedOptions
-from library import transform
 from library import read_write as rw
+from library import transform
 
 REQUIRED_PARAMS = [
     "JOB_NAME",
@@ -57,35 +58,25 @@ REQUIRED_PARAMS = [
     "deleted_fields",
     "dataset_id",
     "country_code",
-    "destination_endpoints"
+    "destination_endpoints",
 ]
-OPTIONAL_PARAMS = [
-    'period',
-    'timestamp_column'
-]
+OPTIONAL_PARAMS = ["period", "timestamp_column"]
+
 
 def check_params(required: list, optional: list) -> dict:
     # assign required params
     try:
-        args = getResolvedOptions(
-            sys.argv,
-            required
-        )
+        args = getResolvedOptions(sys.argv, required)
     except GlueArgumentError as e:
         print(e)
         sys.exit(1)
 
     # assign optional params
     try:
-        args.update(
-            getResolvedOptions(
-                sys.argv,
-                optional
-            )
-        )
+        args.update(getResolvedOptions(sys.argv, optional))
     except GlueArgumentError:
         pass
-    
+
     # strip whitespace on applicable fields
     for i in ("dataset_id", "timestamp_column", "period"):
         if args[i]:
@@ -93,19 +84,19 @@ def check_params(required: list, optional: list) -> dict:
 
     # check specific params passed in
     if args["period"] and args["period"] not in (
-            "autodetect",
-            "PT1M",
-            "PT1H",
-            "P1D",
-            "P7D",
-            ):
-                print("ERROR: Invalid user-defined value for dataset period:")
-                print(args["period"])
-                sys.exit(1)
+        "autodetect",
+        "PT1M",
+        "PT1H",
+        "P1D",
+        "P7D",
+    ):
+        print("ERROR: Invalid user-defined value for dataset period:")
+        print(args["period"])
+        sys.exit(1)
     if args["country_code"] not in (
-            "US",
-            "UK",
-            ):
+        "US",
+        "UK",
+    ):
         print("ERROR: Invalid user-defined value for country:")
         print(args["country_code"])
         sys.exit(1)
@@ -116,29 +107,24 @@ def check_params(required: list, optional: list) -> dict:
     return args
 
 
-args = check_params(required=REQUIRED_PARAMS, optional=OPTIONAL_PARAMS)
+params = check_params(required=REQUIRED_PARAMS, optional=OPTIONAL_PARAMS)
 
 print("Runtime args:")
-print(args)
+print(params)
 
-if args['timestamp_column']:
-    file = rw.FactDataset(args=args)
+if params["timestamp_column"]:
+    file = rw.FactDataset(args=params)
 else:
-    file = rw.DimensionDataset(args=args)
+    file = rw.DimensionDataset(args=params)
 
 file.read_bucket()
 file.load_input_data()
 file.remove_deleted_fields()
 
 file.data = transform.transform_data(
-    data=file.data,
-    pii_fields=file.pii_fields,
-    country_code=file.country_code
+    data=file.data, pii_fields=file.pii_fields, country_code=file.country_code
 )
-file.data = transform.hash_data(
-    data=file.data,
-    pii_fields=file.pii_fields
-)
+file.data = transform.hash_data(data=file.data, pii_fields=file.pii_fields)
 
 if isinstance(file, rw.FactDataset):
     file.timestamp_transform()
@@ -147,5 +133,5 @@ if isinstance(file, rw.FactDataset):
 else:
     file.save_dimension_output()
 
-if args["enable_anonymous_data"] == "true":
+if params["enable_anonymous_data"] == "true":
     file.save_performance_metrics()

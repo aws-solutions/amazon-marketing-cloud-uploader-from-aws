@@ -1,3 +1,4 @@
+import base64
 import json
 import sys
 from datetime import datetime
@@ -5,7 +6,6 @@ from datetime import datetime
 import awswrangler as wr
 import boto3
 import pandas as pd
-import base64
 
 ###############################
 # CONSTANTS
@@ -22,6 +22,7 @@ DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 ###############################
 # HELPER FUNCTIONS
 ###############################
+
 
 def write_to_s3(df: pd.DataFrame, filepath: str, content_type: str) -> None:
     if content_type == JSON_CONTENT_TYPE:
@@ -41,6 +42,7 @@ def write_to_s3(df: pd.DataFrame, filepath: str, content_type: str) -> None:
             index=False,
         )
 
+
 def encode_endpoint(text: str) -> str:
     destination_endpoint_encoded = base64.b64encode(
         text.encode("ascii")
@@ -48,11 +50,15 @@ def encode_endpoint(text: str) -> str:
 
     return destination_endpoint_encoded
 
+
 ###############################
-# CLASSES & METHODS
+# MAIN METHODS
 ###############################
 
+
 class DataFile:
+    # pylint: disable=too-many-instance-attributes
+    # All instance attributes are needed.
     def __init__(self, args):
         # required params
         self.job_name = args["JOB_NAME"]
@@ -68,12 +74,15 @@ class DataFile:
         self.deleted_fields = list(json.loads(args["deleted_fields"]))
         self.dataset_id = args["dataset_id"]
         self.country_code = args["country_code"]
-        self.destination_endpoints = list(json.loads(args["destination_endpoints"]))
+        self.destination_endpoints = list(
+            json.loads(args["destination_endpoints"])
+        )
 
         # other attributes
         self.data = pd.DataFrame()
         self.filename = self.key.split("/")[-1]
         self.num_rows = 0
+        self.dataset_type = ""
 
     def read_bucket(self) -> None:
         s3 = boto3.client("s3")
@@ -131,7 +140,9 @@ class DataFile:
         glue_client = boto3.client("glue")
         lambda_client = boto3.client("lambda")
         response = glue_client.get_job_run(
-            JobName=self.job_name, RunId=self.job_run_id, PredecessorsIncluded=True | False
+            JobName=self.job_name,
+            RunId=self.job_run_id,
+            PredecessorsIncluded=True | False,
         )
         started_on = response["JobRun"]["StartedOn"].replace(tzinfo=None)
         glue_job_duration = (datetime.now() - started_on).total_seconds()
@@ -153,6 +164,7 @@ class DataFile:
         )
         print("Performance metrics:")
         print(metrics)
+
 
 class FactDataset(DataFile):
     def __init__(self, args):
@@ -191,12 +203,16 @@ class FactDataset(DataFile):
             )
         except ValueError as e:
             print(e)
-            print("Failed to parse timeseries in column " + self.timestamp_column)
+            print(
+                "Failed to parse timeseries in column " + self.timestamp_column
+            )
             print("Verify that timeseries is formatted according to ISO 8601.")
             raise e
         except Exception as e:
             print(e)
-            print("Failed to parse timeseries in column " + self.timestamp_column)
+            print(
+                "Failed to parse timeseries in column " + self.timestamp_column
+            )
             raise e
 
         self.data = df
@@ -211,9 +227,15 @@ class FactDataset(DataFile):
         df[self.timestamp_column] = df[self.timestamp_column].dt.round("Min")
 
         # Prepare to calculate time deltas by sorting on the timeseries column
-        self.unique_timestamps = pd.DataFrame(df[self.timestamp_column].unique())
-        self.unique_timestamps = self.unique_timestamps.rename(columns={0: "timestamp"})
-        self.unique_timestamps = self.unique_timestamps.sort_values(by="timestamp")
+        self.unique_timestamps = pd.DataFrame(
+            df[self.timestamp_column].unique()
+        )
+        self.unique_timestamps = self.unique_timestamps.rename(
+            columns={0: "timestamp"}
+        )
+        self.unique_timestamps = self.unique_timestamps.sort_values(
+            by="timestamp"
+        )
 
         if self.timeseries_partition_size == "autodetect":
             # Store the time delta between each sequential event
@@ -262,20 +284,15 @@ class FactDataset(DataFile):
             # via the S3 key. But we can't put forward slashes, like "https://" in the S3
             # key. So, we encode the endpoint here and use that in the s3key.
             # The amc_uploader.py can use base64 decode to get the original endpoint URL.
-            destination_endpoint_encoded = encode_endpoint(destination_endpoint)
+            destination_endpoint_encoded = encode_endpoint(
+                destination_endpoint
+            )
             # write the old df_partition to s3
             output_file = self._format_output(destination_endpoint_encoded)
-            print(
-                WRITING
-                + str(len(df))
-                + ROWS_TO
-                + output_file
-            )
+            print(WRITING + str(len(df)) + ROWS_TO + output_file)
             self.num_rows += len(df)
             write_to_s3(
-                df=df,
-                filepath=output_file,
-                content_type=self.content_type
+                df=df, filepath=output_file, content_type=self.content_type
             )
             uploads.append(output_file)
 
@@ -318,9 +335,7 @@ class FactDataset(DataFile):
                     self.timestamp_str_old = timestamp_str
                     # Get all the events that occurred at the first timestamp
                     # so that they can be recorded when we read the next timestamp.
-                    df_partition = df[
-                        df[self.timestamp_column] == timestamp
-                    ]
+                    df_partition = df[df[self.timestamp_column] == timestamp]
                     df_partition[self.timestamp_column] = df_partition[
                         self.timestamp_column
                     ].dt.strftime(DATETIME_FORMAT)
@@ -345,7 +360,7 @@ class FactDataset(DataFile):
                 df_partition[self.timestamp_column] = df_partition[
                     self.timestamp_column
                 ].dt.strftime(DATETIME_FORMAT)
-                
+
             else:
                 # Append all the events that occurred at this timestamp to df_partition
                 df_partition2 = df[df[self.timestamp_column] == timestamp]
@@ -373,6 +388,7 @@ class FactDataset(DataFile):
         }
         print(output)
 
+
 class DimensionDataset(DataFile):
     def __init__(self, args):
         super().__init__(args)
@@ -387,31 +403,26 @@ class DimensionDataset(DataFile):
             # via the S3 key. But we can't put forward slashes, like "https://" in the S3
             # key. So, we encode the endpoint here and use that in the s3key.
             # The amc_uploader.py can use base64 decode to get the original endpoint URL.
-            destination_endpoint_encoded = encode_endpoint(destination_endpoint)
+            destination_endpoint_encoded = encode_endpoint(
+                destination_endpoint
+            )
             output_file = (
-                    "s3://"
-                    + self.output_bucket
-                    + "/"
-                    + AMC_STR
-                    + "/"
-                    + self.dataset_id
-                    + "/dimension/"
-                    + destination_endpoint_encoded
-                    + "/"
-                    + self.filename
-                    + ".gz"
-                )
-        print(
-            WRITING 
-            + str(len(df)) 
-            + ROWS_TO 
-            + output_file
-        )
+                "s3://"
+                + self.output_bucket
+                + "/"
+                + AMC_STR
+                + "/"
+                + self.dataset_id
+                + "/dimension/"
+                + destination_endpoint_encoded
+                + "/"
+                + self.filename
+                + ".gz"
+            )
+        print(WRITING + str(len(df)) + ROWS_TO + output_file)
         self.num_rows += len(df)
         write_to_s3(
-            df=df,
-            filepath=output_file,
-            content_type=self.content_type
+            df=df, filepath=output_file, content_type=self.content_type
         )
 
         output = {"output files": output_file}

@@ -3,12 +3,12 @@ import hashlib
 import pandas as pd
 import regex as re
 from library.address_normalizer import AddressNormalizer
+from library.city_normalizer import CityNormalizer
 from library.default_normalizer import DefaultNormalizer
 from library.email_normalizer import EmailNormalizer
 from library.phone_normalizer import PhoneNormalizer
 from library.state_normalizer import StateNormalizer
 from library.zip_normalizer import ZipNormalizer
-from library.city_normalizer import CityNormalizer
 
 ###############################
 # HELPER FUNCTIONS
@@ -47,7 +47,9 @@ class NormalizationPatterns:
 ###############################
 
 
-def transform_data(data: pd.DataFrame, pii_fields: dict, country_code: str) -> pd.DataFrame:
+def transform_data(
+    data: pd.DataFrame, pii_fields: dict, country_code: str
+) -> pd.DataFrame:
     for field in pii_fields:
         column_name = field["column_name"]
         pii_type = field["pii_type"]
