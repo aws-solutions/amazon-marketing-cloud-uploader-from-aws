@@ -230,6 +230,8 @@ The `start_amc_transformation` API endpoint starts an AWS Glue Job with the argu
 	- Ex: `"sourceKey": "myTestData.json"`
 	
 - `timestampColumn`: string
+  - _Required_ for a `fact` data set
+  - _Not used_ and should be omitted for a `dimension` data set
 	- Column name containing timestamps for the time series data sets	
 	- If the data set is going to be a fact type (time series), then a `timestampColumn` must be defined to be one of the data set's columns
 	- Ex: `"timestampColumn": "timestamp"`
