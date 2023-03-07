@@ -6,24 +6,7 @@
 #   * Integration test for project api endpoints and workflow.
 #
 # USAGE:
-#   VENV=$(mktemp -d) && echo "$VENV"
-#   python3.10 -m venv "$VENV"
-#   source "$VENV"/bin/activate
-#   cd tests
-#   pip install -r requirements-test.txt
-#   export AMC_API_ENDPOINT=""
-#   export AMC_API_ROLE_ARN=""
-#   export SOLUTION_NAME=""
-#   export VERSION=""
-#   export botoConfig="{}"
-#   export AWS_XRAY_CONTEXT_MISSING=LOG_ERROR
-#   export AMC_GLUE_JOB_NAME=""
-#   export CUSTOMER_MANAGED_KEY=""
-#   export AWS_DEFAULT_PROFILE=""
-#   export AWS_REGION=""
-#   export TEST_S3_BUCKET_NAME=""
-#   export TEST_OUTPUT_BUCKET=""
-#   pytest test_api_integration.py -vv
+#   $ ./run_api_test.sh -rit
 ###############################################################################
 
 import datetime
@@ -37,15 +20,17 @@ import boto3
 import pandas as pd
 import pytest
 from chalice.test import Client
-from chalicelib import sigv4
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 _test_configs = {
-    "s3bucket": os.environ["TEST_S3_BUCKET_NAME"],
-    "outputBucket": os.environ["TEST_OUTPUT_BUCKET"],
+    "s3bucket": os.environ["DATA_BUCKET_NAME"],
+    "outputBucket": os.environ["ARTIFACT_BUCKET"],
+    "destination_endpoint": os.environ["AMC_API_ENDPOINT"],
+    "account_id": os.environ["TEST_ACCOUNT_ID"],
+    "data_upload_account_id": os.environ["TEST_DATA_UPLOAD_ACCOUNT_ID"],
 }
 
 _test_data = [
@@ -194,6 +179,66 @@ def test_configs():
     return _test_configs
 
 
+@pytest.mark.run(order=1)
+def test_setup_amc_instance(test_configs):
+    # This test must run before all other test
+    endpoint = test_configs["destination_endpoint"]
+    data_upload_account_id = test_configs["data_upload_account_id"]
+    with Client(app.app) as client:
+        response = client.http.post(
+            "/system/configuration",
+            headers={"Content-Type": "application/json"},
+            body=json.dumps(
+                {
+                    "Name": "AmcInstances",
+                    "Value": [
+                        {
+                            "data_upload_account_id": data_upload_account_id,
+                            "endpoint": endpoint,
+                            "tag_list": "integ_test, integ_test_tester",
+                            "tags": [
+                                {"value": "integ_test", "key": ""},
+                                {"value": "integ_test", "key": ""},
+                            ],
+                        }
+                    ],
+                }
+            ),
+        )
+        assert response.status_code == 200
+        assert response.json_body == {}
+
+        response = client.http.get(
+            "/system/configuration",
+            headers={"Content-Type": "application/json"},
+        )
+        assert response.status_code == 200
+        expected_item = [
+            item
+            for item in [
+                value_item for value_item in response.json_body[0]["Value"]
+            ]
+            if item.get("data_upload_account_id") == data_upload_account_id
+        ]
+        assert len(expected_item) >= 1
+        expected_item = expected_item[0]
+        if not isinstance(expected_item, dict):
+            raise AssertionError("AmcInstance value must be of type dict")
+        if "endpoint" not in expected_item:
+            raise AssertionError(
+                "AmcInstance value must contain key, 'endpoint'"
+            )
+        if "data_upload_account_id" not in expected_item:
+            raise AssertionError(
+                "AmcInstance value must contain key, 'data_upload_account_id'"
+            )
+        assert (
+            expected_item["data_upload_account_id"] == data_upload_account_id
+        )
+        assert expected_item["endpoint"] == endpoint
+        time.sleep(10) # Allow some time for iam roles to be provisioned.
+
+
 def test_version():
     with Client(app.app) as client:
         response = client.http.get(
@@ -240,6 +285,7 @@ def test_data_set_type():
         get_etl_data_by_job_id,
         generate_random_test_files_to_s3_bucket,
         s3_key_sub_dir="",
+        test_columns=None,
     ):
         is_data_set_created = False
         try:
@@ -268,6 +314,69 @@ def test_data_set_type():
             logger.info(
                 f"TIME_STAMP_DATA_SET_TYPE: {time_stamp_data_set_type}"
             )
+            test_columns = test_columns or [
+                {
+                    "name": "user_id",
+                    "description": "The customer resolved id",
+                    "dataType": "STRING",
+                    "nullable": True,
+                    "isMainUserId": True,
+                },
+                {
+                    "name": "user_type",
+                    "description": "The customer resolved type",
+                    "dataType": "STRING",
+                    "nullable": True,
+                    "isMainUserIdType": True,
+                },
+                {
+                    "name": "first_name",
+                    "description": "hashed First name",
+                    "dataType": "STRING",
+                    "externalUserIdType": {
+                        "type": "HashedIdentifier",
+                        "identifierType": "FIRST_NAME",
+                    },
+                    "nullable": True,
+                },
+                {
+                    "name": "last_name",
+                    "description": "hashed Last name",
+                    "dataType": "STRING",
+                    "externalUserIdType": {
+                        "type": "HashedIdentifier",
+                        "identifierType": "LAST_NAME",
+                    },
+                    "nullable": True,
+                },
+                {
+                    "name": "email",
+                    "description": "hashed Email",
+                    "dataType": "STRING",
+                    "externalUserIdType": {
+                        "type": "HashedIdentifier",
+                        "identifierType": "EMAIL",
+                    },
+                    "nullable": True,
+                },
+                {
+                    "name": "timestamp",
+                    "description": "Timestamp",
+                    **time_stamp_data_set_type,
+                },
+                {
+                    "name": "product_quantity",
+                    "description": "Product quantity",
+                    "dataType": "STRING",
+                    "columnType": "DIMENSION",
+                },
+                {
+                    "name": "product_name",
+                    "description": "Product name",
+                    "dataType": "STRING",
+                    "columnType": "DIMENSION",
+                },
+            ]
             with Client(app.app) as client:
                 # create_dataset
                 response = client.http.post(
@@ -275,76 +384,17 @@ def test_data_set_type():
                     headers={"Content-Type": "application/json"},
                     body=json.dumps(
                         {
+                            "destination_endpoint": test_configs[
+                                "destination_endpoint"
+                            ],
                             "body": {
                                 "dataSetId": data_set_id,
                                 "fileFormat": file_format,
                                 "period": "P1D",
                                 "dataSetType": data_set_type,
                                 "compressionFormat": "GZIP",
-                                "columns": [
-                                    {
-                                        "name": "user_id",
-                                        "description": "The customer resolved id",
-                                        "dataType": "STRING",
-                                        "nullable": True,
-                                        "isMainUserId": True,
-                                    },
-                                    {
-                                        "name": "user_type",
-                                        "description": "The customer resolved type",
-                                        "dataType": "STRING",
-                                        "nullable": True,
-                                        "isMainUserIdType": True,
-                                    },
-                                    {
-                                        "name": "first_name",
-                                        "description": "hashed First name",
-                                        "dataType": "STRING",
-                                        "externalUserIdType": {
-                                            "type": "HashedIdentifier",
-                                            "identifierType": "FIRST_NAME",
-                                        },
-                                        "nullable": True,
-                                    },
-                                    {
-                                        "name": "last_name",
-                                        "description": "hashed Last name",
-                                        "dataType": "STRING",
-                                        "externalUserIdType": {
-                                            "type": "HashedIdentifier",
-                                            "identifierType": "LAST_NAME",
-                                        },
-                                        "nullable": True,
-                                    },
-                                    {
-                                        "name": "email",
-                                        "description": "hashed Email",
-                                        "dataType": "STRING",
-                                        "externalUserIdType": {
-                                            "type": "HashedIdentifier",
-                                            "identifierType": "EMAIL",
-                                        },
-                                        "nullable": True,
-                                    },
-                                    {
-                                        "name": "timestamp",
-                                        "description": "Timestamp",
-                                        **time_stamp_data_set_type,
-                                    },
-                                    {
-                                        "name": "product_quantity",
-                                        "description": "Product quantity",
-                                        "dataType": "STRING",
-                                        "columnType": "DIMENSION",
-                                    },
-                                    {
-                                        "name": "product_name",
-                                        "description": "Product name",
-                                        "dataType": "STRING",
-                                        "columnType": "DIMENSION",
-                                    },
-                                ],
-                            }
+                                "columns": test_columns,
+                            },
                         }
                     ),
                 )
@@ -354,12 +404,23 @@ def test_data_set_type():
                 time.sleep(5)  # give dataset time to be created
 
                 # check if it exists in AMC
-                amc_data_set_resp = sigv4.get(f"/dataSets/{data_set_id}")
-                assert amc_data_set_resp.status_code == 200
+                response = client.http.post(
+                    "/describe_dataset",
+                    headers={"Content-Type": "application/json"},
+                    body=json.dumps(
+                        {
+                            "dataSetId": data_set_id,
+                            "destination_endpoint": test_configs[
+                                "destination_endpoint"
+                            ],
+                        }
+                    ),
+                )
+                assert response.status_code == 200
                 is_data_set_created = True
-                assert amc_data_set_resp.json()["dataSetId"] == data_set_id
-                assert amc_data_set_resp.json()["dataSetType"] == data_set_type
-                assert amc_data_set_resp.json()["fileFormat"] == file_format
+                assert response.json_body["dataSetId"] == data_set_id
+                assert response.json_body["dataSetType"] == data_set_type
+                assert response.json_body["fileFormat"] == file_format
 
                 # start_amc_transformation
                 response = client.http.post(
@@ -376,6 +437,9 @@ def test_data_set_type():
                             "datasetId": data_set_id,
                             "period": period,
                             "countryCode": "US",
+                            "destination_endpoints": str(
+                                [test_configs["destination_endpoint"]]
+                            ).replace("'", '"'),
                         }
                     ),
                 )
@@ -425,9 +489,16 @@ def test_data_set_type():
                     == os.environ["AMC_GLUE_JOB_NAME"]
                 )
 
-                response = client.http.get(
+                response = client.http.post(
                     "/list_datasets",
                     headers={"Content-Type": "application/json"},
+                    body=json.dumps(
+                        {
+                            "destination_endpoint": test_configs[
+                                "destination_endpoint"
+                            ]
+                        }
+                    ),
                 )
                 assert response.status_code == 200
                 assert len(response.json_body["dataSets"]) > 0
@@ -437,7 +508,14 @@ def test_data_set_type():
                 response = client.http.post(
                     "/list_uploads",
                     headers={"Content-Type": "application/json"},
-                    body=json.dumps({"dataSetId": data_set_id}),
+                    body=json.dumps(
+                        {
+                            "dataSetId": data_set_id,
+                            "destination_endpoint": test_configs[
+                                "destination_endpoint"
+                            ],
+                        }
+                    ),
                 )
                 assert response.status_code == 200
                 assert len(response.json_body["uploads"]) > 0
@@ -461,6 +539,9 @@ def test_data_set_type():
                                 response.json_body["uploads"][0]["uploadId"]
                             ),
                             "dataSetId": data_set_id,
+                            "destination_endpoint": test_configs[
+                                "destination_endpoint"
+                            ],
                         }
                     ),
                 )
@@ -475,7 +556,7 @@ def test_data_set_type():
             logger.debug(f"Cleaning up s3 {test_source_key}.")
 
             s3 = boto3.resource("s3")
-            s3.Object(_test_configs["s3bucket"], test_source_key).delete()
+            s3.Object(test_configs["s3bucket"], test_source_key).delete()
 
             logger.debug(f"Cleaning up dataset {data_set_id}.")
 
@@ -488,6 +569,9 @@ def test_data_set_type():
                         body=json.dumps(
                             {
                                 "dataSetId": data_set_id,
+                                "destination_endpoint": test_configs[
+                                    "destination_endpoint"
+                                ],
                             }
                         ),
                     )
@@ -527,52 +611,6 @@ def test_create_upload_delete_dataset_DIMENSION_CSV(
     )
 
 
-def test_create_upload_delete_dataset_FACT_JSON(
-    test_configs,
-    test_data_set_type,
-    get_etl_data_by_job_id,
-    generate_random_test_files_to_s3_bucket,
-):
-    test_data_set_type(
-        "FACT",
-        "JSON",
-        test_configs,
-        get_etl_data_by_job_id,
-        generate_random_test_files_to_s3_bucket,
-    )
-
-
-def test_create_upload_delete_dataset_FACT_CSV(
-    test_configs,
-    test_data_set_type,
-    get_etl_data_by_job_id,
-    generate_random_test_files_to_s3_bucket,
-):
-    test_data_set_type(
-        "FACT",
-        "CSV",
-        test_configs,
-        get_etl_data_by_job_id,
-        generate_random_test_files_to_s3_bucket,
-    )
-
-
-def test_create_upload_delete_dataset_DIMENSION_JSON_SUB_DIRECTORY(
-    test_configs,
-    test_data_set_type,
-    get_etl_data_by_job_id,
-    generate_random_test_files_to_s3_bucket,
-):
-    test_data_set_type(
-        "DIMENSION",
-        "JSON",
-        test_configs,
-        get_etl_data_by_job_id,
-        generate_random_test_files_to_s3_bucket,
-        s3_key_sub_dir="integ_test_data/",
-    )
-
-
 def test_create_upload_delete_dataset_FACT_JSON_SUB_DIRECTORY(
     test_configs,
     test_data_set_type,
@@ -586,4 +624,108 @@ def test_create_upload_delete_dataset_FACT_JSON_SUB_DIRECTORY(
         get_etl_data_by_job_id,
         generate_random_test_files_to_s3_bucket,
         s3_key_sub_dir="integ_test_data/",
+    )
+
+
+def test_create_upload_delete_dataset_DIMENSION_JSON_LIVE_RAMP(
+    test_configs,
+    test_data_set_type,
+    get_etl_data_by_job_id,
+    generate_random_test_files_to_s3_bucket,
+):
+    test_columns = [
+        {
+            "name": "user_id",
+            "description": "The customer resolved id",
+            "dataType": "STRING",
+            "nullable": True,
+            "isMainUserId": True,
+        },
+        {
+            "name": "user_type",
+            "description": "The customer resolved type",
+            "dataType": "STRING",
+            "nullable": True,
+            "isMainUserIdType": True,
+        },
+        {
+            "name": "first_name",
+            "description": "hashed First name",
+            "dataType": "STRING",
+            "externalUserIdType": {
+                "type": "HashedIdentifier",
+                "identifierType": "FIRST_NAME",
+            },
+            "nullable": True,
+        },
+        {
+            "name": "ramp_id",
+            "description": "The user's LiveRamp ID",
+            "dataType": "STRING",
+            "nullable": True,
+            "externalUserIdType": {"type": "LiveRamp"},
+        },
+    ]
+    test_data_set_type(
+        "DIMENSION",
+        "JSON",
+        test_configs,
+        get_etl_data_by_job_id,
+        generate_random_test_files_to_s3_bucket,
+        test_columns=test_columns,
+    )
+
+
+def test_create_upload_delete_dataset_FACT_JSON_LIVE_RAMP(
+    test_configs,
+    test_data_set_type,
+    get_etl_data_by_job_id,
+    generate_random_test_files_to_s3_bucket,
+):
+    test_columns = [
+        {
+            "name": "user_id",
+            "description": "The customer resolved id",
+            "dataType": "STRING",
+            "nullable": True,
+            "isMainUserId": True,
+        },
+        {
+            "name": "user_type",
+            "description": "The customer resolved type",
+            "dataType": "STRING",
+            "nullable": True,
+            "isMainUserIdType": True,
+        },
+        {
+            "name": "first_name",
+            "description": "hashed First name",
+            "dataType": "STRING",
+            "externalUserIdType": {
+                "type": "HashedIdentifier",
+                "identifierType": "FIRST_NAME",
+            },
+            "nullable": True,
+        },
+        {
+            "name": "timestamp",
+            "description": "Timestamp",
+            "dataType": "TIMESTAMP",
+            "isMainEventTime": True,
+        },
+        {
+            "name": "ramp_id",
+            "description": "The user's LiveRamp ID",
+            "dataType": "STRING",
+            "nullable": True,
+            "externalUserIdType": {"type": "LiveRamp"},
+        },
+    ]
+    test_data_set_type(
+        "FACT",
+        "JSON",
+        test_configs,
+        get_etl_data_by_job_id,
+        generate_random_test_files_to_s3_bucket,
+        test_columns=test_columns,
     )

@@ -208,13 +208,13 @@ echo "--------------------------------------------------------------------------
 cd "$build_dir"/lambda_layer_factory/ || exit 1
 echo "Running build-lambda-layer.sh"
 rm -rf lambda_layer-python-* lambda_layer-python*.zip
-if `./build-lambda-layer.sh requirements.txt > /dev/null`; then
-  rm -rf lambda_layer_python-3.9/
-  echo "Lambda layer build script completed.";
-else
+./build-lambda-layer.sh requirements.txt
+if [ $? -ne 0 ]; then
   echo "ERROR: Lambda layer build script failed."
   exit 1
 fi
+rm -rf lambda_layer_python-3.9/
+echo "Lambda layer build script completed.";
 mv lambda_layer_python3.9.zip "$regional_dist_dir"
 echo "Lambda layer file:"
 ls $regional_dist_dir/lambda_layer_python3.9.zip

@@ -24,7 +24,7 @@ SPDX-License-Identifier: Apache-2.0
           :active="isStep2Active"
         >
           <br>
-          Define dataset
+          Select destinations
         </b-link>
         <hr>
         Step 3
@@ -34,7 +34,7 @@ SPDX-License-Identifier: Apache-2.0
           :class="{ active: isStep3Active }"
         >
           <br>
-          Define columns
+          Define dataset
         </b-link>
         <hr>
         Step 4
@@ -44,7 +44,7 @@ SPDX-License-Identifier: Apache-2.0
           :class="{ active: isStep4Active }"
         >
           <br>
-          Confirm details
+          Define columns
         </b-link>
         <hr>
         Step 5
@@ -54,7 +54,27 @@ SPDX-License-Identifier: Apache-2.0
           :class="{ active: isStep5Active }"
         >
           <br>
-          Monitor upload
+          Confirm details
+        </b-link>
+        <hr>
+        Step 6
+        <b-link
+          id="step6"
+          to="/step6"
+          :class="{ active: isStep6Active }"
+        >
+          <br>
+          Monitor uploads
+        </b-link>
+        <hr>
+        Settings
+        <b-link
+          id="settings"
+          to="/settings"
+          :class="{ active: isSettingsActive }"
+        >
+          <br>
+          AMC Instances
         </b-link>
         <hr>
       </b-col>
@@ -66,7 +86,13 @@ SPDX-License-Identifier: Apache-2.0
 
 export default {
   name: 'Sidebar',
-  props: ['isStep1Active','isStep2Active','isStep3Active','isStep4Active', 'isStep5Active', 'isTestActive'],
+  props: ['isStep1Active','isStep2Active','isStep3Active','isStep4Active', 'isStep5Active', 'isStep6Active', 'isTestActive', 'isSettingsActive'],
 }
 
 </script>
+
+<style>
+a.router-link-active {
+  color: black;
+}
+</style>

@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Allow users to upload S3 files to existing datasets [#73]
 - Allow users to upload multiple S3 files at the same time [#41]
 - Allow users to specify FACT partition size [#52]
 - Record anonymous performance metrics to measure ETL workload size [#52]
@@ -15,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automate build and deploy tests [#34]
 - Invalid email addresses should normalize to empty string and added unit tests to github pr-workflow. [#63]
 - Use custom lambda layer for aws-xray-sdk [#68]
+- Add LiveRamp Identifier [#40]
 - Add Pre-commit, fix SonarCube/SonarLint issues [#16]
 - Add Unit Tests, combine coverage report for source/api/tests and source/tests. [#100]
 

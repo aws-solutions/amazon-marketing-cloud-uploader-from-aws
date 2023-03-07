@@ -16,7 +16,8 @@
 #   --deleted_fields: array of strings indicating the names of columns which the user requested to be dropped from the dataset prior to uploading to AMC.
 #   --dataset_id: name of dataset, used as the prefix folder for the output s3key.
 #   --period: time period of dataset, one of ["autodetect","PT1M","PT1H","P1D","P7D"]. Autodetect enabled by default. (optional)
-#   --country: country-specific normalization to apply to all rows in the dataset (2-digit ISO country code).
+#   --country_code: country-specific normalization to apply to all rows in the dataset (2-digit ISO country code).
+#   --destination_endpoints: List of AMC endpoints to receive uploads
 #
 # OUTPUT:
 #   - Transformed data files in user-specified output bucket,
@@ -34,10 +35,11 @@
 #    export DATASET_ID='mytest123'
 #    export REGION=us-east-1
 #    aws glue start-job-run --job-name $JOB_NAME --arguments '{"--source_bucket": "'$SOURCE_BUCKET'", "--output_bucket": "'$OUTPUT_BUCKET'", "--source_key": "'$SOURCE_KEY'", "--pii_fields": "'$PII_FIELDS'",
-#    "--deleted_fields": "'$DELETED_FIELDS'", "--timestamp_column": "'$TIMESTAMP_COLUMN'", "--dataset_id": "'$DATASET_ID'", "--period": "autodetect", "--country": "US"}' --region $REGION
+#    "--deleted_fields": "'$DELETED_FIELDS'", "--timestamp_column": "'$TIMESTAMP_COLUMN'", "--dataset_id": "'$DATASET_ID'", "--period": "autodetect", "--country_code": "US"}' --region $REGION
 #
 ###############################################################################
 
+import base64
 import json
 import sys
 from datetime import datetime
@@ -75,6 +77,7 @@ try:
             "dataset_id",
             "period",
             "country_code",
+            "destination_endpoints",
         ],
     )
 except GlueArgumentError as e:
@@ -93,6 +96,15 @@ if "dataset_id" in args:
     dataset_id = args["dataset_id"].strip()
 else:
     print("Missing required arg: dataset_id")
+    sys.exit(1)
+destination_endpoints = []
+if "destination_endpoints" in args:
+    destination_endpoints = json.loads(args["destination_endpoints"])
+else:
+    print("Missing required arg: destination_endpoints")
+    sys.exit(1)
+if len(destination_endpoints) == 0:
+    print("destination_endpoints cannot be empty")
     sys.exit(1)
 pii_fields = []
 if "pii_fields" in args:
@@ -347,24 +359,57 @@ if timestamp_column:
                 df_partition.drop(
                     timestamp_full_precision, axis=1, inplace=True
                 )
-                print(writing + str(len(df_partition)) + rows_to + output_file)
-                num_rows += len(df_partition)
-                if content_type == json_content_type:
-                    wr.s3.to_json(
-                        df=df_partition,
-                        path=output_file,
-                        compression="gzip",
-                        lines=True,
-                        orient="records",
+                for destination_endpoint in destination_endpoints:
+                    # The destination endpoints are URLs.
+                    # We're going to pass these endpoints to the amc_uploader.py Lambda function
+                    # via the S3 key. But we can't put forward slashes, like "https://" in the S3
+                    # key. So, we encode the endpoint here and use that in the s3key.
+                    # The amc_uploader.py can use base64 decode to get the original endpoint URL.
+                    destination_endpoint_encoded = base64.b64encode(
+                        destination_endpoint.encode("ascii")
+                    ).decode("ascii")
+                    # write the old df_partition to s3
+                    output_file = (
+                        "s3://"
+                        + output_bucket
+                        + "/"
+                        + amc_str
+                        + "/"
+                        + dataset_id
+                        + "/"
+                        + timeseries_partition_size
+                        + "/"
+                        + destination_endpoint_encoded
+                        + "/"
+                        + filename
+                        + "-"
+                        + timestamp_str_old
+                        + ".gz"
                     )
-                elif content_type == csv_content_type:
-                    wr.s3.to_csv(
-                        df=df_partition,
-                        path=output_file,
-                        compression="gzip",
-                        header=True,
-                        index=False,
+                    output_files.append(output_file)
+                    print(
+                        writing
+                        + str(len(df_partition))
+                        + rows_to
+                        + output_file
                     )
+                    num_rows += len(df_partition)
+                    if content_type == json_content_type:
+                        wr.s3.to_json(
+                            df=df_partition,
+                            path=output_file,
+                            compression="gzip",
+                            lines=True,
+                            orient="records",
+                        )
+                    elif content_type == csv_content_type:
+                        wr.s3.to_csv(
+                            df=df_partition,
+                            path=output_file,
+                            compression="gzip",
+                            header=True,
+                            index=False,
+                        )
             # reset df_partition for the new timestamp string
             df_partition = pd.DataFrame()
             timestamp_str_old = timestamp_str
@@ -384,47 +429,58 @@ if timestamp_column:
                 df_partition2, ignore_index=True
             )
     # write the last timestamp to s3
-    output_file = (
-        "s3://"
-        + output_bucket
-        + "/"
-        + amc_str
-        + "/"
-        + dataset_id
-        + "/"
-        + timeseries_partition_size
-        + "/"
-        + filename
-        + "-"
-        + timestamp_str_old
-        + ".gz"
-    )
     if len(df_partition) > 0:
-        output_files.append(output_file)
         # Earlier, we rounded the timestamp_column to minute (60s) granularity.
         # Now we need to revert it back to full precision in order to avoid data loss.
         df_partition[timestamp_column] = df_partition[
             timestamp_full_precision
         ].dt.strftime(datetime_format)
         df_partition.drop(timestamp_full_precision, axis=1, inplace=True)
-        print(writing + str(len(df_partition)) + rows_to + output_file)
-        num_rows += len(df_partition)
-        if content_type == json_content_type:
-            wr.s3.to_json(
-                df=df_partition,
-                path=output_file,
-                compression="gzip",
-                lines=True,
-                orient="records",
+        for destination_endpoint in destination_endpoints:
+            # The destination endpoints are URLs.
+            # We're going to pass these endpoints to the amc_uploader.py Lambda function
+            # via the S3 key. But we can't put forward slashes, like "https://" in the S3
+            # key. So, we encode the endpoint here and use that in the s3key.
+            # The amc_uploader.py can use base64 decode to get the original endpoint URL.
+            destination_endpoint_encoded = base64.b64encode(
+                destination_endpoint.encode("ascii")
+            ).decode("ascii")
+            output_file = (
+                "s3://"
+                + output_bucket
+                + "/"
+                + amc_str
+                + "/"
+                + dataset_id
+                + "/"
+                + timeseries_partition_size
+                + "/"
+                + destination_endpoint_encoded
+                + "/"
+                + filename
+                + "-"
+                + timestamp_str_old
+                + ".gz"
             )
-        elif content_type == csv_content_type:
-            wr.s3.to_csv(
-                df=df_partition,
-                path=output_file,
-                compression="gzip",
-                header=True,
-                index=False,
-            )
+            output_files.append(output_file)
+            print(writing + str(len(df_partition)) + rows_to + output_file)
+            num_rows += len(df_partition)
+            if content_type == json_content_type:
+                wr.s3.to_json(
+                    df=df_partition,
+                    path=output_file,
+                    compression="gzip",
+                    lines=True,
+                    orient="records",
+                )
+            elif content_type == csv_content_type:
+                wr.s3.to_csv(
+                    df=df_partition,
+                    path=output_file,
+                    compression="gzip",
+                    header=True,
+                    index=False,
+                )
 
     output = {
         "timeseries granularity": timeseries_partition_size,
@@ -433,35 +489,47 @@ if timestamp_column:
     print(output)
 else:
     dataset_type = "DIMENSION"
-    output_file = (
-        "s3://"
-        + output_bucket
-        + "/"
-        + amc_str
-        + "/"
-        + dataset_id
-        + "/dimension/"
-        + filename
-        + ".gz"
-    )
-    print(writing + str(len(hashed_df)) + rows_to + output_file)
-    num_rows += len(hashed_df)
-    if content_type == json_content_type:
-        wr.s3.to_json(
-            df=hashed_df,
-            path=output_file,
-            compression="gzip",
-            lines=True,
-            orient="records",
+    for destination_endpoint in destination_endpoints:
+        # The destination endpoints are URLs.
+        # We're going to pass these endpoints to the amc_uploader.py Lambda function
+        # via the S3 key. But we can't put forward slashes, like "https://" in the S3
+        # key. So, we encode the endpoint here and use that in the s3key.
+        # The amc_uploader.py can use base64 decode to get the original endpoint URL.
+        destination_endpoint_encoded = base64.b64encode(
+            destination_endpoint.encode("ascii")
+        ).decode("ascii")
+        output_file = (
+            "s3://"
+            + output_bucket
+            + "/"
+            + amc_str
+            + "/"
+            + dataset_id
+            + "/dimension/"
+            + destination_endpoint_encoded
+            + "/"
+            + filename
+            + ".gz"
         )
-    elif content_type == csv_content_type:
-        wr.s3.to_csv(
-            df=hashed_df,
-            path=output_file,
-            compression="gzip",
-            header=True,
-            index=False,
-        )
+        output_files.append(output_file)
+        print(writing + str(len(hashed_df)) + rows_to + output_file)
+        num_rows += len(hashed_df)
+        if content_type == json_content_type:
+            wr.s3.to_json(
+                df=hashed_df,
+                path=output_file,
+                compression="gzip",
+                lines=True,
+                orient="records",
+            )
+        elif content_type == csv_content_type:
+            wr.s3.to_csv(
+                df=hashed_df,
+                path=output_file,
+                compression="gzip",
+                header=True,
+                index=False,
+            )
     output = {"output files": output_file}
     print(output)
 
