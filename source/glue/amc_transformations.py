@@ -96,6 +96,13 @@ def check_params(required: list, optional: list) -> dict:
     if args["country_code"] not in (
         "US",
         "UK",
+        "JP",
+        "IN",
+        "IT",
+        "ES",
+        "CA",
+        "DE",
+        "FR",
     ):
         print("ERROR: Invalid user-defined value for country:")
         print(args["country_code"])

@@ -197,6 +197,27 @@ SPDX-License-Identifier: Apache-2.0
                       <b-form-select-option value="UK">
                         UK
                       </b-form-select-option>
+                      <b-form-select-option value="JP">
+                        JP
+                      </b-form-select-option>
+                      <b-form-select-option value="IN">
+                        IN
+                      </b-form-select-option>
+                      <b-form-select-option value="IT">
+                        IT
+                      </b-form-select-option>
+                      <b-form-select-option value="ES">
+                        ES
+                      </b-form-select-option>
+                      <b-form-select-option value="CA">
+                        CA
+                      </b-form-select-option>
+                      <b-form-select-option value="DE">
+                        DE
+                      </b-form-select-option>
+                      <b-form-select-option value="FR">
+                        FR
+                      </b-form-select-option>
                     </b-form-select>
                   </b-form-group>
                 </b-col>
