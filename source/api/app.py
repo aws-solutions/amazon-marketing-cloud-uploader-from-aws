@@ -110,7 +110,7 @@ def describe_dataset():
         return Response(
             body=response.text,
             status_code=response.status_code,
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": APPLICATION_JSON},
         )
     except Exception as e:
         logger.error(e)
@@ -474,7 +474,7 @@ def get_data_columns():
         keys = json.loads(app.current_request.raw_body.decode())["s3key"]
         keys_to_validate = [x.strip() for x in keys.split(",")]
 
-        json_content_type = "application/json"
+        json_content_type = APPLICATION_JSON
         csv_content_type = "text/csv"
         plain_text_content_type = "text/plain"
         content_type = ""
