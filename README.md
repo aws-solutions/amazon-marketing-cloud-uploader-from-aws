@@ -166,6 +166,199 @@ This solution collects anonymous operational metrics to help AWS improve the
 quality of features of the solution. For more information, including how to disable
 this capability, please see the [implementation guide](https://docs.aws.amazon.com/solutions/latest/amazon-marketing-cloud-uploader-from-aws/collection-of-operational-metrics.html).
 
+---
+# Advanced Usage
+
+## Integration with solution for file upload automation
+
+This solution's `start_amc_transformation` API endpoint can be integrated with other ETL pipelines to provide built-in normalization and time-series partitioning before uploading data to Amazon Marketing Cloud (AMC).
+
+The purpose of the endpoint is to normalize and hash clear-text PII and partition time series data sets for AMC. Timestamp columns must be formatted before using the endpoint according to ISO 8601.
+
+The `start_amc_transformation` API endpoint starts an AWS Glue Job with the arguments passed into it. The following is a summary of the arguments included in a request to the endpoint and expected outputs of the API:
+
+### Inputs
+
+- `countryCode`: string
+	- The country code to be used for different country-specific normalizations to apply to all rows in the dataset
+	- 2-digit ISO country code
+  - The full list of supported country codes can be found in the solution's Implementation Guide
+	- Ex: `"countryCode": "US"`
+	
+- `datasetId`: string
+	- The name of the new data set that will be created with the data being uploaded
+	- It can also be the name of an existing data set that the data will be uploaded to, though the schema should match (`deletedFields`, `piiFields`, and column names should be the same)
+	- Ex: `"datasetId": "new-AMC-dataset"`
+	
+- `deletedFields`: string (array)
+	- The list of columns to be deleted or dropped from the original data set prior to uploading to AMC
+	- Ex: `"deletedFields": "[\"product_quantity\",\"product_name\"]"`
+	
+	- Can be an empty array string if no data needs to be deleted
+	- Ex: `"deletedFields": "[]"`
+	
+- `destination_endpoints`: string (array)
+	- The list of AMC endpoints to receive uploads
+	- Ex: `destination_endpoints: "[\" https://rrhcd93zj3.execute-api.us-east-1.amazonaws.com/prod\"]"`
+	
+- `outputBucket`: string
+	- The name of the ETL artifact S3 bucket where the normalized output data will be written to
+	- Ex: `"outputBucket": "myTestStack-etl-artifacts"`,
+	
+- `period`: string
+  - _Required_ for a `fact` data set
+  - _Not used_ and should be omitted for a `dimension` data set
+  - The time period of the data set
+  - If a fact type data set, `autodetect` or a specific period can be selected
+    - Ex: `"period": "autodetect"`
+    - Ex: `"period": "PT1H"`
+  - Options:  One of `["autodetect","PT1M","PT1H","P1D","P7D"]`
+
+- `piiFields`: string (array)
+	- A JSON formatted list of the names of PII columns to be normalized and hashed
+	- Ex: `"piiFields": "[{\"column_name\":\"first_name\",\"pii_type\":\"FIRST_NAME\"},{\"column_name\":\"last_name\",\"pii_type\":\"LAST_NAME\"},{\"column_name\":\"email\",\"pii_type\":\"EMAIL\"}]"`
+	
+	- Can be an empty array string if no PII data is being uploaded
+	- Ex: `"piiFields": "[]"`
+	
+- `sourceBucket`: string
+	- The name of the S3 bucket where the `sourceKey` input data set is stored
+	- Ex: `"sourceKey: "myTestBucket"`
+	
+- `sourceKey`: string
+	- The S3 key of the data set to be normalized in the `sourceBucket`
+	- Ex: `"sourceKey": "myTestData.json"`
+	
+- `timestampColumn`: string
+  - _Required_ for a `fact` data set
+  - _Not used_ and should be omitted for a `dimension` data set
+	- Column name containing timestamps for the time series data sets	
+	- If the data set is going to be a fact type (time series), then a `timestampColumn` must be defined to be one of the data set's columns
+	- Ex: `"timestampColumn": "timestamp"`
+
+### Outputs
+- Transformed data files in the user-specified `output_bucket` partitioned according to AMC spec
+- JSON response with the `JobRunId`
+- Ex: `"JobRunId": "jr_123123123123123123aaaaaaaaaa"`
+
+## Using Postman
+
+Postman can be used to send a request to the deployed instance's `start_amc_transformation` and begin a Glue job.
+
+The instance's endpoint will be the output `UserInterface` URL from the CloudFormation base stack followed by `/api/start_amc_transformation`. AWS Signature credentials are required to access the endpoint.
+
+Ex: `https://abc123.execute-api.us-east-1.amazonaws.com/api/start_amc_transformation`
+
+1. This URL can be entered in Postman for a POST method request.
+2. In a terminal, run the following command to get AWS Signature credentials to send a request to the endpoint:
+
+```shell
+aws sts get-session-token --profile $USER
+```
+
+- The `$USER` parameter should be the profile in your `aws/.credentials` file that is for the AWS account that the CloudFormation stack is deployed in
+- If a `InvalidClientTokenId` error is thrown when running the command, try getting fresh credentials from the AWS Console as the ones being used may have expired
+- More information on the `get-session-token` command can be found here:
+	- `https://docs.aws.amazon.com/cli/latest/reference/sts/get-session-token.html`
+
+The object returned should look like below if the command works:
+```json
+{
+
+    "Credentials": {
+
+        "AccessKeyId": "ABCDEFGHIJKLMNOPQRS",
+
+        "SecretAccessKey": "abc123efg",
+
+        "SessionToken": "abcdefg1234567890",
+
+        "Expiration": "2023-02-28T11:09:14+00:00"
+
+    }
+
+}
+```
+
+
+3. Under the request's `Authorization` tab, set up the AWS Signature authorization as the following:
+
+- `Type`: AWS Signature
+- `Add authorization data to`: Request Headers
+- `Access Key`: generated from command
+- `Secret Key`: generated from command
+- `AWS Region`: deployed region (ex: us-east-1)
+- `Service Name`: can leave empty
+- `Session Token`: generated from command
+
+4. Under the request's `Body` tab, select a raw JSON body and enter the body for the request. Below are 4 example request bodies for different requests:
+
+Example body for uploading to a new dimension dataset:
+```JSON
+{
+	"countryCode": "US",
+	"datasetId": "test-dataset1",
+	"deletedFields": "[]",
+	"outputBucket": "myStack-etl-artifacts",
+	"piiFields": "[{\"column_name\":\"first_name\",\"pii_type\":\"FIRST_NAME\"},{\"column_name\":\"last_name\",\"pii_type\":\"LAST_NAME\"},{\"column_name\":\"email\",\"pii_type\":\"EMAIL\"}]",
+	"sourceBucket": "myBucket",
+	"sourceKey": "amc-data-1.json",
+}
+```
+
+Example body for uploading to a new dimension dataset with deleted fields:
+```JSON
+{
+	"countryCode": "US",
+	"datasetId": "test-dataset2",
+	"deletedFields": "[\"product_name\",\"product_quantity\",\"timestamp\"]",
+	"outputBucket": "myStack-etl-artifacts",
+	"piiFields": "[{\"column_name\":\"first_name\",\"pii_type\":\"FIRST_NAME\"},{\"column_name\":\"last_name\",\"pii_type\":\"LAST_NAME\"},{\"column_name\":\"email\",\"pii_type\":\"EMAIL\"}]",
+	"sourceBucket": "myBucket",
+	"sourceKey": "amc-data-2.json",
+}
+```
+
+Example body for uploading to an existing dimension dataset with deleted fields:
+```JSON
+{
+	"countryCode": "US",
+	"datasetId": "test-dataset2",
+	"deletedFields": "[\"timestamp\",\"product_quantity\",\"product_name\"]",
+	"outputBucket": "myStack-etl-artifacts",
+	"piiFields": "[{\"column_name\":\"first_name\",\"pii_type\":\"FIRST_NAME\"},{\"column_name\":\"last_name\",\"pii_type\":\"LAST_NAME\"},{\"column_name\":\"email\",\"pii_type\":\"EMAIL\"}]",
+	"sourceBucket": "myBucket",
+	"sourceKey": "amc-data-3.json",
+}
+```
+
+Example body for uploading to a new fact autodetect dataset with deleted fields:
+```JSON
+{
+	"countryCode": "UK",
+	"datasetId": "test-dataset3",
+	"deletedFields": "[\"product_quantity\",\"product_name\"]",
+	"outputBucket": "myStack-etl-artifacts",
+	"period": "autodetect",
+	"piiFields": "[{\"column_name\":\"first_name\",\"pii_type\":\"FIRST_NAME\"},{\"column_name\":\"last_name\",\"pii_type\":\"LAST_NAME\"},{\"column_name\":\"email\",\"pii_type\":\"EMAIL\"}]",
+	"sourceBucket": "myBucket",
+	"sourceKey": "amc-data-4.json",
+	"timestampColumn": "timestamp"
+}
+```
+
+6. The response should be in the format below after the Glue job has been started by the API:
+```JSON
+{
+
+"JobRunId": "jr_abcdef1234556789abcdef123"
+
+}
+```
+
+6. The Glue job can be monitored in the solution's UI or the AWS Console
+---
+
 
 # Troubleshooting
 
