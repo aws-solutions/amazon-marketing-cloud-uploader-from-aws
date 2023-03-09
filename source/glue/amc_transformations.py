@@ -79,11 +79,11 @@ def check_params(required: list, optional: list) -> dict:
 
     # strip whitespace on applicable fields
     for i in ("dataset_id", "timestamp_column", "period"):
-        if args[i]:
+        if i in args.keys():
             args[i] = args[i].strip()
 
     # check specific params passed in
-    if args["period"] and args["period"] not in (
+    if "period" in args.keys() and args["period"] not in (
         "autodetect",
         "PT1M",
         "PT1H",
@@ -119,7 +119,7 @@ params = check_params(required=REQUIRED_PARAMS, optional=OPTIONAL_PARAMS)
 print("Runtime args:")
 print(params)
 
-if params["timestamp_column"]:
+if "timestamp_column" in params.keys():
     file = rw.FactDataset(args=params)
 else:
     file = rw.DimensionDataset(args=params)
