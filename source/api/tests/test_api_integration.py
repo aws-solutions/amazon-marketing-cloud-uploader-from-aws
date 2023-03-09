@@ -433,7 +433,7 @@ def test_data_set_type():
                             "outputBucket": test_configs["outputBucket"],
                             "piiFields": '[{"column_name":"first_name","pii_type":"FIRST_NAME"},{"column_name":"last_name","pii_type":"LAST_NAME"},{"column_name":"email","pii_type":"EMAIL"}]',
                             "deletedFields": "[]",
-                            "timestampColumn": "timestamp",
+                            "timestampColumn": "timestamp" if data_set_type == "FACT" else "",
                             "datasetId": data_set_id,
                             "period": period,
                             "countryCode": "US",

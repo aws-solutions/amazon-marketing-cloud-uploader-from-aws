@@ -77,9 +77,14 @@ def check_params(required: list, optional: list) -> dict:
     except GlueArgumentError:
         pass
 
+    # check that arguments are valid for dataset type
+    if "timestamp_column" in args.keys() ^ "period" in args.keys():
+        print("ERROR: If this is a fact dataset both timestamp_column and period must be provided")
+        sys.exit(1)
+
     # strip whitespace on applicable fields
     for i in ("dataset_id", "timestamp_column", "period"):
-        if args[i]:
+        if i in args.keys():
             args[i] = args[i].strip()
 
     # check specific params passed in
