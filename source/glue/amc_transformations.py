@@ -119,7 +119,7 @@ params = check_params(required=REQUIRED_PARAMS, optional=OPTIONAL_PARAMS)
 print("Runtime args:")
 print(params)
 
-if params["timestamp_column"]:
+if "timestamp_column" in params.keys():
     file = rw.FactDataset(args=params)
 else:
     file = rw.DimensionDataset(args=params)
