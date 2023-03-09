@@ -83,7 +83,7 @@ def check_params(required: list, optional: list) -> dict:
             args[i] = args[i].strip()
 
     # check specific params passed in
-    if args["period"] and args["period"] not in (
+    if "period" in args.keys() and args["period"] not in (
         "autodetect",
         "PT1M",
         "PT1H",
