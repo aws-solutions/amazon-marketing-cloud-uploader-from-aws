@@ -22,6 +22,7 @@ from datetime import datetime
 import boto3
 import requests
 from botocore import config
+from requests.adapters import HTTPAdapter, Retry
 
 # format log messages like this:
 formatter = logging.Formatter(
@@ -73,20 +74,37 @@ def get_signature_key(key, date_stamp, region_name, service_name):
     return ksigning
 
 
-def send_request(request_url, headers, http_method, data=None):
+def send_request(
+    request_url, headers, http_method, data=None, retry_on_500s=False
+):
     logger.info("\nBEGIN REQUEST+++++++++++++++++++++++++++++++++++")
     logger.info(f"Request URL = {request_url}")
 
     http_method = http_method.lower()
     logger.info(f"HTTP_METHOD: {http_method}")
 
+    session_requests = requests
+    if retry_on_500s:
+        max_retry = 5
+        session_requests = requests.Session()
+        retries = Retry(
+            total=max_retry,
+            backoff_factor=0.2,
+            status_forcelist=[504],
+            method_whitelist=frozenset(["GET", "DELETE"]),
+        )
+        session_requests.mount("https://", HTTPAdapter(max_retries=retries))
+        logger.info(f"Retry: {max_retry}")
+
     response = None
     if data:
-        response = getattr(requests, http_method)(
+        response = getattr(session_requests, http_method)(
             request_url, headers=headers, data=data
         )
     else:
-        response = getattr(requests, http_method)(request_url, headers=headers)
+        response = getattr(session_requests, http_method)(
+            request_url, headers=headers
+        )
 
     logger.info("\nRESPONSE+++++++++++++++++++++++++++++++++++")
     logger.info(f"Response code: {response.status_code}\n")
@@ -112,6 +130,7 @@ class Sigv4:
         path,
         request_parameters=None,
         payload=None,
+        **kwargs,
     ) -> None:
         self.base_url = base_url
         self.http_method = http_method.upper()
@@ -119,6 +138,7 @@ class Sigv4:
         self.path = path
         self.payload = payload or ""
         self.request_parameters = request_parameters or ""
+        self.retry_on_500s = kwargs.get("retry_on_500s", False)
 
     def process_request(self):
         # ************* REQUEST VALUES *************
@@ -233,11 +253,14 @@ class Sigv4:
             headers=headers,
             http_method=method,
             data=self.payload,
+            retry_on_500s=self.retry_on_500s,
         )
 
 
 def delete(base_url, path):
-    sig_response = Sigv4(base_url=base_url, path=path, http_method="DELETE")
+    sig_response = Sigv4(
+        base_url=base_url, path=path, http_method="DELETE", retry_on_500s=True
+    )
     return sig_response.process_request()
 
 
@@ -247,6 +270,7 @@ def get(base_url, path, request_parameters=None):
         path=path,
         http_method="GET",
         request_parameters=request_parameters,
+        retry_on_500s=True,
     )
     return sig_response.process_request()
 
