@@ -6,5 +6,4 @@ moto
 pyparsing
 pytest
 pytest-mock
-re
 requests
