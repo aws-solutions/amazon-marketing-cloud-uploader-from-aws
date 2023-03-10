@@ -10,7 +10,7 @@ pytest>=4.5.0
 pytest-cov>=2.12.1
 regex
 requests
-
+re
 requests_aws4auth
 selenium
 webdriver-manager

@@ -6,6 +6,7 @@ from datetime import datetime
 import awswrangler as wr
 import boto3
 import pandas as pd
+import re
 
 ###############################
 # CONSTANTS
@@ -16,6 +17,7 @@ WRITING = "Writing "
 ROWS_TO = " rows to "
 JSON_CONTENT_TYPE = "application/json"
 CSV_CONTENT_TYPE = "text/csv"
+GZIP_CONTENT_TYPE = "application/x-gzip"
 AMC_STR = "amc"
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
@@ -105,14 +107,26 @@ class DataFile:
         for field in self.pii_fields:
             pii_column_names[field["column_name"]] = str
 
-        if self.content_type == JSON_CONTENT_TYPE:
+        content_type = self.content_type
+
+        # if a gzip, determine whether it is a zipped json or csv
+        if self.content_type == GZIP_CONTENT_TYPE:
+            # regex file name to see if json.gzip
+            if re.search("\.json.*\.gz$", self.key):
+                content_type = JSON_CONTENT_TYPE
+
+            # regex file name to see if csv.gzip
+            elif re.search("\.csv.*\.gz$", self.key):
+                content_type = CSV_CONTENT_TYPE
+
+        if content_type == JSON_CONTENT_TYPE:
             df_chunks = wr.s3.read_json(
                 path=["s3://" + self.source_bucket + "/" + self.key],
                 chunksize=chunksize,
                 lines=True,
                 dtype=pii_column_names,
             )
-        elif self.content_type == CSV_CONTENT_TYPE:
+        elif content_type == CSV_CONTENT_TYPE:
             df_chunks = wr.s3.read_csv(
                 path=["s3://" + self.source_bucket + "/" + self.key],
                 chunksize=chunksize,
