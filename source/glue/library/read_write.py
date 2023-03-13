@@ -111,12 +111,12 @@ class DataFile:
 
         # if a gzip, determine whether it is a zipped json or csv
         if self.content_type == GZIP_CONTENT_TYPE:
-            # regex file name to see if json.gzip
-            if re.search("\.json.*\.gz$", self.key):
+            # regex file name to see if json.gz
+            if re.search("\.json\.gz$", self.key):
                 content_type = JSON_CONTENT_TYPE
 
-            # regex file name to see if csv.gzip
-            elif re.search("\.csv.*\.gz$", self.key):
+            # regex file name to see if csv.gz
+            elif re.search("\.csv\.gz$", self.key):
                 content_type = CSV_CONTENT_TYPE
 
         if content_type == JSON_CONTENT_TYPE:
@@ -202,7 +202,7 @@ class FactDataset(DataFile):
             + "/"
             + destination_endpoint_encoded
             + "/"
-            + self.filename
+            + re.split('.gz', self.filename, 0)[0]
             + "-"
             + self.timestamp_str_old
             + ".gz"

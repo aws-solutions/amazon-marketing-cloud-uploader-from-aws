@@ -501,12 +501,12 @@ def get_data_columns():
             # determine if .json.gz or .csv.gz
             input_gzip_content_type = ""
             if is_gzip_file:
-                # regex file name to see if json.gzip
-                if re.search("\.json.*\.gz$", key):
+                # regex file name to see if json.gz
+                if re.search("\.json\.gz$", key):
                     input_gzip_content_type = json_content_type
 
-                # regex file name to see if csv.gzip
-                elif re.search("\.csv.*\.gz$", key):
+                # regex file name to see if csv.gz
+                elif re.search("\.csv\.gz$", key):
                     input_gzip_content_type = csv_content_type
 
             # Return an error if user selected a combination
@@ -575,7 +575,7 @@ def get_data_columns():
 
 
 # Validate the AmcInstances parameter
-def validate_amc_system_paramter(system_parameter):
+def validate_amc_system_parameter(system_parameter):
     if "Name" not in system_parameter:
         raise BadRequestError("Missing system parameter Name")
     if system_parameter["Name"] != "AmcInstances":
@@ -634,7 +634,7 @@ def save_system_configuration():
         system_parameter = json.loads(app.current_request.raw_body.decode())
         logger.info(json.loads(app.current_request.raw_body.decode()))
         system_table = dynamo_resource.Table(SYSTEM_TABLE_NAME)
-        validate_amc_system_paramter(system_parameter=system_parameter)
+        validate_amc_system_parameter(system_parameter=system_parameter)
     except Exception as ex:
         logger.error("Exception: {}".format(ex))
         return {"Status": "Error", "Message": str(ex)}
