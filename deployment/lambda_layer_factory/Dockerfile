@@ -1,4 +1,4 @@
-FROM amazonlinux
+FROM public.ecr.aws/amazonlinux/amazonlinux
 
 WORKDIR /
 RUN yum update -y
