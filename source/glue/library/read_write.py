@@ -430,7 +430,7 @@ class DimensionDataset(DataFile):
                 + "/dimension/"
                 + destination_endpoint_encoded
                 + "/"
-                + self.filename
+                + re.split('.gz', self.filename, 0)[0]
                 + ".gz"
             )
         print(WRITING + str(len(df)) + ROWS_TO + output_file)
