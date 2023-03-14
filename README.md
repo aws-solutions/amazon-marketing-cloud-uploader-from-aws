@@ -29,11 +29,14 @@ The dotted lines leading from the KMS key object in the architecture diagram ind
 
 ### User Interface:
 
+<img src="docs/images/Settings.png" alt="step1" width="200"/>
 <img src="docs/images/Step1.png" alt="step1" width="200"/>
 <img src="docs/images/Step2.png" alt="step1" width="200"/>
 <img src="docs/images/Step3.png" alt="step1" width="200"/>
 <img src="docs/images/Step4.png" alt="step1" width="200"/>
 <img src="docs/images/Step5.png" alt="step1" width="200"/>
+<img src="docs/images/Step6.png" alt="step1" width="200"/>
+
 
 ## INSTALLATION
 
