@@ -169,13 +169,15 @@ def test_start_dimension_upload(mock_response_post, test_configs):
 @mock_sts
 @patch("amc_uploader.lib.sigv4.requests.put")
 @patch("amc_uploader.lib.sigv4.requests.post")
-@patch("amc_uploader.lib.sigv4.requests.get")
+@patch("amc_uploader.lib.sigv4.requests.Session")
 def test_start_fact_upload(
-    mock_response_get, mock_response_post, mock_response_put, test_configs
+    mock_session_response, mock_response_post, mock_response_put, test_configs
 ):
     from amc_uploader.amc_uploader import _start_fact_upload
 
-    mock_response_get.return_value = MagicMock(
+    mock_session_response.mount = MagicMock()
+
+    mock_session_response.return_value.get.return_value = MagicMock(
         status_code=200, text=json.dumps({"period": "PT1M_FAIL"})
     )
     mock_response_put.return_value = None  # this is not called
@@ -188,7 +190,7 @@ def test_start_fact_upload(
     assert data["Status"] == "Error"
     assert str(data["Message"]) == "list index out of range"
 
-    mock_response_get.return_value = MagicMock(
+    mock_session_response.return_value.get.return_value = MagicMock(
         status_code=200, text=json.dumps({"period": "PT1M_FAIL"})
     )
     mock_response_put.return_value = MagicMock(
@@ -202,7 +204,7 @@ def test_start_fact_upload(
     assert data["Status"] == "Error"
     assert str(data["Message"]) == "Failed to update dataset time period."
 
-    mock_response_get.return_value = MagicMock(
+    mock_session_response.return_value.get.return_value = MagicMock(
         status_code=200, text=json.dumps({"period": "P1D"})
     )
     mock_response_put.return_value = None  # this is not called

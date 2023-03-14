@@ -31,7 +31,7 @@ def test_configs():
         "content_type": "application/json",
         "s3_artifact_bucket": os.environ["ARTIFACT_BUCKET"],
         "amc_role": os.environ["AMC_API_ROLE_ARN"],
-        "destination_endpoint": "example123.execute-api.us-east-1.amazonaws.com/prod/",
+        "destination_endpoint": "https://example123.execute-api.us-east-1.amazonaws.com/prod/",
         "amc_endpoint": "https://test-endpoint.test/beta",
         "data_upload_account_id": "123456789012",
     }
@@ -133,9 +133,12 @@ def test_get_data_columns(test_configs, get_amc_json, test_data):
 
 
 @mock_sts
-@patch("chalicelib.sigv4.requests.delete")
-def test_delete_dataset(mock_response, test_configs):
-    mock_response.return_value = MagicMock(status_code=200, text="{}")
+@patch("chalicelib.sigv4.requests.Session")
+def test_delete_dataset(mock_session_response, test_configs):
+    mock_session_response.mount = MagicMock()
+    mock_session_response.return_value.delete.return_value = MagicMock(
+        status_code=200, text="{}"
+    )
 
     content_type = test_configs["content_type"]
     with Client(app.app) as client:
@@ -156,14 +159,15 @@ def test_delete_dataset(mock_response, test_configs):
 
 
 @mock_sts
-@patch("chalicelib.sigv4.requests.get")
-def test_upload_status(mock_response, test_configs):
+@patch("chalicelib.sigv4.requests.Session")
+def test_upload_status(mock_session_response, test_configs):
     expected_data = {
         "sourceS3Bucket": "some_bucket",
         "sourceFileS3Key": "some_key",
         "status": ["Succeeded"],
     }
-    mock_response.return_value = MagicMock(
+    mock_session_response.mount = MagicMock()
+    mock_session_response.return_value.get.return_value = MagicMock(
         status_code=200, text=json.dumps(expected_data)
     )
 
