@@ -28,11 +28,14 @@ The dotted lines leading from the KMS key object in the architecture diagram ind
 
 ### User Interface:
 
+<img src="docs/images/Settings.png" alt="step1" width="200"/>
 <img src="docs/images/Step1.png" alt="step1" width="200"/>
 <img src="docs/images/Step2.png" alt="step1" width="200"/>
 <img src="docs/images/Step3.png" alt="step1" width="200"/>
 <img src="docs/images/Step4.png" alt="step1" width="200"/>
 <img src="docs/images/Step5.png" alt="step1" width="200"/>
+<img src="docs/images/Step6.png" alt="step1" width="200"/>
+
 
 ## INSTALLATION
 
@@ -183,27 +186,27 @@ The `start_amc_transformation` API endpoint starts an AWS Glue Job with the argu
 	- 2-digit ISO country code
   - The full list of supported country codes can be found in the solution's Implementation Guide
 	- Ex: `"countryCode": "US"`
-	
+
 - `datasetId`: string
 	- The name of the new data set that will be created with the data being uploaded
 	- It can also be the name of an existing data set that the data will be uploaded to, though the schema should match (`deletedFields`, `piiFields`, and column names should be the same)
 	- Ex: `"datasetId": "new-AMC-dataset"`
-	
+
 - `deletedFields`: string (array)
 	- The list of columns to be deleted or dropped from the original data set prior to uploading to AMC
 	- Ex: `"deletedFields": "[\"product_quantity\",\"product_name\"]"`
-	
+
 	- Can be an empty array string if no data needs to be deleted
 	- Ex: `"deletedFields": "[]"`
-	
+
 - `destination_endpoints`: string (array)
 	- The list of AMC endpoints to receive uploads
 	- Ex: `destination_endpoints: "[\" https://rrhcd93zj3.execute-api.us-east-1.amazonaws.com/prod\"]"`
-	
+
 - `outputBucket`: string
 	- The name of the ETL artifact S3 bucket where the normalized output data will be written to
 	- Ex: `"outputBucket": "myTestStack-etl-artifacts"`,
-	
+
 - `period`: string
   - _Required_ for a `fact` data set
   - _Not used_ and should be omitted for a `dimension` data set
@@ -216,22 +219,22 @@ The `start_amc_transformation` API endpoint starts an AWS Glue Job with the argu
 - `piiFields`: string (array)
 	- A JSON formatted list of the names of PII columns to be normalized and hashed
 	- Ex: `"piiFields": "[{\"column_name\":\"first_name\",\"pii_type\":\"FIRST_NAME\"},{\"column_name\":\"last_name\",\"pii_type\":\"LAST_NAME\"},{\"column_name\":\"email\",\"pii_type\":\"EMAIL\"}]"`
-	
+
 	- Can be an empty array string if no PII data is being uploaded
 	- Ex: `"piiFields": "[]"`
-	
+
 - `sourceBucket`: string
 	- The name of the S3 bucket where the `sourceKey` input data set is stored
 	- Ex: `"sourceKey: "myTestBucket"`
-	
+
 - `sourceKey`: string
 	- The S3 key of the data set to be normalized in the `sourceBucket`
 	- Ex: `"sourceKey": "myTestData.json"`
-	
+
 - `timestampColumn`: string
   - _Required_ for a `fact` data set
   - _Not used_ and should be omitted for a `dimension` data set
-	- Column name containing timestamps for the time series data sets	
+	- Column name containing timestamps for the time series data sets
 	- If the data set is going to be a fact type (time series), then a `timestampColumn` must be defined to be one of the data set's columns
 	- Ex: `"timestampColumn": "timestamp"`
 
