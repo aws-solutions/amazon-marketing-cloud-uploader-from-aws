@@ -91,7 +91,7 @@ def send_request(
             total=max_retry,
             backoff_factor=0.2,
             status_forcelist=[504],
-            method_whitelist=frozenset(["GET", "DELETE"]),
+            method_whitelist=frozenset(["GET", "DELETE", "POST", "PUT"]),
         )
         session_requests.mount("https://", HTTPAdapter(max_retries=retries))
         logger.info(f"Retry: {max_retry}")
@@ -275,15 +275,23 @@ def get(base_url, path, request_parameters=None):
     return sig_response.process_request()
 
 
-def put(base_url, path, body_data):
+def put(base_url, path, body_data, **kwargs):
     sig_response = Sigv4(
-        base_url=base_url, path=path, http_method="PUT", payload=body_data
+        base_url=base_url,
+        path=path,
+        http_method="PUT",
+        payload=body_data,
+        retry_on_500s=kwargs.get("retry_on_500s", False),
     )
     return sig_response.process_request()
 
 
-def post(base_url, path, body_data):
+def post(base_url, path, body_data, **kwargs):
     sig_response = Sigv4(
-        base_url=base_url, path=path, http_method="POST", payload=body_data
+        base_url=base_url,
+        path=path,
+        http_method="POST",
+        payload=body_data,
+        retry_on_500s=kwargs.get("retry_on_500s", False),
     )
     return sig_response.process_request()
