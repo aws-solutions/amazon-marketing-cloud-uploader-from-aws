@@ -820,17 +820,6 @@ Resources:
       Runtime:  python3.8
       Timeout: 180
 
-  AnonymousDataCustomResourceLogGroup:
-    Type: AWS::Logs::LogGroup
-    Metadata:
-      cfn_nag:
-        rules_to_suppress:
-          - id: W84
-            reason: "The data generated via this role does not need to be encrypted."
-    Properties:
-      LogGroupName: !Join ['/', ['/aws/lambda', !Ref AnonymousDataCustomResource]]
-      RetentionInDays: 30
-
   # SendAnonymousData
   AnonymousDataUuid:
     Type: "Custom::UUID"
