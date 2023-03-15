@@ -91,7 +91,7 @@ def send_request(
             total=max_retry,
             backoff_factor=0.2,
             status_forcelist=[504],
-            method_whitelist=frozenset(["GET", "DELETE", "POST", "PUT"]),
+            allowed_methods=frozenset(["GET", "DELETE", "POST", "PUT"]),
         )
         session_requests.mount("https://", HTTPAdapter(max_retries=retries))
         logger.info(f"Retry: {max_retry}")

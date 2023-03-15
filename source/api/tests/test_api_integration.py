@@ -35,39 +35,11 @@ _test_configs = {
 
 _test_data = [
     {
-        "first_name": "Caroline",
-        "last_name": "Crane",
-        "email": "funis@example.com",
-        "product_quantity": 67,
-        "product_name": "Product C",
-    },
-    {
-        "first_name": "David",
-        "last_name": "Picard",
-        "email": "thearound@example.com",
-        "product_quantity": 60,
-        "product_name": "Product E",
-    },
-    {
-        "first_name": "William",
-        "last_name": "Trout",
-        "email": "takefood@example.com",
-        "product_quantity": 35,
-        "product_name": "Product G",
-    },
-    {
         "first_name": "Reed",
         "last_name": "Hunt",
         "email": "yourwrite@example.com",
         "product_quantity": 175,
         "product_name": "Product D",
-    },
-    {
-        "first_name": "Gordon",
-        "last_name": "Priolo",
-        "email": "thefrom@example.com",
-        "product_quantity": 75,
-        "product_name": "Product B",
     },
     {
         "first_name": "Phillip",
@@ -81,36 +53,8 @@ _test_data = [
         "last_name": "Correll",
         "email": "ohwe@example.com",
         "product_quantity": 81,
-        "product_name": "Product B",
-    },
-    {
-        "first_name": "Mollie",
-        "last_name": "Gaines",
-        "email": "gmollie@example.com",
-        "product_quantity": 101,
-        "product_name": "Product J",
-    },
-    {
-        "first_name": "Mary",
-        "last_name": "Chancellor",
-        "email": "ion@example.com",
-        "product_quantity": 24,
         "product_name": "Product A",
     },
-    {
-        "first_name": "Rhonda",
-        "last_name": "Kelly",
-        "email": "themthat@example.com",
-        "product_quantity": 105,
-        "product_name": "Product B",
-    },
-    {
-        "first_name": "Rhonda",
-        "last_name": "Kelly",
-        "email": "This is an invalid email.",
-        "product_quantity": 105,
-        "product_name": "Product B",
-    },  # test invalid email
     {
         "first_name": "Rhonda",
         "last_name": "Kelly",
@@ -521,36 +465,42 @@ def test_data_set_type():
                 )
                 assert response.status_code == 200
                 assert len(response.json_body["uploads"]) > 0
-                assert (
-                    response.json_body["uploads"][0]["sourceFileS3Key"]
-                    is not None
-                )
-                assert response.json_body["uploads"][0]["uploadId"] is not None
-                assert response.json_body["uploads"][0]["status"] in [
-                    "Pending",
-                    "Succeeded",
-                ]
 
-                # upload_status
-                response = client.http.post(
-                    "/upload_status",
-                    headers={"Content-Type": "application/json"},
-                    body=json.dumps(
-                        {
-                            "uploadId": str(
-                                response.json_body["uploads"][0]["uploadId"]
+                for upload_item in response.json_body["uploads"]:
+                    assert upload_item["sourceFileS3Key"] is not None
+                    assert upload_item["uploadId"] is not None
+                    assert upload_item["status"] in [
+                        "Pending",
+                        "Succeeded",
+                    ]
+
+                    upload_item_status = upload_item["status"]
+
+                    while upload_item_status == "Pending":
+                        time.sleep(5)
+
+                        # upload_status
+                        response = client.http.post(
+                            "/upload_status",
+                            headers={"Content-Type": "application/json"},
+                            body=json.dumps(
+                                {
+                                    "uploadId": str(upload_item["uploadId"]),
+                                    "dataSetId": data_set_id,
+                                    "destination_endpoint": test_configs[
+                                        "destination_endpoint"
+                                    ],
+                                }
                             ),
-                            "dataSetId": data_set_id,
-                            "destination_endpoint": test_configs[
-                                "destination_endpoint"
-                            ],
-                        }
-                    ),
-                )
-                assert response.status_code == 200
-                assert response.json_body["sourceS3Bucket"] is not None
-                assert response.json_body["sourceFileS3Key"] is not None
-                assert response.json_body["status"] in ["Pending", "Succeeded"]
+                        )
+                        assert response.status_code == 200
+                        assert response.json_body["sourceS3Bucket"] is not None
+                        assert (
+                            response.json_body["sourceFileS3Key"] is not None
+                        )
+                        upload_item_status = response.json_body["status"]
+
+                    assert upload_item_status == "Succeeded"
         except Exception as e:
             logger.error(e)
             raise
@@ -610,6 +560,52 @@ def test_create_upload_delete_dataset_DIMENSION_CSV(
         test_configs,
         get_etl_data_by_job_id,
         generate_random_test_files_to_s3_bucket,
+    )
+
+
+def test_create_upload_delete_dataset_FACT_JSON(
+    test_configs,
+    test_data_set_type,
+    get_etl_data_by_job_id,
+    generate_random_test_files_to_s3_bucket,
+):
+    test_data_set_type(
+        "FACT",
+        "JSON",
+        test_configs,
+        get_etl_data_by_job_id,
+        generate_random_test_files_to_s3_bucket,
+    )
+
+
+def test_create_upload_delete_dataset_FACT_CSV(
+    test_configs,
+    test_data_set_type,
+    get_etl_data_by_job_id,
+    generate_random_test_files_to_s3_bucket,
+):
+    test_data_set_type(
+        "FACT",
+        "CSV",
+        test_configs,
+        get_etl_data_by_job_id,
+        generate_random_test_files_to_s3_bucket,
+    )
+
+
+def test_create_upload_delete_dataset_DIMENSION_JSON_SUB_DIRECTORY(
+    test_configs,
+    test_data_set_type,
+    get_etl_data_by_job_id,
+    generate_random_test_files_to_s3_bucket,
+):
+    test_data_set_type(
+        "DIMENSION",
+        "JSON",
+        test_configs,
+        get_etl_data_by_job_id,
+        generate_random_test_files_to_s3_bucket,
+        s3_key_sub_dir="integ_test_data/",
     )
 
 
