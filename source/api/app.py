@@ -8,6 +8,7 @@ import os
 
 import awswrangler as wr
 import boto3
+import re
 from aws_xray_sdk.core import patch_all
 from botocore import config
 from chalice import (
@@ -477,6 +478,7 @@ def get_data_columns():
         json_content_type = APPLICATION_JSON
         csv_content_type = "text/csv"
         plain_text_content_type = "text/plain"
+        gzip_content_type = "application/x-gzip"
         content_type = ""
 
         # for concurrent glue jobs, can only run a max of 200 per account
@@ -494,11 +496,27 @@ def get_data_columns():
         for key in keys_to_validate:
             s3_obj = boto3.client("s3", config=config)
             response = s3_obj.head_object(Bucket=bucket, Key=key)
+            is_gzip_file = True if response["ContentType"] == gzip_content_type else False
+
+            # determine if .json.gz or .csv.gz
+            input_gzip_content_type = ""
+            if is_gzip_file:
+                # regex file name to see if json.gz
+                if re.search("\.json\.gz$", key):
+                    input_gzip_content_type = json_content_type
+
+                # regex file name to see if csv.gz
+                elif re.search("\.csv\.gz$", key):
+                    input_gzip_content_type = csv_content_type
+
             # Return an error if user selected a combination
             # of CSV and JSON files.
             if content_type == "":
-                content_type = response["ContentType"]
-            elif content_type != response["ContentType"]:
+                if is_gzip_file:
+                    content_type = input_gzip_content_type
+                else:
+                    content_type = response["ContentType"]
+            elif content_type != response["ContentType"] and content_type != input_gzip_content_type:
                 return Response(
                     body={
                         "message": "Files must all have the same format (CSV or JSON)."
@@ -508,15 +526,17 @@ def get_data_columns():
                 )
             # Read first row
             logger.info("Reading " + "s3://" + bucket + "/" + key)
-            if content_type == json_content_type:
+
+            if content_type == json_content_type or gzip_content_type == json_content_type:
                 dfs = wr.s3.read_json(
                     path=["s3://" + bucket + "/" + key],
                     chunksize=1,
                     lines=True,
                 )
-            elif content_type == csv_content_type:
+            elif content_type == csv_content_type or gzip_content_type == csv_content_type:
                 dfs = wr.s3.read_csv(
-                    path=["s3://" + bucket + "/" + key], chunksize=1
+                    path=["s3://" + bucket + "/" + key], 
+                    chunksize=1
                 )
             else:
                 return Response(
@@ -555,7 +575,7 @@ def get_data_columns():
 
 
 # Validate the AmcInstances parameter
-def validate_amc_system_paramter(system_parameter):
+def validate_amc_system_parameter(system_parameter):
     if "Name" not in system_parameter:
         raise BadRequestError("Missing system parameter Name")
     if system_parameter["Name"] != "AmcInstances":
@@ -614,7 +634,7 @@ def save_system_configuration():
         system_parameter = json.loads(app.current_request.raw_body.decode())
         logger.info(json.loads(app.current_request.raw_body.decode()))
         system_table = dynamo_resource.Table(SYSTEM_TABLE_NAME)
-        validate_amc_system_paramter(system_parameter=system_parameter)
+        validate_amc_system_parameter(system_parameter=system_parameter)
     except Exception as ex:
         logger.error("Exception: {}".format(ex))
         return {"Status": "Error", "Message": str(ex)}
