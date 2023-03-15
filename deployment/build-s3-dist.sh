@@ -208,7 +208,6 @@ echo "--------------------------------------------------------------------------
 cd "$build_dir"/lambda_layer_factory/ || exit 1
 echo "Running build-lambda-layer.sh"
 rm -rf lambda_layer-python-* lambda_layer-python*.zip
-aws ecr-public get-login-password --region ${region} $(if [ ! -z $profile ]; then echo "--profile $profile"; fi) | docker login --username AWS --password-stdin public.ecr.aws
 ./build-lambda-layer.sh requirements.txt
 if [ $? -ne 0 ]; then
   echo "ERROR: Lambda layer build script failed."
