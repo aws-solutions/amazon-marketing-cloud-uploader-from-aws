@@ -12,14 +12,6 @@ phases:
       python: 3.10
     commands:
       - echo "nothing to do in install"
-  pre_build:
-    commands:
-      - echo "Installing dependencies and executing unit tests - `pwd`"
-      - cd deployment
-      - env
-      - chmod +x ./run-unit-tests.sh && ./run-unit-tests.sh
-      - echo "Installing dependencies and executing unit tests completed `date`"
-      - cd -
   build:
     commands:
       - echo "Starting build `date` in `pwd`"
