@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add LiveRamp Identifier [#40]
 - Add Pre-commit, fix SonarCube/SonarLint issues [#16]
 - Add Unit Tests, combine coverage report for source/api/tests and source/tests. [#100]
+- Handle HTTP 504 "Endpoint request timed out" error. [#117]
 
 ### Changed
 
