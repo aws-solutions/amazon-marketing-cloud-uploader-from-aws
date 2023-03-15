@@ -48,6 +48,7 @@ echo "--------------------------------------------------------------------------
 rm -rf ./lambda_layer_python-3.9/
 rm -f ./lambda_layer_python3.9.zip
 docker logout public.ecr.aws
+set -x
 docker build --tag=lambda_layer_factory:latest . 2>&1 > /dev/null
 if [ $? -eq 0 ]; then
   docker run --rm -v "$PWD":/packages lambda_layer_factory
@@ -56,6 +57,7 @@ if [[ ! -f ./lambda_layer_python3.9.zip ]]; then
     echo "ERROR: Failed to build lambda layer zip file."
     exit 1
 fi
+set +x
 echo "------------------------------------------------------------------------------"
 echo "Verifying the Lambda layer meets AWS size limits"
 echo "------------------------------------------------------------------------------"
