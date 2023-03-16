@@ -47,6 +47,7 @@ echo "--------------------------------------------------------------------------
 
 rm -rf ./lambda_layer_python-3.9/
 rm -f ./lambda_layer_python3.9.zip
+docker logout public.ecr.aws
 docker build --tag=lambda_layer_factory:latest . 2>&1 > /dev/null
 if [ $? -eq 0 ]; then
   docker run --rm -v "$PWD":/packages lambda_layer_factory
