@@ -43,6 +43,12 @@ SPDX-License-Identifier: Apache-2.0
             >
               Import failed. Check data format.
             </b-alert>
+            <b-alert
+              :show="amcInstances.length > 259"
+              variant="danger"
+            >
+              AMC instance list is too long. Length {{ amcInstances.length }} exceeds maximum allowable limit of 259. 
+            </b-alert>
             <b-row>
               <b-col cols="10">
                 <h3>AMC Instances</h3>
@@ -179,7 +185,7 @@ SPDX-License-Identifier: Apache-2.0
     },
     computed: {
       isValidForm() {
-        return this.amcInstances.length > 0 && this.amcInstances.every(x => this.isValidEndpoint(x.endpoint) !== false && this.isValidAccountId(x.data_upload_account_id) !== false)
+        return this.amcInstances.length > 0 && this.amcInstances.length < 260 && this.amcInstances.every(x => this.isValidEndpoint(x.endpoint) !== false && this.isValidAccountId(x.data_upload_account_id) !== false)
       }
     },
     deactivated: function () {
