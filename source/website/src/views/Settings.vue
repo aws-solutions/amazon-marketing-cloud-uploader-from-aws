@@ -47,7 +47,7 @@ SPDX-License-Identifier: Apache-2.0
               :show="amcInstances.length > 259"
               variant="danger"
             >
-              AMC instance list is too long. Length {{ amcInstances.length }} exceeds maximum allowable limit of 259. 
+              AMC instance list is too long. Length {{ amcInstances.length }} exceeds maximum allowable limit of 259.
             </b-alert>
             <b-row>
               <b-col cols="10">

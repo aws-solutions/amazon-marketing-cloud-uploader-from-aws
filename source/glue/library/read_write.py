@@ -1,12 +1,12 @@
 import base64
 import json
+import re
 import sys
 from datetime import datetime
 
 import awswrangler as wr
 import boto3
 import pandas as pd
-import re
 
 ###############################
 # CONSTANTS
@@ -112,11 +112,11 @@ class DataFile:
         # if a gzip, determine whether it is a zipped json or csv
         if self.content_type == GZIP_CONTENT_TYPE:
             # regex file name to see if json.gz
-            if re.search("\.json\.gz$", self.key):
+            if re.search(r"\.json\.gz$", self.key):
                 content_type = JSON_CONTENT_TYPE
 
             # regex file name to see if csv.gz
-            elif re.search("\.csv\.gz$", self.key):
+            elif re.search(r"\.csv\.gz$", self.key):
                 content_type = CSV_CONTENT_TYPE
 
         if content_type == JSON_CONTENT_TYPE:
@@ -202,7 +202,7 @@ class FactDataset(DataFile):
             + "/"
             + destination_endpoint_encoded
             + "/"
-            + re.split('.gz', self.filename, 0)[0]
+            + re.split(".gz", self.filename, 0)[0]
             + "-"
             + self.timestamp_str_old
             + ".gz"
@@ -430,7 +430,7 @@ class DimensionDataset(DataFile):
                 + "/dimension/"
                 + destination_endpoint_encoded
                 + "/"
-                + re.split('.gz', self.filename, 0)[0]
+                + re.split(".gz", self.filename, 0)[0]
                 + ".gz"
             )
         print(WRITING + str(len(df)) + ROWS_TO + output_file)
