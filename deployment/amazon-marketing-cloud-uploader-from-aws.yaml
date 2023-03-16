@@ -16,7 +16,6 @@ Parameters:
 Conditions:
   EnableCmkEncryptionCondition: !Not [!Equals [!Ref CustomerManagedKey, ""]]
   EnableAnonymousData: !Equals [ !FindInMap [AnonymousData,SendAnonymousData,Data], Yes]
-
 Mappings:
   Application:
     Solution:
@@ -115,7 +114,6 @@ Resources:
             Condition:
               Bool:
                 aws:SecureTransport: false
-
   ArtifactLogsBucket:
     DeletionPolicy: "Delete"
     Type: AWS::S3::Bucket
@@ -838,7 +836,6 @@ Resources:
       Version: !FindInMap ["Application", "Solution", "Version"]
 
   # App Registry
-
   Application:
     Type: AWS::ServiceCatalogAppRegistry::Application
     Properties:

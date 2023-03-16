@@ -230,7 +230,6 @@ Resources:
           CloudFrontDefaultCertificate: true
         Enabled: true
         HttpVersion: 'http2'
-
   WebsiteResponseHeaders:
     Type: AWS::CloudFront::ResponseHeadersPolicy
     Properties:

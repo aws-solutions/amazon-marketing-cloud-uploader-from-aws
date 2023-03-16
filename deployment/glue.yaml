@@ -194,7 +194,6 @@ Resources:
               send_response(event, context, "FAILED", {"Message": "Unexpected event received from CloudFormation"})
             else:
               send_response(event, context, "SUCCESS", {"Message": "Resource creation successful!"})
-
           def send_response(event, context, response_status, response_data):
             """
             Send a resource manipulation status response to CloudFormation

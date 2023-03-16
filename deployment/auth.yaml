@@ -14,7 +14,6 @@ Parameters:
   RestApiId:
     Description: REST API ID
     Type: String
-
 Resources:
   UserPool:
     Type: AWS::Cognito::UserPool
@@ -105,7 +104,6 @@ Resources:
         Role: !GetAtt CognitoRoleMapperLambdaExecutionRole.Arn
         Runtime: python3.9
         Timeout: 30
-
   CognitoRoleMappingTransformerLogGroup:
     Type: AWS::Logs::LogGroup
     Metadata:
