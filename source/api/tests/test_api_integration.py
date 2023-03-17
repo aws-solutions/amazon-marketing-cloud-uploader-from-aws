@@ -197,8 +197,14 @@ def test_setup_amc_instance(test_configs):
                             "endpoint": endpoint,
                             "tag_list": "integ_test, integ_test_tester",
                             "tags": [
-                                {"value": "integ_test", "key": "integ_test_key"},
-                                {"value": "integ_test_tester", "key": "integ_test_tester_key"},
+                                {
+                                    "value": "integ_test",
+                                    "key": "integ_test_key",
+                                },
+                                {
+                                    "value": "integ_test_tester",
+                                    "key": "integ_test_tester_key",
+                                },
                             ],
                         }
                     ],
@@ -522,7 +528,7 @@ def test_data_set_type():
                 )
                 assert response.status_code == 200
                 assert len(response.json_body["uploads"]) > 0
-                is_upload_complete = False # Uploads exists
+                is_upload_complete = False  # Uploads exists
 
                 try:
                     for upload_item in response.json_body["uploads"]:
@@ -545,7 +551,9 @@ def test_data_set_type():
                                 headers={"Content-Type": "application/json"},
                                 body=json.dumps(
                                     {
-                                        "uploadId": str(upload_item["uploadId"]),
+                                        "uploadId": str(
+                                            upload_item["uploadId"]
+                                        ),
                                         "dataSetId": data_set_id,
                                         "destination_endpoint": test_configs[
                                             "destination_endpoint"
@@ -554,9 +562,13 @@ def test_data_set_type():
                                 ),
                             )
                             assert response.status_code == 200
-                            assert response.json_body["sourceS3Bucket"] is not None
                             assert (
-                                response.json_body["sourceFileS3Key"] is not None
+                                response.json_body["sourceS3Bucket"]
+                                is not None
+                            )
+                            assert (
+                                response.json_body["sourceFileS3Key"]
+                                is not None
                             )
                             upload_item_status = response.json_body["status"]
                         is_upload_complete = True

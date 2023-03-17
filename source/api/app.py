@@ -5,10 +5,10 @@ import datetime
 import json
 import logging
 import os
+import re
 
 import awswrangler as wr
 import boto3
-import re
 from aws_xray_sdk.core import patch_all
 from botocore import config
 from chalice import (
@@ -479,6 +479,7 @@ def get_data_columns():
         csv_content_type = "text/csv"
         plain_text_content_type = "text/plain"
         gzip_content_type = "application/x-gzip"
+        input_gzip_content_type = ""
         content_type = ""
 
         # for concurrent glue jobs, can only run a max of 200 per account
@@ -496,47 +497,35 @@ def get_data_columns():
         for key in keys_to_validate:
             s3_obj = boto3.client("s3", config=config)
             response = s3_obj.head_object(Bucket=bucket, Key=key)
-            is_gzip_file = True if response["ContentType"] == gzip_content_type else False
+            is_gzip_file = bool(response["ContentType"] == gzip_content_type)
 
             # determine if .json.gz or .csv.gz
-            input_gzip_content_type = ""
             if is_gzip_file:
-                # regex file name to see if json.gz
-                if re.search("\.json\.gz$", key):
-                    input_gzip_content_type = json_content_type
-
-                # regex file name to see if csv.gz
-                elif re.search("\.csv\.gz$", key):
-                    input_gzip_content_type = csv_content_type
+                input_gzip_content_type = check_input_gzip_content_type(
+                    key=key
+                )
 
             # Return an error if user selected a combination
             # of CSV and JSON files.
-            if content_type == "":
-                if is_gzip_file:
-                    content_type = input_gzip_content_type
-                else:
-                    content_type = response["ContentType"]
-            elif content_type != response["ContentType"] and content_type != input_gzip_content_type:
-                return Response(
-                    body={
-                        "message": "Files must all have the same format (CSV or JSON)."
-                    },
-                    status_code=400,
-                    headers={"Content-Type": plain_text_content_type},
-                )
+            content_type = validate_file_format_match(
+                response=response,
+                content_type=content_type,
+                is_gzip_file=is_gzip_file,
+                input_gzip_content_type=input_gzip_content_type,
+            )
+
             # Read first row
             logger.info("Reading " + "s3://" + bucket + "/" + key)
 
-            if content_type == json_content_type or gzip_content_type == json_content_type:
+            if json_content_type in (content_type, gzip_content_type):
                 dfs = wr.s3.read_json(
                     path=["s3://" + bucket + "/" + key],
                     chunksize=1,
                     lines=True,
                 )
-            elif content_type == csv_content_type or gzip_content_type == csv_content_type:
+            elif csv_content_type in (content_type, gzip_content_type):
                 dfs = wr.s3.read_csv(
-                    path=["s3://" + bucket + "/" + key], 
-                    chunksize=1
+                    path=["s3://" + bucket + "/" + key], chunksize=1
                 )
             else:
                 return Response(
@@ -572,6 +561,47 @@ def get_data_columns():
     except Exception as ex:
         logger.error(ex)
         return {"Status": "Error", "Message": str(ex)}
+
+
+# Helper function to check if GZIP file is JSON or CSV format
+def check_input_gzip_content_type(key):
+    json_content_type = APPLICATION_JSON
+    csv_content_type = "text/csv"
+
+    # regex file name to see if json.gz
+    if re.search(r"\.json\.gz$", key):
+        input_gzip_content_type = json_content_type
+
+    # regex file name to see if csv.gz
+    elif re.search(r"\.csv\.gz$", key):
+        input_gzip_content_type = csv_content_type
+
+    return input_gzip_content_type
+
+
+# Helper function to validate if file types are compatible for upload
+def validate_file_format_match(
+    response, content_type, is_gzip_file, input_gzip_content_type
+):
+    plain_text_content_type = "text/plain"
+
+    if content_type == "":
+        if is_gzip_file:
+            content_type = input_gzip_content_type
+        else:
+            content_type = response["ContentType"]
+    elif content_type not in (
+        response["ContentType"],
+        input_gzip_content_type,
+    ):
+        return Response(
+            body={
+                "message": "Files must all have the same format (CSV or JSON)."
+            },
+            status_code=400,
+            headers={"Content-Type": plain_text_content_type},
+        )
+    return content_type
 
 
 # Validate the AmcInstances parameter
