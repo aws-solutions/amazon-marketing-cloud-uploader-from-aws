@@ -344,7 +344,7 @@ def test_save_dimension_output(mock_write_to_s3):
         + "/"
         + "test"
         + "/dimension/"
-        + "ZW5kcG9pbnQx"
+        + "sample_endpoint.execute-api.us-east-1.amazonaws.com"
         + "/"
         + "test"
         + ".gz"
@@ -413,17 +413,17 @@ def test_save_fact_output(mock_write_to_s3):
     expected_arguments = [
         {
             "df": ANY,
-            "filepath": "s3://test/amc/test/P1D/ZW5kcG9pbnQx/test-2020_04_12-00:00:00.gz",
+            "filepath": "s3://test/amc/test/P1D/sample_endpoint.execute-api.us-east-1.amazonaws.com/test-2020_04_12-00:00:00.gz",
             "content_type": "test",
         },
         {
             "df": ANY,
-            "filepath": "s3://test/amc/test/P1D/ZW5kcG9pbnQy/test-2020_04_12-00:00:00.gz",
+            "filepath": "s3://test/amc/test/P1D/sample_endpoint.execute-api.us-east-1.amazonaws.com/test-2020_04_12-00:00:00.gz",
             "content_type": "test",
         },
         {
             "df": ANY,
-            "filepath": "s3://test/amc/test/P1D/ZW5kcG9pbnQx/test-2020_04_11-00:00:00.gz",
+            "filepath": "s3://test/amc/test/P1D/sample_endpoint.execute-api.us-east-1.amazonaws.com/test-2020_04_11-00:00:00.gz",
             "content_type": "test",
         },
         {
@@ -433,12 +433,12 @@ def test_save_fact_output(mock_write_to_s3):
         },
         {
             "df": ANY,
-            "filepath": "s3://test/amc/test/P1D/ZW5kcG9pbnQx/test-2020_04_10-00:00:00.gz",
+            "filepath": "s3://test/amc/test/P1D/sample_endpoint.execute-api.us-east-1.amazonaws.com/test-2020_04_10-00:00:00.gz",
             "content_type": "test",
         },
         {
             "df": ANY,
-            "filepath": "s3://test/amc/test/P1D/ZW5kcG9pbnQy/test-2020_04_10-00:00:00.gz",
+            "filepath": "s3://test/amc/test/P1D/invalid_sample_endpoint.execute-api.us-east-1.amazonaws.com/test-2020_04_10-00:00:00.gz",
             "content_type": "test",
         },
     ]
