@@ -101,6 +101,8 @@ parse_params() {
       ;;
     --version)
       version="${2}"
+      # hardcoded version for alpha release:      
+      version="v2.0.0-alpha1"
       shift
       ;;
     --region)
