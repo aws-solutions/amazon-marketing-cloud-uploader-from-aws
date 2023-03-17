@@ -1,4 +1,3 @@
-import base64
 import json
 import sys
 from datetime import datetime
@@ -43,14 +42,6 @@ def write_to_s3(df: pd.DataFrame, filepath: str, content_type: str) -> None:
             header=True,
             index=False,
         )
-
-
-def encode_endpoint(text: str) -> str:
-    destination_endpoint_encoded = base64.b64encode(
-        text.encode("ascii")
-    ).decode("ascii")
-
-    return destination_endpoint_encoded
 
 
 ###############################
@@ -189,7 +180,7 @@ class FactDataset(DataFile):
         self.timestamp_str_old = ""
         self.dataset_type = "FACT"
 
-    def _format_output(self, destination_endpoint_encoded):
+    def _format_output(self, destination_endpoint_base_url):
         return (
             "s3://"
             + self.output_bucket
@@ -200,7 +191,7 @@ class FactDataset(DataFile):
             + "/"
             + self.timeseries_partition_size
             + "/"
-            + destination_endpoint_encoded
+            + destination_endpoint_base_url
             + "/"
             + re.split('.gz', self.filename, 0)[0]
             + "-"
@@ -296,13 +287,12 @@ class FactDataset(DataFile):
             # The destination endpoints are URLs.
             # We're going to pass these endpoints to the amc_uploader.py Lambda function
             # via the S3 key. But we can't put forward slashes, like "https://" in the S3
-            # key. So, we encode the endpoint here and use that in the s3key.
-            # The amc_uploader.py can use base64 decode to get the original endpoint URL.
-            destination_endpoint_encoded = encode_endpoint(
-                destination_endpoint
-            )
+            # key. So, we use the base URL of the endpoint in the s3key.
+            # The amc_uploader.py can prepend "https://" and append "/prod" to
+            # the base url to get the original endpoint URL.
+            destination_endpoint_base_url = destination_endpoint.split("/")[2]
             # write the old df_partition to s3
-            output_file = self._format_output(destination_endpoint_encoded)
+            output_file = self._format_output(destination_endpoint_base_url)
             print(WRITING + str(len(df)) + ROWS_TO + output_file)
             self.num_rows += len(df)
             write_to_s3(
@@ -415,11 +405,10 @@ class DimensionDataset(DataFile):
             # The destination endpoints are URLs.
             # We're going to pass these endpoints to the amc_uploader.py Lambda function
             # via the S3 key. But we can't put forward slashes, like "https://" in the S3
-            # key. So, we encode the endpoint here and use that in the s3key.
-            # The amc_uploader.py can use base64 decode to get the original endpoint URL.
-            destination_endpoint_encoded = encode_endpoint(
-                destination_endpoint
-            )
+            # key. So, we use the base URL of the endpoint in the s3key.
+            # The amc_uploader.py can prepend "https://" and append "/prod" to
+            # the base url to get the original endpoint URL.
+            destination_endpoint_base_url = destination_endpoint.split("/")[2]
             output_file = (
                 "s3://"
                 + self.output_bucket
@@ -428,7 +417,7 @@ class DimensionDataset(DataFile):
                 + "/"
                 + self.dataset_id
                 + "/dimension/"
-                + destination_endpoint_encoded
+                + destination_endpoint_base_url
                 + "/"
                 + re.split('.gz', self.filename, 0)[0]
                 + ".gz"
