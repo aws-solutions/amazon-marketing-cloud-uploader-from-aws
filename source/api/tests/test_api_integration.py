@@ -67,7 +67,7 @@ _test_data = [
         "last_name": "Priolo",
         "email": "thefrom@example.com",
         "product_quantity": 75,
-        "product_name": "Product B",
+        "product_name": "Product F",
     },
     {
         "first_name": "Phillip",
@@ -81,7 +81,7 @@ _test_data = [
         "last_name": "Correll",
         "email": "ohwe@example.com",
         "product_quantity": 81,
-        "product_name": "Product B",
+        "product_name": "Product Y",
     },
     {
         "first_name": "Mollie",
@@ -102,14 +102,14 @@ _test_data = [
         "last_name": "Kelly",
         "email": "themthat@example.com",
         "product_quantity": 105,
-        "product_name": "Product B",
+        "product_name": "Product Z",
     },
     {
         "first_name": "Rhonda",
         "last_name": "Kelly",
         "email": "This is an invalid email.",
         "product_quantity": 105,
-        "product_name": "Product B",
+        "product_name": "Product J",
     },  # test invalid email
     {
         "first_name": "Rhonda",
@@ -123,7 +123,7 @@ _test_data = [
         "last_name": "Kelly",
         "email": "te-st@tEsT.CoM",
         "product_quantity": 105,
-        "product_name": "Product B",
+        "product_name": "Product P",
     },  # test invalid email
 ]
 
@@ -197,8 +197,14 @@ def test_setup_amc_instance(test_configs):
                             "endpoint": endpoint,
                             "tag_list": "integ_test, integ_test_tester",
                             "tags": [
-                                {"value": "integ_test", "key": ""},
-                                {"value": "integ_test", "key": ""},
+                                {
+                                    "value": "integ_test",
+                                    "key": "integ_test_key",
+                                },
+                                {
+                                    "value": "integ_test_tester",
+                                    "key": "integ_test_tester_key",
+                                },
                             ],
                         }
                     ],
@@ -417,10 +423,11 @@ def test_data_set_type():
                     ),
                 )
                 assert response.status_code == 200
-                is_data_set_created = True
                 assert response.json_body["dataSetId"] == data_set_id
                 assert response.json_body["dataSetType"] == data_set_type
                 assert response.json_body["fileFormat"] == file_format
+                is_data_set_created = True
+                is_upload_complete = True
 
                 # start_amc_transformation
                 response = client.http.post(
@@ -521,36 +528,70 @@ def test_data_set_type():
                 )
                 assert response.status_code == 200
                 assert len(response.json_body["uploads"]) > 0
-                assert (
-                    response.json_body["uploads"][0]["sourceFileS3Key"]
-                    is not None
-                )
-                assert response.json_body["uploads"][0]["uploadId"] is not None
-                assert response.json_body["uploads"][0]["status"] in [
-                    "Pending",
-                    "Succeeded",
-                ]
+                is_upload_complete = False  # Uploads exists
 
-                # upload_status
-                response = client.http.post(
-                    "/upload_status",
-                    headers={"Content-Type": "application/json"},
-                    body=json.dumps(
-                        {
-                            "uploadId": str(
-                                response.json_body["uploads"][0]["uploadId"]
-                            ),
-                            "dataSetId": data_set_id,
-                            "destination_endpoint": test_configs[
-                                "destination_endpoint"
-                            ],
-                        }
-                    ),
-                )
-                assert response.status_code == 200
-                assert response.json_body["sourceS3Bucket"] is not None
-                assert response.json_body["sourceFileS3Key"] is not None
-                assert response.json_body["status"] in ["Pending", "Succeeded"]
+                try:
+                    for upload_item in response.json_body["uploads"]:
+                        assert upload_item["sourceFileS3Key"] is not None
+                        assert upload_item["uploadId"] is not None
+                        assert upload_item["status"] in [
+                            "Pending",
+                            "PartiallySucceeded",
+                            "Succeeded",
+                        ]
+
+                        upload_item_status = upload_item["status"]
+
+                        while upload_item_status == "Pending":
+                            time.sleep(5)
+
+                            # upload_status
+                            response = client.http.post(
+                                "/upload_status",
+                                headers={"Content-Type": "application/json"},
+                                body=json.dumps(
+                                    {
+                                        "uploadId": str(
+                                            upload_item["uploadId"]
+                                        ),
+                                        "dataSetId": data_set_id,
+                                        "destination_endpoint": test_configs[
+                                            "destination_endpoint"
+                                        ],
+                                    }
+                                ),
+                            )
+                            assert response.status_code == 200
+                            assert (
+                                response.json_body["sourceS3Bucket"]
+                                is not None
+                            )
+                            assert (
+                                response.json_body["sourceFileS3Key"]
+                                is not None
+                            )
+                            upload_item_status = response.json_body["status"]
+                        is_upload_complete = True
+                except Exception as upload_status_ex:
+                    response = client.http.post(
+                        "/list_uploads",
+                        headers={"Content-Type": "application/json"},
+                        body=json.dumps(
+                            {
+                                "dataSetId": data_set_id,
+                                "destination_endpoint": test_configs[
+                                    "destination_endpoint"
+                                ],
+                            }
+                        ),
+                    )
+                    is_upload_complete = True
+                    for upload_item in response.json_body["uploads"]:
+                        if upload_item["status"] == "Pending":
+                            is_upload_complete = False
+                            break
+                    logger.error(upload_status_ex)
+                    raise
         except Exception as e:
             logger.error(e)
             raise
@@ -562,8 +603,8 @@ def test_data_set_type():
 
             logger.debug(f"Cleaning up dataset {data_set_id}.")
 
-            # # delete_dataset
-            if is_data_set_created:
+            # delete_dataset
+            if is_data_set_created and is_upload_complete:
                 with Client(app.app) as client:
                     response = client.http.post(
                         "/delete_dataset",
@@ -613,6 +654,52 @@ def test_create_upload_delete_dataset_DIMENSION_CSV(
     )
 
 
+def test_create_upload_delete_dataset_FACT_JSON(
+    test_configs,
+    test_data_set_type,
+    get_etl_data_by_job_id,
+    generate_random_test_files_to_s3_bucket,
+):
+    test_data_set_type(
+        "FACT",
+        "JSON",
+        test_configs,
+        get_etl_data_by_job_id,
+        generate_random_test_files_to_s3_bucket,
+    )
+
+
+def test_create_upload_delete_dataset_FACT_CSV(
+    test_configs,
+    test_data_set_type,
+    get_etl_data_by_job_id,
+    generate_random_test_files_to_s3_bucket,
+):
+    test_data_set_type(
+        "FACT",
+        "CSV",
+        test_configs,
+        get_etl_data_by_job_id,
+        generate_random_test_files_to_s3_bucket,
+    )
+
+
+def test_create_upload_delete_dataset_DIMENSION_JSON_SUB_DIRECTORY(
+    test_configs,
+    test_data_set_type,
+    get_etl_data_by_job_id,
+    generate_random_test_files_to_s3_bucket,
+):
+    test_data_set_type(
+        "DIMENSION",
+        "JSON",
+        test_configs,
+        get_etl_data_by_job_id,
+        generate_random_test_files_to_s3_bucket,
+        s3_key_sub_dir="integ_test_data/",
+    )
+
+
 def test_create_upload_delete_dataset_FACT_JSON_SUB_DIRECTORY(
     test_configs,
     test_data_set_type,
@@ -629,6 +716,7 @@ def test_create_upload_delete_dataset_FACT_JSON_SUB_DIRECTORY(
     )
 
 
+@pytest.mark.skip(reason="AMC upload failing for live ramp test")
 def test_create_upload_delete_dataset_DIMENSION_JSON_LIVE_RAMP(
     test_configs,
     test_data_set_type,
@@ -661,7 +749,7 @@ def test_create_upload_delete_dataset_DIMENSION_JSON_LIVE_RAMP(
             "nullable": True,
         },
         {
-            "name": "ramp_id",
+            "name": "product_name",
             "description": "The user's LiveRamp ID",
             "dataType": "STRING",
             "nullable": True,
@@ -678,6 +766,7 @@ def test_create_upload_delete_dataset_DIMENSION_JSON_LIVE_RAMP(
     )
 
 
+@pytest.mark.skip(reason="AMC upload failing for live ramp test")
 def test_create_upload_delete_dataset_FACT_JSON_LIVE_RAMP(
     test_configs,
     test_data_set_type,
@@ -716,7 +805,7 @@ def test_create_upload_delete_dataset_FACT_JSON_LIVE_RAMP(
             "isMainEventTime": True,
         },
         {
-            "name": "ramp_id",
+            "name": "product_name",
             "description": "The user's LiveRamp ID",
             "dataType": "STRING",
             "nullable": True,

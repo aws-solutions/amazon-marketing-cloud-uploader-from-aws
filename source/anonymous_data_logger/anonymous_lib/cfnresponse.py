@@ -53,10 +53,7 @@ def send(
 
     try:
         response = requests.put(
-            response_url,
-            data=json_response_body,
-            headers=headers,
-            timeout=20
+            response_url, data=json_response_body, headers=headers, timeout=20
         )
         print("Status code: " + response.reason)
     except Exception as e:

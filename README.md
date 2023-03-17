@@ -9,14 +9,14 @@ This solution enables users to upload first party datasets from Amazon S3 into t
 
 The architecture diagram for this solution is shown above. The process flow is described below:
 
-1. The user uploads first-party data to a designated S3 bucket.
-2. The user logs into the provided web application.
-3. Within the web application, the user selects a CSV or JSON file to upload and defines how the columns in that file should map to an AMC compatible schema.
-4. Within the web application, the user can send dataset operations to one or more AMC Instances. This list of AMC Instances is saved in a system configuration table and can also be updated from the web application.
-5. When the user submits their upload request, a dataset definition will be created in AMC and the ETL process will begin in AWS Glue.
-6. The user-specified file is loaded into an AWS Glue job, where PII data is normalized and hashed, and timeseries records partitioned according to the data specifications provided by AMC.
-7. The AWS Glue job outputs results in an AMC compatible format to Amazon S3. This event automatically triggers a request to AMC to begin uploading those results.
-8. AMC asynchronously uploads the transformed data from Amazon S3.
+1. User uploads first party data to designated Amazon S3 Bucket or exports data from AWS Clean Rooms to Amazon S3 Bucket
+2. User uses Amazon Cognito to log into AMC Uploader web application using AWS IAM
+3. Users can configure multiple AMC instances within the AMC Uploader web interface.  This information is stored in Amazon DynamoDB
+4. Within the AMC Uploader web application, user will select the data they wish to upload to AMC.  The user will be able to select file from the Amazon S3 bucket that was set when the AWS CloudFormation stack was created.  The user will map the columns in the file to a schema compatible with AMC
+5. Once the schema has been set up within the AMC Uploader web application, it will create the dataset within the AMC instance via Amazon API Gateway and AWS Lambda
+6. The data will be normalized using AWS Glue and the relevant PII columns will be hashed according to AMC Guidelines
+7. An API call will be made to the AMC API using AWS Lambda after the AWS Glue job has been completed using an S3 Event Notification
+8. AMC will extract the transformed data from the ETL Artifacts Amazon S3 bucket for upload into the advertiser’s AMC instance asynchronously.
 
 If first-party data files have been encrypted using KMS, then users must specify which KMS key can be used to decrypt them. The CloudFormation parameter called "CustomerManagedKey" is provided for this purpose (see [below](#input)).
 

@@ -6,4 +6,5 @@ moto
 pyparsing
 pytest
 pytest-mock
+pytest-ordering
 requests
