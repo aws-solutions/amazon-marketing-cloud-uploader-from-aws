@@ -27,7 +27,7 @@ from datetime import datetime
 from aws_xray_sdk.core import patch_all
 from botocore import config
 from dateutil.relativedelta import relativedelta
-from lib import sigv4
+from lib.sigv4 import sigv4
 
 patch_all()
 

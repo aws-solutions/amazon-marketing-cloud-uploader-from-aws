@@ -18,7 +18,7 @@ from chalice import (
     IAMAuthorizer,
     Response,
 )
-from chalicelib import sigv4
+from chalicelib.sigv4 import sigv4
 
 solution_config = json.loads(os.environ["botoConfig"])
 config = config.Config(**solution_config)
