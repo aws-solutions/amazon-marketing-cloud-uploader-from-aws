@@ -133,7 +133,7 @@ def test_get_data_columns(test_configs, get_amc_json, test_data):
 
 
 @mock_sts
-@patch("chalicelib.sigv4.requests.Session")
+@patch("chalicelib.sigv4.sigv4.requests.Session")
 def test_delete_dataset(mock_session_response, test_configs):
     mock_session_response.mount = MagicMock()
     mock_session_response.return_value.delete.return_value = MagicMock(
@@ -159,7 +159,7 @@ def test_delete_dataset(mock_session_response, test_configs):
 
 
 @mock_sts
-@patch("chalicelib.sigv4.requests.Session")
+@patch("chalicelib.sigv4.sigv4.requests.Session")
 def test_upload_status(mock_session_response, test_configs):
     expected_data = {
         "sourceS3Bucket": "some_bucket",
@@ -239,7 +239,7 @@ def test_get_etl_jobs(test_configs):
 
 
 @mock_sts
-@patch("chalicelib.sigv4.requests.post")
+@patch("chalicelib.sigv4.sigv4.requests.post")
 def test_create_dataset(mock_response, test_configs):
     payload = {
         "destination_endpoint": test_configs["destination_endpoint"],
@@ -315,7 +315,7 @@ def test_start_amc_transformation(test_configs):
             assert glue_resp["JobRun"]["Id"] == response.json_body["JobRunId"]
 
 
-@patch("chalicelib.sigv4.requests.post")
+@patch("chalicelib.sigv4.sigv4.requests.post")
 def test_system_configuration(mock_response, test_configs):
     with mock_iam(), mock_s3(), mock_dynamodb():
         content_type = test_configs["content_type"]
