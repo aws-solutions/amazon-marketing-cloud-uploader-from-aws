@@ -7,35 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Allow users to upload S3 files to existing datasets [#73]
-- Allow users to upload multiple S3 files at the same time [#41]
-- Allow users to upload g-zipped JSON and CSV files (.json.gz, .csv.gz) [#159]
-- Allow users to specify FACT partition size [#52]
-- Record anonymous performance metrics to measure ETL workload size [#52]
-- Automate integration tests [#42]
-- Automate front-end tests [#32]
-- Automate build and deploy tests [#34]
-- Invalid email addresses should normalize to empty string and added unit tests to github pr-workflow. [#63]
-- Use custom lambda layer for aws-xray-sdk [#68]
-- Add LiveRamp Identifier [#40]
+- Support for eu-west-1 [#45]
+- Upload to multiple AMC instances [#133, #145, #150, #172, #180, #183]
+- Upload to existing datasets [#73]
+- Upload multiple files at once [#41]
+- Upload gzipped JSON and CSV files [#159]
+- Improved data normalization for US, UK, JP, IN, IT, ES, CA, DE, FR [#61, #63, #72, #108, #109]
+- Glue ETL performance metrics [#52]
+- FACT partition size option [#52, #138]
+- Country code option [#83, #132, #155, #157]
+- LiveRamp support [#40, #85]
+- Import/Export dataset schema [#102]
+- Show API errors in front-end [#104]
+- Retry on AMC request timeouts. [#117, #160]
+- Custom lambda layer for aws-xray-sdk [#37, #68, #172]
+- Automated integration tests [#34, #42, #173]
+- Automated unit tests [#105, #120]
+- AWS Solutions quality bar [#47, #64, #91, #103, #113, #153, #154, #156, #162]
+- AWS Solutions pipeline integration [#81, #96]
 - Add Pre-commit, fix SonarCube/SonarLint issues [#16]
 - Add Unit Tests, combine coverage report for source/api/tests and source/tests. [#100]
-- Handle HTTP 504 "Endpoint request timed out" error. [#117]
+- API documentation [#152]
 
 ### Changed
 
 - Prefix S3 bucket names with CF stack name to help organize S3 resources [#29]
 - Allocate more time to HelperFunction for removing stack resources [#58]
-- Remove the us-east-1 restriction so users can attempt to deploy in any region [#45]
 - Remove unused lambda layer [#37]
+- Architecture diagram [#177]
 
 ### Fixed
 
-- Resolve a data loss issue in the normalization job [#23]
+- Redundant log group [#168]
+- Sorting of front-end tables [#148, #151]
+- UX/UI issues for dataset schema [#93]
+- Dropping first record [#23]
 
 ### Security
 
 - Enable integrity checks for front-end assets [#39]
+- Migrate python 3.9 to python 3.10 in build script [#33, #95]
 
 
 
