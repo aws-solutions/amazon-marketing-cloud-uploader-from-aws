@@ -3,14 +3,13 @@
   "app_name": "amcufa_api",
   "environment_variables": {
     "botoConfig": "{}",
-    "AMC_API_ROLE_ARN": "arn:aws:iam::719420829223:role/amcufa-imgeo-AmcApiAccessRole",
-    "AMC_ENDPOINT_URL": "https://rrhcd93zj3.execute-api.us-east-1.amazonaws.com/prod",
-    "AMC_GLUE_JOB_NAME": "amcufa-imgeo-GlueStack-MI2TZ8KXSPTV-amc-transformation-job",
-    "SOLUTION_NAME": "localhost testing",
-    "VERSION": "0.0001",
-    "CUSTOMER_MANAGED_KEY": "",
-    "SYSTEM_TABLE_NAME": "amcufa-imgeo-SystemTable-3A0UX8UXPM5D",
-    "ARTIFACT_BUCKET": "amcufa-imgeo-etl-artifacts-y0awt0"
+    "VERSION": "",
+    "SOLUTION_NAME": "",
+    "AMC_API_ROLE_ARN": "",
+    "AMC_GLUE_JOB_NAME": "",
+    "ARTIFACT_BUCKET": "",
+    "SYSTEM_TABLE_NAME": "",
+    "CUSTOMER_MANAGED_KEY": ""
   },
   "stages": {
     "dev": {
