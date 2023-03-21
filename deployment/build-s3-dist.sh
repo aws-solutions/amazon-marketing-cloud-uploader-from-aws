@@ -259,8 +259,6 @@ echo "Building API Lambda handler"
 cd "$source_dir/api" || exit 1
 [ -e dist ] && rm -rf dist
 mkdir -p dist
-echo "cp -R $source_dir/share ./dist"
-cp -R "$source_dir/share" "./dist"
 if ! [ -x "$(command -v chalice)" ]; then
   echo 'Chalice is not installed. It is required for this solution. Exiting.'
   exit 1
@@ -279,6 +277,8 @@ if [ $? -ne 0 ]; then
   echo "ERROR: Failed to build api template"
   exit 1
 fi
+echo "./dist/deployment.zip $source_dir/share/* -x **/__pycache__/*"
+zip ./dist/deployment.zip "$source_dir"/share/* -x "**/__pycache__/*"
 echo "cp ./dist/deployment.zip $regional_dist_dir-api.zip"
 cp ./dist/deployment.zip "$regional_dist_dir"/api.zip
 if [ $? -ne 0 ]; then
@@ -367,6 +367,8 @@ zip -q -r9 ../dist/amc_uploader.zip .
 popd || exit 1
 zip -q -g ./dist/amc_uploader.zip ./amc_uploader.py
 zip -q -g ./dist/amc_uploader.zip ./lib/sigv4.py
+echo "./dist/amc_uploader.zip $source_dir/share/* -x **/__pycache__/*"
+zip ./dist/amc_uploader.zip "$source_dir"/share/* -x "**/__pycache__/*"
 cp "./dist/amc_uploader.zip" "$regional_dist_dir/amc_uploader.zip"
 
 echo "------------------------------------------------------------------------------"
