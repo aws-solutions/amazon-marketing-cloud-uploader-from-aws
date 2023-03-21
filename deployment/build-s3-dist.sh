@@ -259,6 +259,8 @@ echo "Building API Lambda handler"
 cd "$source_dir/api" || exit 1
 [ -e dist ] && rm -rf dist
 mkdir -p dist
+echo "cp -R $source_dir/share ./dist"
+cp -R "$source_dir/share" "./dist"
 if ! [ -x "$(command -v chalice)" ]; then
   echo 'Chalice is not installed. It is required for this solution. Exiting.'
   exit 1
@@ -349,6 +351,8 @@ echo "Building AMC uploader function"
 cd "$source_dir/amc_uploader" || exit 1
 [ -e dist ] && rm -r dist
 mkdir -p dist
+echo "cp -R $source_dir/share ./dist"
+cp -R "$source_dir/share" "./dist"
 [ -e package ] && rm -r package
 mkdir -p package
 echo "preparing packages from requirements.txt"
