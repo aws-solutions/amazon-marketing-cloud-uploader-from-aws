@@ -817,4 +817,4 @@ def log_request_parameters():
         "request ID: " + (app.current_request.context.get("requestId", ""))
     )
     logger.info("request body: " + app.current_request.raw_body.decode())
-    logger.info(app.current_request.to_dict())
+    logger.debug(app.current_request.to_dict())
