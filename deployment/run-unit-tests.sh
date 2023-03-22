@@ -151,7 +151,6 @@ cd tests
 export PYTHONPATH=$PYTHONPATH:../glue:../anonymous_data_logger:../api
 pytest . --cov=$source_dir/glue/ --cov=$source_dir/helper/ --cov=$source_dir/amc_uploader/ --cov=$source_dir/anonymous_data_logger/ --cov=$source_dir/api/ --cov=$source_dir/share/ --cov-report term-missing --cov-report term --cov-report "xml:$coverage_report_path" --cov-config=$source_dir/.coveragerc --ignore="e2e" --ignore="test_api_integration.py" -vv
 cd ..
-# pytest $source_dir/api/tests --cov=$source_dir/api/ --cov-append --cov-report term-missing --cov-report term --cov-report "xml:$coverage_report_path" --cov-config=$source_dir/.coveragerc --ignore="api/tests/test_api_integration.py" -vv
 
 # The pytest --cov with its parameters and .coveragerc generates a xml cov-report with `coverage/sources` list
 # with absolute path for the source directories. To avoid dependencies of tools (such as SonarQube) on different
