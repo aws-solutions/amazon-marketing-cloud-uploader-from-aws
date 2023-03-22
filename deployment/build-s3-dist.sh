@@ -268,6 +268,9 @@ fi
 # Otherwise, chalice will use the existing deployment package
 [ -e .chalice/deployments ] && rm -rf .chalice/deployments
 
+echo "cp -R $source_dir/share ./dist"
+cp -R "$source_dir/share" "./dist"
+
 echo "Running chalice..."
 chalice package --merge-template external_resources.json dist
 echo "Finished running chalice."
@@ -277,8 +280,10 @@ if [ $? -ne 0 ]; then
   echo "ERROR: Failed to build api template"
   exit 1
 fi
-echo "./dist/deployment.zip $source_dir/share/* -x **/__pycache__/*"
-zip ./dist/deployment.zip "$source_dir"/share/* -x "**/__pycache__/*"
+cd dist
+echo "deployment.zip /share/* -x **/__pycache__/*"
+zip -r deployment.zip share/* -x "**/__pycache__/*"
+cd ..
 echo "cp ./dist/deployment.zip $regional_dist_dir-api.zip"
 cp ./dist/deployment.zip "$regional_dist_dir"/api.zip
 if [ $? -ne 0 ]; then
@@ -367,8 +372,10 @@ zip -q -r9 ../dist/amc_uploader.zip .
 popd || exit 1
 zip -q -g ./dist/amc_uploader.zip ./amc_uploader.py
 zip -q -g ./dist/amc_uploader.zip ./lib/sigv4.py
-echo "./dist/amc_uploader.zip $source_dir/share/* -x **/__pycache__/*"
-zip ./dist/amc_uploader.zip "$source_dir"/share/* -x "**/__pycache__/*"
+cd dist
+echo "amc_uploader.zip share/* -x **/__pycache__/*"
+zip -r amc_uploader.zip share/* -x "**/__pycache__/*"
+cd ..
 cp "./dist/amc_uploader.zip" "$regional_dist_dir/amc_uploader.zip"
 
 echo "------------------------------------------------------------------------------"
