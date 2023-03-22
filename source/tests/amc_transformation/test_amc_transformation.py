@@ -125,11 +125,11 @@ class NormalizationTest:
         country = self.country
 
         raw = pd.read_json(
-            f"tests/amc_transformation/sample_data/test_{country}/{country}_raw.json",
+            f"amc_transformation/sample_data/test_{country}/{country}_raw.json",
             dtype=str,
         )
         check = pd.read_json(
-            f"tests/amc_transformation/sample_data/test_{country}/{country}_check.json",
+            f"amc_transformation/sample_data/test_{country}/{country}_check.json",
             dtype=str,
         )
 
@@ -187,7 +187,7 @@ def test_amc_transformations(countries=None):
         "de",
         "fr",
     ]
-    test_results_filepath = "tests/amc_transformation/test_results"
+    test_results_filepath = "amc_transformation/test_results"
 
     if os.path.exists(test_results_filepath):
         shutil.rmtree(test_results_filepath)

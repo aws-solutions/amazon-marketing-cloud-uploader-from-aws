@@ -6,7 +6,7 @@
 #   * Integration test for project api endpoints and workflow.
 #
 # USAGE:
-#   $ ./run_api_test.sh -rit
+#   $ ./run_test.sh -run_integ_test
 ###############################################################################
 
 import datetime

@@ -20,3 +20,4 @@ __pycache__
 source/tests/.DS_Store
 source/tests/amc_transformation/test_results
 source/tests/amc_transformation/test_results/*
+source/tests/.coverage

@@ -104,10 +104,8 @@ jobs:
           python3.10 -m venv "$VENV"
           source "$VENV"/bin/activate
           ls -l
-          cd source
-          ./tests/run_test.sh --run_unit_test
-          cd api/tests
-          ./run_api_test.sh --run_unit_test
+          cd source/tests
+          ./run_test.sh --run_unit_test
       - name: Run Coverage Report
         run: |
           cd deployment
@@ -287,7 +285,7 @@ jobs:
           source "$VENV"/bin/activate
           ls -l
           pip3 install -r source/api/tests/requirements-test.txt
-          pytest source/api/tests/test_api_integration.py -vv
+          pytest source/tests/test_api_integration.py -vv
 
   cleanup:
     if: always()

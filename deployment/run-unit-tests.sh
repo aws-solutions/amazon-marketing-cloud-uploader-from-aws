@@ -122,7 +122,7 @@ source "$VENV"/bin/activate
 cd $source_dir
 pip install --upgrade pip
 pip install -q -r requirements-dev.txt
-pip install -q -r api/tests/requirements-test.txt
+pip install -q -r tests/requirements-test.txt
 
 # env variables
 export PYTHONDONTWRITEBYTECODE=1
@@ -139,9 +139,6 @@ export CUSTOMER_MANAGED_KEY=""
 export AWS_REGION="us-east-1"
 export SOLUTION_VERSION="0.0.0"
 
-# set PYTHONPATH to enable importing modules from ./glue/library,/anonymous_data_logger
-export PYTHONPATH=$PYTHONPATH:./glue:./anonymous_data_logger
-
 echo "------------------------------------------------------------------------------"
 echo "[Test] Run pytest with coverage"
 echo "------------------------------------------------------------------------------"
@@ -149,9 +146,12 @@ cd $source_dir
 # setup coverage report path
 coverage_report_path=$source_dir/tests/coverage-reports/source.coverage.xml
 echo "coverage report path set to $coverage_report_path"
-
-pytest $source_dir/tests --cov=$source_dir/glue/ --cov=$source_dir/helper/ --cov=$source_dir/amc_uploader/ --cov=$source_dir/anonymous_data_logger/ --cov-report term-missing --cov-report term --cov-report "xml:$coverage_report_path" --ignore="tests/e2e" -vv
-pytest $source_dir/api/tests --cov=$source_dir/api/ --cov-append --cov-report term-missing --cov-report term --cov-report "xml:$coverage_report_path" --cov-config=$source_dir/.coveragerc --ignore="api/tests/test_api_integration.py" -vv
+cd tests
+# set PYTHONPATH to enable importing modules from ./glue/library,/anonymous_data_logger
+export PYTHONPATH=$PYTHONPATH:../glue:../anonymous_data_logger:../api
+pytest . --cov=$source_dir/glue/ --cov=$source_dir/helper/ --cov=$source_dir/amc_uploader/ --cov=$source_dir/anonymous_data_logger/ --cov=$source_dir/api/ --cov=$source_dir/share/ --cov-report term-missing --cov-report term --cov-report "xml:$coverage_report_path" --cov-config=$source_dir/.coveragerc --ignore="e2e" --ignore="test_api_integration.py" -vv
+cd ..
+# pytest $source_dir/api/tests --cov=$source_dir/api/ --cov-append --cov-report term-missing --cov-report term --cov-report "xml:$coverage_report_path" --cov-config=$source_dir/.coveragerc --ignore="api/tests/test_api_integration.py" -vv
 
 # The pytest --cov with its parameters and .coveragerc generates a xml cov-report with `coverage/sources` list
 # with absolute path for the source directories. To avoid dependencies of tools (such as SonarQube) on different
