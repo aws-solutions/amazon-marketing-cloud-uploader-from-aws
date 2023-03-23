@@ -284,7 +284,7 @@ jobs:
           python3.10 -m venv "$VENV"
           source "$VENV"/bin/activate
           ls -l
-          pip3 install -r source/api/tests/requirements-test.txt
+          pip3 install -r source/tests/requirements-test.txt
           pytest source/tests/test_api_integration.py -vv
 
   cleanup:
