@@ -56,6 +56,7 @@ For more installation options, see the [Advanced Installation](#advanced-install
 
 ## INPUT
 
+* *Stack name:* Required by AWS CloudFormation, this must be all lowercase. 
 * *AdminEmail:* Email address of the administrator
 * *DataBucketName:* Name of the S3 bucket from which source data will be uploaded.
 * *CustomerManagedKey:* (Optional) Customer Managed Key to be used for decrypting source data, encrypting ETL results, and encrypting the corresponding datasets in AMC
@@ -71,7 +72,7 @@ The following commands will build the solution from source code.
 
 ```
 EMAIL=[specify your email]
-STACK_NAME=[specify a stack name]
+STACK_NAME=[specify a lowercase stack name]
 REGION=[specify a region]
 VERSION=0.0.0
 PROFILE=default
@@ -82,7 +83,7 @@ DIST_OUTPUT_BUCKET=amcufa-$DATETIME-dist
 TEMPLATE_OUTPUT_BUCKET=amcufa-$DATETIME
 aws s3 mb s3://$DIST_OUTPUT_BUCKET-$REGION --region $REGION
 aws s3 mb s3://$TEMPLATE_OUTPUT_BUCKET --region $REGION
-./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name amcufa --version ${VERSION} --region ${REGION} --profile ${PROFILE} | tee >( grep TEMPLATE >template )
+./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name ${STACK_NAME} --version ${VERSION} --region ${REGION} --profile ${PROFILE} | tee >( grep TEMPLATE >template )
 TEMPLATE=$(cat template | cut -f 2 -d "'")
 ```
 
