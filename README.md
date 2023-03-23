@@ -44,7 +44,7 @@ The following Cloudformation templates will deploy the application.
 
 Region| Launch
 ------|-----
-US East (N. Virginia) | [![Launch in us-east-1](docs/images/launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?stackName=amcufa&templateURL=https://solutions-reference.s3.amazonaws.com/amazon-marketing-cloud-uploader-from-aws/v1.0.0/amazon-marketing-cloud-uploader-from-aws.template)
+US East (N. Virginia) | [![Launch in us-east-1](docs/images/launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?stackName=amcufa&templateURL=https://solutions-reference.s3.amazonaws.com/amazon-marketing-cloud-uploader-from-aws/v2.0.0/amazon-marketing-cloud-uploader-from-aws.template)
 
 Once the Cloud Formation stack has been created, open the URL shown in the `UserInterface` output of the base stack. You can also get this URL with the following AWS CLI command:
 
@@ -56,10 +56,9 @@ For more installation options, see the [Advanced Installation](#advanced-install
 
 ## INPUT
 
+* *Stack name:* Required by AWS CloudFormation, this must be all lowercase. 
 * *AdminEmail:* Email address of the administrator
 * *DataBucketName:* Name of the S3 bucket from which source data will be uploaded.
-* *AmcEndpointUrl:* API endpoint of the AMC instance. This can be located in the Instance Info page in the AMC UI.
-* *DataUploadAccountId:* AWS account id that is connected to the AMC instance. This can be located in the Instance Info page in the AMC UI.
 * *CustomerManagedKey:* (Optional) Customer Managed Key to be used for decrypting source data, encrypting ETL results, and encrypting the corresponding datasets in AMC
 
   * AMC provides the ability to encrypt customer datasets with encryption keys created in AWS Key Management Service (KMS). This step is optional. If an encryption key is not provided, AMC will perform default encryption on behalf of the customer. The benefit to using a customer generated encryption key is the ability to revoke AMC’s access to uploaded data at any point. In addition, customers can monitor encryption key access via AWS CloudTrail event logs.
@@ -73,7 +72,7 @@ The following commands will build the solution from source code.
 
 ```
 EMAIL=[specify your email]
-STACK_NAME=[specify a stack name]
+STACK_NAME=[specify a lowercase stack name]
 REGION=[specify a region]
 VERSION=0.0.0
 PROFILE=default
@@ -84,7 +83,7 @@ DIST_OUTPUT_BUCKET=amcufa-$DATETIME-dist
 TEMPLATE_OUTPUT_BUCKET=amcufa-$DATETIME
 aws s3 mb s3://$DIST_OUTPUT_BUCKET-$REGION --region $REGION
 aws s3 mb s3://$TEMPLATE_OUTPUT_BUCKET --region $REGION
-./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name amcufa --version ${VERSION} --region ${REGION} --profile ${PROFILE} | tee >( grep TEMPLATE >template )
+./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name ${STACK_NAME} --version ${VERSION} --region ${REGION} --profile ${PROFILE} | tee >( grep TEMPLATE >template )
 TEMPLATE=$(cat template | cut -f 2 -d "'")
 ```
 
@@ -95,19 +94,15 @@ Once you have built the demo app with the above commands, then it's time to depl
 Use these commands to deploy the application in AWS CloudFormation:
 
 ```
-AMC_INSTANCE_ID=[specify the id of your AMC instance]
 TEMPLATE=[copy link shown at the end of the build script]
 STACK_NAME=[arbitrary stack name]
 EMAIL=[Email address to receive credentials for webapp]
 SOURCE_BUCKET=[Name of the S3 bucket from which source data will be uploaded.]
-AMC_ENDPOINT_URL=[Specify the API endpoint of your AMC instance]
-DATA_UPLOAD_ACCOUNT_ID=[AWS account id that is connected to the AMC instance]
 CUSTOMER_MANAGED_KEY=[(Optional) Customer Managed Key to be used for encryption]
 PROFILE=[AWS profile for the AWS account that is connected to your AMC instance]
 
-aws cloudformation create-stack --stack-name $STACK_NAME --template-url $TEMPLATE --region $REGION --parameters ParameterKey=AdminEmail,ParameterValue=$EMAIL ParameterKey=DataBucketName,ParameterValue=$SOURCE_BUCKET ParameterKey=AmcEndpointUrl,ParameterValue=$AMC_ENDPOINT_URL ParameterKey=DataUploadAccountId,ParameterValue=$DATA_UPLOAD_ACCOUNT_ID ParameterKey=CustomerManagedKey,ParameterValue=$CUSTOMER_MANAGED_KEY --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --profile $PROFILE --disable-rollback
+aws cloudformation create-stack --stack-name $STACK_NAME --template-url $TEMPLATE --region $REGION --parameters ParameterKey=AdminEmail,ParameterValue=$EMAIL ParameterKey=DataBucketName,ParameterValue=$SOURCE_BUCKET ParameterKey=CustomerManagedKey,ParameterValue=$CUSTOMER_MANAGED_KEY --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --profile $PROFILE --disable-rollback
 ```
-
 
 # User Authentication
 

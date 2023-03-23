@@ -31,7 +31,7 @@ trap cleanup_and_die SIGINT SIGTERM ERR
 usage() {
   msg "$msg"
   cat <<EOF
-Usage: $(basename "${BASH_SOURCE[0]}") [-h] [-v] [--solution-name SOLUTION_NAME] [--profile PROFILE] --template-bucket TEMPLATE_BUCKET --code-bucket CODE_BUCKET --version VERSION --region REGION
+Usage: $(basename "${BASH_SOURCE[0]}") [-h] [-v] [--profile PROFILE] --template-bucket TEMPLATE_BUCKET --code-bucket CODE_BUCKET --solution-name SOLUTION_NAME --version VERSION --region REGION
 
 Available options:
 
@@ -39,7 +39,7 @@ Available options:
 -v, --verbose     Print script debug info (optional)
 --template-bucket S3 bucket to put cloud formation templates
 --code-bucket     S3 bucket to put Lambda code packages
---solution-name   Arbitrary string indicating the solution name (optional)
+--solution-name   Arbitrary string indicating the solution name
 --version         Arbitrary string indicating build version
 --region          AWS Region, formatted like us-west-2
 --profile         AWS profile for CLI commands (optional)
