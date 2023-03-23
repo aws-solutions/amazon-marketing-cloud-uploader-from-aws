@@ -5,17 +5,16 @@
     "botoConfig": "{}",
     "VERSION": "",
     "SOLUTION_NAME": "",
+    "AMC_ENDPOINT_URL": "",
     "AMC_API_ROLE_ARN": "",
     "AMC_GLUE_JOB_NAME": "",
-    "ARTIFACT_BUCKET": "",
-    "SYSTEM_TABLE_NAME": "",
     "CUSTOMER_MANAGED_KEY": ""
   },
   "stages": {
     "dev": {
       "api_gateway_stage": "api",
-      "lambda_memory_size": 2048,
-      "lambda_timeout": 600,
+      "lambda_memory_size" : 2048,
+      "lambda_timeout" : 600,
       "autogen_policy": false,
       "iam_policy_file": "dev-app-policy.json",
       "xray": true,
