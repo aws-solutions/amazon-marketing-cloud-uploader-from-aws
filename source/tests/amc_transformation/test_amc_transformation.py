@@ -361,7 +361,10 @@ def test_save_fact_output(mock_write_to_s3):
     test_file = rw.FactDataset(test_args)
     test_file.content_type = "test"
     test_file.timeseries_partition_size = "P1D"
-    test_file.destination_endpoints = ["http://sample_endpoint1.execute-api.us-east-1.amazonaws.com/prod", "http://sample_endpoint2.execute-api.us-east-1.amazonaws.com/prod"]
+    test_file.destination_endpoints = [
+        "http://sample_endpoint1.execute-api.us-east-1.amazonaws.com/prod",
+        "http://sample_endpoint2.execute-api.us-east-1.amazonaws.com/prod",
+    ]
 
     timestamp_1 = "2020-04-10T20:00:00Z"
     timestamp_2 = "2020-04-11T20:00:00Z"
@@ -452,4 +455,3 @@ def test_save_fact_output(mock_write_to_s3):
     mock_write_to_s3.assert_any_call(**check)
     check = expected_arguments[2]
     mock_write_to_s3.assert_any_call(**check)
-

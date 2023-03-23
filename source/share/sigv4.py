@@ -41,9 +41,9 @@ logger.addHandler(handler)
 # Environment variables
 AMC_API_ROLE = os.environ["AMC_API_ROLE_ARN"]
 SOLUTION_NAME = os.environ["SOLUTION_NAME"]
-SOLUTION_VERSION = os.environ.get("VERSION", os.environ.get("SOLUTION_VERSION"))
-if not SOLUTION_VERSION:
-    raise ValueError("SOLUTION_VERSION is required.")
+SOLUTION_VERSION = os.environ.get(
+    "VERSION", os.environ.get("SOLUTION_VERSION")
+)
 solution_config = json.loads(os.environ["botoConfig"])
 config = config.Config(**solution_config)
 NO_ACCESS_KEY_ERROR = "No access key is available."

@@ -11,8 +11,8 @@
 #
 ##########################################################################
 
-import sys
 import importlib
+import sys
 
-sys.path.insert(0, '..')
-sigv4 = importlib.import_module('share.sigv4')
+sys.path.insert(0, "..")
+sigv4 = importlib.import_module("share.sigv4")

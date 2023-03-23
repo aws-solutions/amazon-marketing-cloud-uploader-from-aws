@@ -163,105 +163,103 @@ def test_delete_dataset(mock_session_response, test_configs):
 def test_list_datasets(mock_session_response, test_configs):
     mock_session_response.mount = MagicMock()
     test_body = {
-                    "destination_endpoint": test_configs[
-                        "destination_endpoint"
-                    ],
-                }
+        "destination_endpoint": test_configs["destination_endpoint"],
+    }
     expected_response = {
-  "dataSets": [
-    {
-      "columns": [
-        {
-          "dataType": "STRING",
-          "description": "The customer resolved id",
-          "isMainEventTime": False,
-          "isMainUserId": True,
-          "isMainUserIdType": False,
-          "isNullable": True,
-          "name": "user_id",
-          "requiresOneWayHashing": False
-        },
-        {
-          "dataType": "STRING",
-          "description": "The customer resolved type",
-          "isMainEventTime": False,
-          "isMainUserId": False,
-          "isMainUserIdType": True,
-          "isNullable": True,
-          "name": "user_type",
-          "requiresOneWayHashing": False
-        },
-        {
-          "dataType": "STRING",
-          "description": "hashed First name",
-          "externalUserIdType": {
-            "type": "HashedIdentifier",
-            "identifierType": "FIRST_NAME"
-          },
-          "isMainEventTime": False,
-          "isMainUserId": False,
-          "isMainUserIdType": False,
-          "isNullable": True,
-          "name": "first_name",
-          "requiresOneWayHashing": False
-        },
-        {
-          "dataType": "STRING",
-          "description": "hashed Last name",
-          "externalUserIdType": {
-            "type": "HashedIdentifier",
-            "identifierType": "LAST_NAME"
-          },
-          "isMainEventTime": False,
-          "isMainUserId": False,
-          "isMainUserIdType": False,
-          "isNullable": True,
-          "name": "last_name",
-          "requiresOneWayHashing": False
-        },
-        {
-          "dataType": "TIMESTAMP",
-          "description": "Timestamp",
-          "isMainEventTime": True,
-          "isMainUserId": False,
-          "isMainUserIdType": False,
-          "isNullable": False,
-          "name": "timestamp",
-          "requiresOneWayHashing": False
-        },
-        {
-          "columnType": "DIMENSION",
-          "dataType": "STRING",
-          "description": "Product quantity",
-          "isMainEventTime": False,
-          "isMainUserId": False,
-          "isMainUserIdType": False,
-          "isNullable": False,
-          "name": "product_quantity",
-          "requiresOneWayHashing": False
-        },
-        {
-          "columnType": "METRIC",
-          "dataType": "STRING",
-          "description": "Product name",
-          "isMainEventTime": False,
-          "isMainUserId": False,
-          "isMainUserIdType": False,
-          "isNullable": False,
-          "name": "product_name",
-          "requiresOneWayHashing": False
-        }
-      ],
-      "compressionFormat": "GZIP",
-      "createdTime": "2023-03-14T20:39:19.043Z",
-      "dataSetId": "iantest12",
-      "dataSetType": "FACT",
-      "fileFormat": "JSON",
-      "owner": "CUSTOMER",
-      "period": "P1D",
-      "updatedTime": "2023-03-14T20:39:19.043Z"
-    },
-  ]
+        "dataSets": [
+            {
+                "columns": [
+                    {
+                        "dataType": "STRING",
+                        "description": "The customer resolved id",
+                        "isMainEventTime": False,
+                        "isMainUserId": True,
+                        "isMainUserIdType": False,
+                        "isNullable": True,
+                        "name": "user_id",
+                        "requiresOneWayHashing": False,
+                    },
+                    {
+                        "dataType": "STRING",
+                        "description": "The customer resolved type",
+                        "isMainEventTime": False,
+                        "isMainUserId": False,
+                        "isMainUserIdType": True,
+                        "isNullable": True,
+                        "name": "user_type",
+                        "requiresOneWayHashing": False,
+                    },
+                    {
+                        "dataType": "STRING",
+                        "description": "hashed First name",
+                        "externalUserIdType": {
+                            "type": "HashedIdentifier",
+                            "identifierType": "FIRST_NAME",
+                        },
+                        "isMainEventTime": False,
+                        "isMainUserId": False,
+                        "isMainUserIdType": False,
+                        "isNullable": True,
+                        "name": "first_name",
+                        "requiresOneWayHashing": False,
+                    },
+                    {
+                        "dataType": "STRING",
+                        "description": "hashed Last name",
+                        "externalUserIdType": {
+                            "type": "HashedIdentifier",
+                            "identifierType": "LAST_NAME",
+                        },
+                        "isMainEventTime": False,
+                        "isMainUserId": False,
+                        "isMainUserIdType": False,
+                        "isNullable": True,
+                        "name": "last_name",
+                        "requiresOneWayHashing": False,
+                    },
+                    {
+                        "dataType": "TIMESTAMP",
+                        "description": "Timestamp",
+                        "isMainEventTime": True,
+                        "isMainUserId": False,
+                        "isMainUserIdType": False,
+                        "isNullable": False,
+                        "name": "timestamp",
+                        "requiresOneWayHashing": False,
+                    },
+                    {
+                        "columnType": "DIMENSION",
+                        "dataType": "STRING",
+                        "description": "Product quantity",
+                        "isMainEventTime": False,
+                        "isMainUserId": False,
+                        "isMainUserIdType": False,
+                        "isNullable": False,
+                        "name": "product_quantity",
+                        "requiresOneWayHashing": False,
+                    },
+                    {
+                        "columnType": "METRIC",
+                        "dataType": "STRING",
+                        "description": "Product name",
+                        "isMainEventTime": False,
+                        "isMainUserId": False,
+                        "isMainUserIdType": False,
+                        "isNullable": False,
+                        "name": "product_name",
+                        "requiresOneWayHashing": False,
+                    },
+                ],
+                "compressionFormat": "GZIP",
+                "createdTime": "2023-03-14T20:39:19.043Z",
+                "dataSetId": "iantest12",
+                "dataSetType": "FACT",
+                "fileFormat": "JSON",
+                "owner": "CUSTOMER",
+                "period": "P1D",
+                "updatedTime": "2023-03-14T20:39:19.043Z",
+            },
+        ]
     }
     mock_session_response.return_value.get.return_value = MagicMock(
         status_code=200, text=json.dumps(expected_response)
@@ -272,9 +270,7 @@ def test_list_datasets(mock_session_response, test_configs):
         response = client.http.post(
             "/list_datasets",
             headers={"Content-Type": content_type},
-            body=json.dumps(
-                test_body
-            ),
+            body=json.dumps(test_body),
         )
         assert response.status_code == 200
         assert response.json_body == expected_response
@@ -285,110 +281,106 @@ def test_list_datasets(mock_session_response, test_configs):
 def test_describe_dataset(mock_session_response, test_configs):
     mock_session_response.mount = MagicMock()
     test_body = {
-                    "destination_endpoint": test_configs[
-                        "destination_endpoint"
-                    ],
-                    "dataSetId": test_configs["data_set_id"],
-                }
+        "destination_endpoint": test_configs["destination_endpoint"],
+        "dataSetId": test_configs["data_set_id"],
+    }
     expected_response = {
         "columns": [
             {
-            "dataType": "STRING",
-            "description": "The customer resolved id",
-            "isMainEventTime": False,
-            "isMainUserId": True,
-            "isMainUserIdType": False,
-            "isNullable": True,
-            "name": "user_id",
-            "requiresOneWayHashing": False
+                "dataType": "STRING",
+                "description": "The customer resolved id",
+                "isMainEventTime": False,
+                "isMainUserId": True,
+                "isMainUserIdType": False,
+                "isNullable": True,
+                "name": "user_id",
+                "requiresOneWayHashing": False,
             },
             {
-            "dataType": "STRING",
-            "description": "The customer resolved type",
-            "isMainEventTime": False,
-            "isMainUserId": False,
-            "isMainUserIdType": True,
-            "isNullable": True,
-            "name": "user_type",
-            "requiresOneWayHashing": False
+                "dataType": "STRING",
+                "description": "The customer resolved type",
+                "isMainEventTime": False,
+                "isMainUserId": False,
+                "isMainUserIdType": True,
+                "isNullable": True,
+                "name": "user_type",
+                "requiresOneWayHashing": False,
             },
             {
-            "dataType": "STRING",
-            "description": "hashed First name",
-            "externalUserIdType": {
-                "type": "HashedIdentifier",
-                "identifierType": "FIRST_NAME"
-            },
-            "isMainEventTime": False,
-            "isMainUserId": False,
-            "isMainUserIdType": False,
-            "isNullable": True,
-            "name": "first_name",
-            "requiresOneWayHashing": False
-            },
-            {
-            "dataType": "STRING",
-            "description": "hashed Last name",
-            "externalUserIdType": {
-                "type": "HashedIdentifier",
-                "identifierType": "LAST_NAME"
-            },
-            "isMainEventTime": False,
-            "isMainUserId": False,
-            "isMainUserIdType": False,
-            "isNullable": True,
-            "name": "last_name",
-            "requiresOneWayHashing": False
+                "dataType": "STRING",
+                "description": "hashed First name",
+                "externalUserIdType": {
+                    "type": "HashedIdentifier",
+                    "identifierType": "FIRST_NAME",
+                },
+                "isMainEventTime": False,
+                "isMainUserId": False,
+                "isMainUserIdType": False,
+                "isNullable": True,
+                "name": "first_name",
+                "requiresOneWayHashing": False,
             },
             {
-            "dataType": "STRING",
-            "description": "hashed Email",
-            "externalUserIdType": {
-                "type": "HashedIdentifier",
-                "identifierType": "EMAIL"
-            },
-            "isMainEventTime": False,
-            "isMainUserId": False,
-            "isMainUserIdType": False,
-            "isNullable": True,
-            "name": "email",
-            "requiresOneWayHashing": False
-            },
-            {
-            "dataType": "STRING",
-            "description": "Product quantity",
-            "externalUserIdType": {
-                "type": "LiveRamp"
-            },
-            "isMainEventTime": False,
-            "isMainUserId": False,
-            "isMainUserIdType": False,
-            "isNullable": False,
-            "name": "product_quantity",
-            "requiresOneWayHashing": False
+                "dataType": "STRING",
+                "description": "hashed Last name",
+                "externalUserIdType": {
+                    "type": "HashedIdentifier",
+                    "identifierType": "LAST_NAME",
+                },
+                "isMainEventTime": False,
+                "isMainUserId": False,
+                "isMainUserIdType": False,
+                "isNullable": True,
+                "name": "last_name",
+                "requiresOneWayHashing": False,
             },
             {
-            "columnType": "DIMENSION",
-            "dataType": "STRING",
-            "description": "Timestamp",
-            "isMainEventTime": False,
-            "isMainUserId": False,
-            "isMainUserIdType": False,
-            "isNullable": False,
-            "name": "timestamp",
-            "requiresOneWayHashing": False
+                "dataType": "STRING",
+                "description": "hashed Email",
+                "externalUserIdType": {
+                    "type": "HashedIdentifier",
+                    "identifierType": "EMAIL",
+                },
+                "isMainEventTime": False,
+                "isMainUserId": False,
+                "isMainUserIdType": False,
+                "isNullable": True,
+                "name": "email",
+                "requiresOneWayHashing": False,
             },
             {
-            "columnType": "DIMENSION",
-            "dataType": "STRING",
-            "description": "Product name",
-            "isMainEventTime": False,
-            "isMainUserId": False,
-            "isMainUserIdType": False,
-            "isNullable": False,
-            "name": "product_name",
-            "requiresOneWayHashing": False
-            }
+                "dataType": "STRING",
+                "description": "Product quantity",
+                "externalUserIdType": {"type": "LiveRamp"},
+                "isMainEventTime": False,
+                "isMainUserId": False,
+                "isMainUserIdType": False,
+                "isNullable": False,
+                "name": "product_quantity",
+                "requiresOneWayHashing": False,
+            },
+            {
+                "columnType": "DIMENSION",
+                "dataType": "STRING",
+                "description": "Timestamp",
+                "isMainEventTime": False,
+                "isMainUserId": False,
+                "isMainUserIdType": False,
+                "isNullable": False,
+                "name": "timestamp",
+                "requiresOneWayHashing": False,
+            },
+            {
+                "columnType": "DIMENSION",
+                "dataType": "STRING",
+                "description": "Product name",
+                "isMainEventTime": False,
+                "isMainUserId": False,
+                "isMainUserIdType": False,
+                "isNullable": False,
+                "name": "product_name",
+                "requiresOneWayHashing": False,
+            },
         ],
         "compressionFormat": "GZIP",
         "createdTime": "2023-03-22T19:26:35.034Z",
@@ -397,8 +389,8 @@ def test_describe_dataset(mock_session_response, test_configs):
         "fileFormat": "JSON",
         "owner": "CUSTOMER",
         "period": "P1D",
-        "updatedTime": "2023-03-22T19:26:35.034Z"
-        }
+        "updatedTime": "2023-03-22T19:26:35.034Z",
+    }
     mock_session_response.return_value.get.return_value = MagicMock(
         status_code=200, text=json.dumps(expected_response)
     )
@@ -408,9 +400,7 @@ def test_describe_dataset(mock_session_response, test_configs):
         response = client.http.post(
             "/describe_dataset",
             headers={"Content-Type": content_type},
-            body=json.dumps(
-                test_body
-            ),
+            body=json.dumps(test_body),
         )
         assert response.status_code == 200
         assert response.json_body == expected_response

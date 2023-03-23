@@ -88,7 +88,7 @@ def _start_fact_upload(bucket, key):
         #   amc/[datasetId]/[amc time resolution code]/[destination_endpoint]/[datafile].gz
         dataset_id = key.split("/")[1]
         time_partition = key.split("/")[2]
-        destination_endpoint = 'https://' + key.split("/")[3] + '/prod'
+        destination_endpoint = "https://" + key.split("/")[3] + "/prod"
         filename = urllib.parse.unquote(key.split("/")[-1])
         # Parse the filename to get the time window for that data.
         # Filenames should look like this, "etl_output_data.json-2022_01_06-09:01:00.gz"
@@ -169,7 +169,7 @@ def _start_dimension_upload(bucket, key):
         # Key parsing assume s3Key is in the following format:
         #   amc/[datasetId]/dimension/destination_endpoint/[datafile].gz
         dataset_id = key.split("/")[1]
-        destination_endpoint = 'https://' + key.split("/")[3] + '/prod'
+        destination_endpoint = "https://" + key.split("/")[3] + "/prod"
         filename = urllib.parse.unquote(key.split("/")[-1])
         logger.info("key: " + key)
         logger.info("dataset_id " + dataset_id)
