@@ -285,6 +285,7 @@ jobs:
           source "$VENV"/bin/activate
           ls -l
           cd source/tests/
+          export PYTHONPATH=$PYTHONPATH:../glue:../anonymous_data_logger:../api
           pip3 install -r requirements-test.txt
           pytest test_api_integration.py -vv
 
