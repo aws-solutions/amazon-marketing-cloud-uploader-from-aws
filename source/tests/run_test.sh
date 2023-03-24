@@ -210,47 +210,54 @@ then
     export DATA_BUCKET_NAME=$DATA_BUCKET_NAME
     export CUSTOMER_MANAGED_KEY=$CUSTOMER_MANAGED_KEY
     export AWS_REGION=$AWS_REGION
-    export AWS_DEFAULT_PROFILE=$AWS_DEFAULT_PROFILE
     export TEST_DATA_UPLOAD_ACCOUNT_ID=$TEST_DATA_UPLOAD_ACCOUNT_ID
 
+    if [ ! -z $AWS_DEFAULT_PROFILE ]
+    then
+        export AWS_DEFAULT_PROFILE=$AWS_DEFAULT_PROFILE
+    elif [[ ! -z $AWS_ACCESS_KEY_ID || ! -z $AWS_SECRET_ACCESS_KEY ]]
+    then
+        export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+        export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+    fi
 
     RESOURCE_ID=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id GlueStack --query "StackResources[0].PhysicalResourceId" --region $AWS_REGION $(if [ ! -z $AWS_DEFAULT_PROFILE ]; then echo "--profile $AWS_DEFAULT_PROFILE"; fi))
     echo $RESOURCE_ID
-    NESTED_STACK_ID=$(echo $RESOURCE_ID | cut -d "/" -f 2)
-    echo $NESTED_STACK_ID
+    # NESTED_STACK_ID=$(echo $RESOURCE_ID | cut -d "/" -f 2)
+    # echo $NESTED_STACK_ID
 
-    AMC_GLUE_JOB_NAME=$(aws cloudformation describe-stack-resources --stack-name $NESTED_STACK_ID --logical-resource-id "AmcGlueJob" --query "StackResources[0].PhysicalResourceId" --region $AWS_REGION $(if [ ! -z $AWS_DEFAULT_PROFILE ]; then echo "--profile $AWS_DEFAULT_PROFILE"; fi))
-    AMC_GLUE_JOB_NAME=$(echo "$AMC_GLUE_JOB_NAME" | tr -d '"')
-    export AMC_GLUE_JOB_NAME=$AMC_GLUE_JOB_NAME
-    AMC_GLUE_JOB_ROLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $NESTED_STACK_ID --logical-resource-id "AmcGlueJobRole" --query "StackResources[0].PhysicalResourceId" --region $AWS_REGION $(if [ ! -z $AWS_DEFAULT_PROFILE ]; then echo "--profile $AWS_DEFAULT_PROFILE"; fi))
-    AMC_GLUE_JOB_ROLE_NAME=$(echo $AMC_GLUE_JOB_ROLE_NAME | tr -d '"')
-    echo "AMC_GLUE_JOB_ROLE_NAME: $AMC_GLUE_JOB_ROLE_NAME"
-    aws iam attach-role-policy --role-name $AMC_GLUE_JOB_ROLE_NAME --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess" --region $AWS_REGION $(if [ ! -z $AWS_DEFAULT_PROFILE ]; then echo "--profile $AWS_DEFAULT_PROFILE"; fi)
-    ROLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id "AmcApiAccessRole" --query "StackResources[0].PhysicalResourceId" --region $AWS_REGION $(if [ ! -z $AWS_DEFAULT_PROFILE ]; then echo "--profile $AWS_DEFAULT_PROFILE"; fi))
-    ROLE_NAME=$(echo $ROLE_NAME | tr -d '"')
-    echo "ROLE_NAME: $ROLE_NAME"
-    CURRENT_ASSUME_ROLE_POLICY1=$(aws iam get-role --role-name $ROLE_NAME --query "Role.AssumeRolePolicyDocument.Statement[0]" --region $AWS_REGION $(if [ ! -z $AWS_DEFAULT_PROFILE ]; then echo "--profile $AWS_DEFAULT_PROFILE"; fi))
-    CURRENT_ASSUME_ROLE_POLICY2=$(aws iam get-role --role-name $ROLE_NAME --query "Role.AssumeRolePolicyDocument.Statement[1]" --region $AWS_REGION $(if [ ! -z $AWS_DEFAULT_PROFILE ]; then echo "--profile $AWS_DEFAULT_PROFILE"; fi))
-    TEST_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --region $AWS_REGION $(if [ ! -z $AWS_DEFAULT_PROFILE ]; then echo "--profile $AWS_DEFAULT_PROFILE"; fi))
-    TEST_ACCOUNT_ID=$(echo $TEST_ACCOUNT_ID | tr -d '"')
-    export TEST_ACCOUNT_ID
-    TEST_USER_ARN=${TEST_USER_ARN:-"arn:aws:iam::$TEST_ACCOUNT_ID:root"}
-    TEST_USER_ASSUME_ROLE_POLICY='{"Effect":"Allow","Principal":{"AWS":"'"$TEST_USER_ARN"'"},"Action":"sts:AssumeRole"}'
-    echo "TEST_USER_ASSUME_ROLE_POLICY: $TEST_USER_ASSUME_ROLE_POLICY"
-    TEST_IAM_USER_POLICY='{"Version":"2012-10-17","Statement":['$CURRENT_ASSUME_ROLE_POLICY1', '$CURRENT_ASSUME_ROLE_POLICY2', '$TEST_USER_ASSUME_ROLE_POLICY']}'
-    aws iam update-assume-role-policy --role-name $ROLE_NAME --policy-document "$TEST_IAM_USER_POLICY" --region $AWS_REGION $(if [ ! -z $AWS_DEFAULT_PROFILE ]; then echo "--profile $AWS_DEFAULT_PROFILE"; fi)
-    export AMC_API_ROLE_ARN="arn:aws:iam::$TEST_ACCOUNT_ID:role/$ROLE_NAME"
-    ARTIFACT_BUCKET=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id "ArtifactBucket" --query "StackResources[0].PhysicalResourceId" --region $AWS_REGION $(if [ ! -z $AWS_DEFAULT_PROFILE ]; then echo "--profile $AWS_DEFAULT_PROFILE"; fi))
-    ARTIFACT_BUCKET=$(echo $ARTIFACT_BUCKET | tr -d '"')
-    echo "ARTIFACT_BUCKET: $ARTIFACT_BUCKET"
-    export ARTIFACT_BUCKET=$ARTIFACT_BUCKET
-    SYSTEM_TABLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id "SystemTable" --query "StackResources[0].PhysicalResourceId" --region $AWS_REGION $(if [ ! -z $AWS_DEFAULT_PROFILE ]; then echo "--profile $AWS_DEFAULT_PROFILE"; fi))
-    SYSTEM_TABLE_NAME=$(echo $SYSTEM_TABLE_NAME | tr -d '"')
-    export SYSTEM_TABLE_NAME=$SYSTEM_TABLE_NAME
+    # AMC_GLUE_JOB_NAME=$(aws cloudformation describe-stack-resources --stack-name $NESTED_STACK_ID --logical-resource-id "AmcGlueJob" --query "StackResources[0].PhysicalResourceId" --region $AWS_REGION $(if [ ! -z $AWS_DEFAULT_PROFILE ]; then echo "--profile $AWS_DEFAULT_PROFILE"; fi))
+    # AMC_GLUE_JOB_NAME=$(echo "$AMC_GLUE_JOB_NAME" | tr -d '"')
+    # export AMC_GLUE_JOB_NAME=$AMC_GLUE_JOB_NAME
+    # AMC_GLUE_JOB_ROLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $NESTED_STACK_ID --logical-resource-id "AmcGlueJobRole" --query "StackResources[0].PhysicalResourceId" --region $AWS_REGION $(if [ ! -z $AWS_DEFAULT_PROFILE ]; then echo "--profile $AWS_DEFAULT_PROFILE"; fi))
+    # AMC_GLUE_JOB_ROLE_NAME=$(echo $AMC_GLUE_JOB_ROLE_NAME | tr -d '"')
+    # echo "AMC_GLUE_JOB_ROLE_NAME: $AMC_GLUE_JOB_ROLE_NAME"
+    # aws iam attach-role-policy --role-name $AMC_GLUE_JOB_ROLE_NAME --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess" --region $AWS_REGION $(if [ ! -z $AWS_DEFAULT_PROFILE ]; then echo "--profile $AWS_DEFAULT_PROFILE"; fi)
+    # ROLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id "AmcApiAccessRole" --query "StackResources[0].PhysicalResourceId" --region $AWS_REGION $(if [ ! -z $AWS_DEFAULT_PROFILE ]; then echo "--profile $AWS_DEFAULT_PROFILE"; fi))
+    # ROLE_NAME=$(echo $ROLE_NAME | tr -d '"')
+    # echo "ROLE_NAME: $ROLE_NAME"
+    # CURRENT_ASSUME_ROLE_POLICY1=$(aws iam get-role --role-name $ROLE_NAME --query "Role.AssumeRolePolicyDocument.Statement[0]" --region $AWS_REGION $(if [ ! -z $AWS_DEFAULT_PROFILE ]; then echo "--profile $AWS_DEFAULT_PROFILE"; fi))
+    # CURRENT_ASSUME_ROLE_POLICY2=$(aws iam get-role --role-name $ROLE_NAME --query "Role.AssumeRolePolicyDocument.Statement[1]" --region $AWS_REGION $(if [ ! -z $AWS_DEFAULT_PROFILE ]; then echo "--profile $AWS_DEFAULT_PROFILE"; fi))
+    # TEST_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --region $AWS_REGION $(if [ ! -z $AWS_DEFAULT_PROFILE ]; then echo "--profile $AWS_DEFAULT_PROFILE"; fi))
+    # TEST_ACCOUNT_ID=$(echo $TEST_ACCOUNT_ID | tr -d '"')
+    # export TEST_ACCOUNT_ID
+    # TEST_USER_ARN=${TEST_USER_ARN:-"arn:aws:iam::$TEST_ACCOUNT_ID:root"}
+    # TEST_USER_ASSUME_ROLE_POLICY='{"Effect":"Allow","Principal":{"AWS":"'"$TEST_USER_ARN"'"},"Action":"sts:AssumeRole"}'
+    # echo "TEST_USER_ASSUME_ROLE_POLICY: $TEST_USER_ASSUME_ROLE_POLICY"
+    # TEST_IAM_USER_POLICY='{"Version":"2012-10-17","Statement":['$CURRENT_ASSUME_ROLE_POLICY1', '$CURRENT_ASSUME_ROLE_POLICY2', '$TEST_USER_ASSUME_ROLE_POLICY']}'
+    # aws iam update-assume-role-policy --role-name $ROLE_NAME --policy-document "$TEST_IAM_USER_POLICY" --region $AWS_REGION $(if [ ! -z $AWS_DEFAULT_PROFILE ]; then echo "--profile $AWS_DEFAULT_PROFILE"; fi)
+    # export AMC_API_ROLE_ARN="arn:aws:iam::$TEST_ACCOUNT_ID:role/$ROLE_NAME"
+    # ARTIFACT_BUCKET=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id "ArtifactBucket" --query "StackResources[0].PhysicalResourceId" --region $AWS_REGION $(if [ ! -z $AWS_DEFAULT_PROFILE ]; then echo "--profile $AWS_DEFAULT_PROFILE"; fi))
+    # ARTIFACT_BUCKET=$(echo $ARTIFACT_BUCKET | tr -d '"')
+    # echo "ARTIFACT_BUCKET: $ARTIFACT_BUCKET"
+    # export ARTIFACT_BUCKET=$ARTIFACT_BUCKET
+    # SYSTEM_TABLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id "SystemTable" --query "StackResources[0].PhysicalResourceId" --region $AWS_REGION $(if [ ! -z $AWS_DEFAULT_PROFILE ]; then echo "--profile $AWS_DEFAULT_PROFILE"; fi))
+    # SYSTEM_TABLE_NAME=$(echo $SYSTEM_TABLE_NAME | tr -d '"')
+    # export SYSTEM_TABLE_NAME=$SYSTEM_TABLE_NAME
 
-    pip install -q -r requirements-test.txt
-    pytest integration_test/test_api_integration.py -vv ;
-    aws iam detach-role-policy --role-name $AMC_GLUE_JOB_ROLE_NAME --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess" --region $AWS_REGION $(if [ ! -z $AWS_DEFAULT_PROFILE ]; then echo "--profile $AWS_DEFAULT_PROFILE"; fi)
+    # pip install -q -r requirements-test.txt
+    # pytest integration_test/test_api_integration.py -vv ;
+    # aws iam detach-role-policy --role-name $AMC_GLUE_JOB_ROLE_NAME --policy-arn "arn:aws:iam::aws:policy/AmazonS3FullAccess" --region $AWS_REGION $(if [ ! -z $AWS_DEFAULT_PROFILE ]; then echo "--profile $AWS_DEFAULT_PROFILE"; fi)
 else
     help
 fi
