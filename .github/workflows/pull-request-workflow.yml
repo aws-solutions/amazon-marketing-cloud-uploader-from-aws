@@ -104,10 +104,8 @@ jobs:
           python3.10 -m venv "$VENV"
           source "$VENV"/bin/activate
           ls -l
-          cd source
-          ./tests/run_test.sh --run_unit_test
-          cd api/tests
-          ./run_api_test.sh --run_unit_test
+          cd source/tests
+          ./run_test.sh --run_unit_test
       - name: Run Coverage Report
         run: |
           cd deployment
