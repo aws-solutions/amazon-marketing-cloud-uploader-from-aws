@@ -215,7 +215,7 @@ then
     if [ ! -z $AWS_DEFAULT_PROFILE ]
     then
         export AWS_DEFAULT_PROFILE=$AWS_DEFAULT_PROFILE
-    elif [[ ! -z $AWS_ACCESS_KEY_ID || ! -z $AWS_SECRET_ACCESS_KEY ]]
+    elif [[ ! -z $AWS_ACCESS_KEY_ID && ! -z $AWS_SECRET_ACCESS_KEY ]]
     then
         export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
         export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
