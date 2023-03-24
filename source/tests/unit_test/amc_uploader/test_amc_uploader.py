@@ -4,7 +4,7 @@
 # PURPOSE:
 #   * Regression test for amc_uploader.
 # USAGE:
-#   ./run_test.sh --run_unit_test
+#   ./run_test.sh --run_unit_test --test-file-name amc_uploader/test_amc_uploader.py
 ###############################################################################
 
 import json
@@ -150,7 +150,7 @@ def test_lambda_handler_fact(
 
 
 @mock_sts
-@patch("amc_uploader.lib.sigv4.requests.post")
+@patch("amc_uploader.lib.sigv4.sigv4.requests.post")
 def test_start_dimension_upload(mock_response_post, test_configs):
     from amc_uploader.amc_uploader import _start_dimension_upload
 
@@ -167,9 +167,9 @@ def test_start_dimension_upload(mock_response_post, test_configs):
 
 
 @mock_sts
-@patch("amc_uploader.lib.sigv4.requests.put")
-@patch("amc_uploader.lib.sigv4.requests.post")
-@patch("amc_uploader.lib.sigv4.requests.Session")
+@patch("amc_uploader.lib.sigv4.sigv4.requests.put")
+@patch("amc_uploader.lib.sigv4.sigv4.requests.post")
+@patch("amc_uploader.lib.sigv4.sigv4.requests.Session")
 def test_start_fact_upload(
     mock_session_response, mock_response_post, mock_response_put, test_configs
 ):

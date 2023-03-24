@@ -4,7 +4,7 @@
 # PURPOSE:
 #   * Regression test for amc_transformation.
 # USAGE:
-#   ./run_test.sh --run_unit_test
+#   ./run_test.sh --run_unit_test --test-file-name amc_transformation/test_amc_transformation.py
 ###############################################################################
 
 import os
@@ -125,11 +125,11 @@ class NormalizationTest:
         country = self.country
 
         raw = pd.read_json(
-            f"tests/amc_transformation/sample_data/test_{country}/{country}_raw.json",
+            f"unit_test/amc_transformation/sample_data/test_{country}/{country}_raw.json",
             dtype=str,
         )
         check = pd.read_json(
-            f"tests/amc_transformation/sample_data/test_{country}/{country}_check.json",
+            f"unit_test/amc_transformation/sample_data/test_{country}/{country}_check.json",
             dtype=str,
         )
 
@@ -187,7 +187,7 @@ def test_amc_transformations(countries=None):
         "de",
         "fr",
     ]
-    test_results_filepath = "tests/amc_transformation/test_results"
+    test_results_filepath = "unit_test/amc_transformation/test_results"
 
     if os.path.exists(test_results_filepath):
         shutil.rmtree(test_results_filepath)
@@ -361,7 +361,10 @@ def test_save_fact_output(mock_write_to_s3):
     test_file = rw.FactDataset(test_args)
     test_file.content_type = "test"
     test_file.timeseries_partition_size = "P1D"
-    test_file.destination_endpoints = ["http://sample_endpoint1.execute-api.us-east-1.amazonaws.com/prod", "http://sample_endpoint2.execute-api.us-east-1.amazonaws.com/prod"]
+    test_file.destination_endpoints = [
+        "http://sample_endpoint1.execute-api.us-east-1.amazonaws.com/prod",
+        "http://sample_endpoint2.execute-api.us-east-1.amazonaws.com/prod",
+    ]
 
     timestamp_1 = "2020-04-10T20:00:00Z"
     timestamp_2 = "2020-04-11T20:00:00Z"
@@ -452,4 +455,3 @@ def test_save_fact_output(mock_write_to_s3):
     mock_write_to_s3.assert_any_call(**check)
     check = expected_arguments[2]
     mock_write_to_s3.assert_any_call(**check)
-

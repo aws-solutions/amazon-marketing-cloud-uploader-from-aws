@@ -18,7 +18,7 @@ from chalice import (
     IAMAuthorizer,
     Response,
 )
-from chalicelib import sigv4
+from chalicelib.sigv4 import sigv4
 
 solution_config = json.loads(os.environ["botoConfig"])
 config = config.Config(**solution_config)
@@ -52,7 +52,6 @@ AMC_API_ROLE_ARN = os.environ["AMC_API_ROLE_ARN"]
 ARTIFACT_BUCKET = os.environ["ARTIFACT_BUCKET"]
 SYSTEM_TABLE_NAME = os.environ["SYSTEM_TABLE_NAME"]
 
-# Resolve sonarqube code smells
 APPLICATION_JSON = "application/json"
 DATA = "/data/"
 

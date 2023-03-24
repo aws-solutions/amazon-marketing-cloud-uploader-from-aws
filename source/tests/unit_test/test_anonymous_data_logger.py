@@ -3,9 +3,9 @@
 #
 # ###############################################################################
 # PURPOSE:
-#   * Regression test for anonymous-data-logger/.
+#   * Regression test for anonymous_data_logger/.
 # USAGE:
-#   ./run_test.sh --run_unit_test
+#   ./run_test.sh --run_unit_test --test-file-name test_anonymous_data_logger.py
 ###############################################################################
 
 from unittest.mock import MagicMock, patch
