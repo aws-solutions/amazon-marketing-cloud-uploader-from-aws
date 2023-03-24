@@ -16,13 +16,13 @@ help(){
     Available options:
     -h, --help      Print this help and exit.
     -rut, --run_unit_test    Run Unit Test. [--test_file-name TEST_FILE_NAME] (optional)
-    -rit, --run_integ_test    Run Integ Test. 
+    -rit, --run_integ_test    Run Integ Test.
         [--stack-name STACK_NAME] (An existing deployed stack with code changes/version to run integration test on.)
-        [--aws-region AWS_REGION] (AWS Region stack is deployed to)
+        [--aws-region AWS_REGION]
         [--aws-default-profile AWS_DEFAULT_PROFILE] (AWS default profiles with creds) (Required if --aws-access-key-id and --aws-secret-access-key is not provided)
         [--aws-access-key-id AWS_ACCESS_KEY_ID] [--aws-secret-access-key AWS_SECRET_ACCESS_KEY] (Required if --aws-default-profile is not provided)
         [--data-bucket-name DATA_BUCKET_NAME]
-        [--amc-api-endpoint AMC_API_ENDPOINT] 
+        [--amc-api-endpoint AMC_API_ENDPOINT]
         [--test-data-upload-account-id TEST_DATA_UPLOAD_ACCOUNT_ID]
         [--test-user-arn TEST_USER_ARN] (Optional, if not provided '/root' user will be used, with stack account id)
         [--aws-xray-sdk-enabled] (Optional, Default is False)
@@ -242,6 +242,7 @@ then
     TEST_ACCOUNT_ID=$(echo $TEST_ACCOUNT_ID | tr -d '"')
     export TEST_ACCOUNT_ID
     TEST_USER_ARN=${TEST_USER_ARN:-"arn:aws:iam::$TEST_ACCOUNT_ID:root"}
+    echo TEST_USER_ARN
     TEST_USER_ASSUME_ROLE_POLICY='{"Effect":"Allow","Principal":{"AWS":"'"$TEST_USER_ARN"'"},"Action":"sts:AssumeRole"}'
     echo "TEST_USER_ASSUME_ROLE_POLICY: $TEST_USER_ASSUME_ROLE_POLICY"
     TEST_IAM_USER_POLICY='{"Version":"2012-10-17","Statement":['$CURRENT_ASSUME_ROLE_POLICY1', '$CURRENT_ASSUME_ROLE_POLICY2', '$TEST_USER_ASSUME_ROLE_POLICY']}'
