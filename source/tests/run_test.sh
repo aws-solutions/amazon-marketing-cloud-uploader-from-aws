@@ -17,13 +17,13 @@ help(){
     -h, --help      Print this help and exit.
     -rut, --run_unit_test    Run Unit Test. [--test_file-name TEST_FILE_NAME] (optional)
     -rit, --run_integ_test    Run Integ Test. 
-        [--stack-name STACK_NAME] 
-        [--aws-region AWS_REGION] 
-        [--aws-default-profile AWS_DEFAULT_PROFILE]
+        [--stack-name STACK_NAME] (An existing deployed stack with code changes/version to run integration test on.)
+        [--aws-region AWS_REGION] (AWS Region stack is deployed to)
+        [--aws-default-profile AWS_DEFAULT_PROFILE] (AWS default profiles with creds)
         [--aws-access-key-id AWS_ACCESS_KEY_ID] [--aws-secret-access-key AWS_SECRET_ACCESS_KEY] (Required if --aws-default-profile is not provided)
         [--data-bucket-name DATA_BUCKET_NAME]
         [--amc_endpoint_url AMC_ENDPOINT_URL] 
-        [--test-data-upload-account-id TEST_DATA_UPLOAD_ACCOUNT_ID] 
+        [--test-data-upload-account-id TEST_DATA_UPLOAD_ACCOUNT_ID]
         [--test-user-arn TEST_USER_ARN] (Optional, if not provided '/root' user will be used, with stack account id)
         [--aws-xray-sdk-enabled] (Optional, Default is False)
         [--boto-config] (Optional, Default is {})
