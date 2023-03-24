@@ -60,11 +60,11 @@ jobs:
           TEST_ACCOUNT_ID=$(aws sts get-caller-identity --query Account)
           TEST_ACCOUNT_ID=$(echo $TEST_ACCOUNT_ID | tr -d '"')
           TEST_USER_ARN="arn:aws:iam::${TEST_ACCOUNT_ID}:user/githubBuilderBot"
-          echo "AMC_API_ENDPOINT=${{secrets.AMC_API_ENDPOINT}}" >> $GITHUB_ENV
           echo "DATA_BUCKET_NAME=${{secrets.DATA_BUCKET_NAME}}" >> $GITHUB_ENV
           echo "DATA_UPLOAD_ACCOUNT_ID=${{secrets.DATA_UPLOAD_ACCOUNT_ID}}" >> $GITHUB_ENV
           ls -l
           cd source/tests/
+          export AMC_API_ENDPOINT=${{ secrets.AMC_API_ENDPOINT }}
           ./run_test.sh --run_integ_test \
           --stack-name $STACK_NAME \
           --aws-region "us-east-1" \
