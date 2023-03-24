@@ -149,6 +149,7 @@ then
         --version)
         VERSION="${2}"
         shift
+        ;;
         --solution_name)
         SOLUTION_NAME="${2}"
         shift
