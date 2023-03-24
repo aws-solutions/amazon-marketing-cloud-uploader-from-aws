@@ -57,7 +57,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: us-east-1
           AMC_API_ENDPOINT: ${{ secrets.AMC_API_ENDPOINT }}
-          DATA_UPLOAD_ACCOUNT_ID: ${{ secrets.DATA_UPLOAD_ACCOUNT_ID }}
+          TEST_DATA_UPLOAD_ACCOUNT_ID: ${{ secrets.DATA_UPLOAD_ACCOUNT_ID }}
           DATA_BUCKET_NAME: ${{ secrets.DATA_BUCKET_NAME }}
         run: |
           STACK_NAME=amcufa-imgeo
@@ -71,12 +71,6 @@ jobs:
           cd source/tests/
           ./run_test.sh --run_integ_test \
           --stack-name $STACK_NAME \
-          --aws-region "us-east-1" \
-          --aws-access-key-id "$env:AWS_ACCESS_KEY_ID" \
-          --aws-secret-access-key "$env:AWS_SECRET_ACCESS_KEY" \
-          --amc-api-endpoint "$env:AMC_API_ENDPOINT" \
-          --data-bucket-name "$env:DATA_BUCKET_NAME" \
-          --test-data-upload-account-id "$env:DATA_UPLOAD_ACCOUNT_ID" \
           --test_user_arn $TEST_USER_ARN \
           --version $VERSION \
           --aws-xray-sdk-enabled false \
