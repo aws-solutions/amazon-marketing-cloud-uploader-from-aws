@@ -64,14 +64,13 @@ jobs:
           echo "DATA_UPLOAD_ACCOUNT_ID=${{secrets.DATA_UPLOAD_ACCOUNT_ID}}" >> $GITHUB_ENV
           ls -l
           cd source/tests/
-          export AMC_API_ENDPOINT=${{ secrets.AMC_API_ENDPOINT }}
+          export AMC_API_ENDPOINT=${{ secrets.AMC_API_ENDPOINT }} && \
           ./run_test.sh --run_integ_test \
           --stack-name $STACK_NAME \
           --aws-region "us-east-1" \
           --aws-access-key-id ${{ secrets.AWS_ACCESS_KEY_ID }} \
           --aws-secret-access-key ${{ secrets.AWS_SECRET_ACCESS_KEY }} \
           --data-bucket-name $DATA_BUCKET_NAME \
-          --amc-api-endpoint $AMC_API_ENDPOINT \
           --test_upload_account_id $DATA_UPLOAD_ACCOUNT_ID \
           --test_user_arn $TEST_USER_ARN \
           --version $VERSION \
