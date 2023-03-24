@@ -9,29 +9,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  viperlight-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out pr branch
-        uses: actions/checkout@v2.3.4
-        with:
-          ref: ${{ github.sha }}
-      - name: Viperlight scan
-        run: |
-          echo "Installing content scanning utility"
-          sudo apt-get install wget -y
-          wget -v "https://s3.amazonaws.com/viperlight-scanner/latest/.viperlightrc"
-          wget -v "https://s3.amazonaws.com/viperlight-scanner/latest/viperlight.zip"
-          unzip -q viperlight.zip -d ../viperlight
-          rm -r ./viperlight.zip
-          echo "Content scanning utility installation complete `date`"
-          echo "Starting content scanning `date` in `pwd`"
-          ../viperlight/bin/viperlight scan -x python-pipoutdated -x python-bandit
-          echo "Completed content scanning `date`"
 
   integration_test:
-    needs:
-      - viperlight-scan
     runs-on: ubuntu-latest
     outputs:
       AMC_GLUE_JOB_ROLE_NAME: ${{ steps.api_test.outputs.AMC_GLUE_JOB_ROLE_NAME }}
@@ -60,7 +39,7 @@ jobs:
           TEST_DATA_UPLOAD_ACCOUNT_ID: ${{ secrets.DATA_UPLOAD_ACCOUNT_ID }}
           DATA_BUCKET_NAME: ${{ secrets.DATA_BUCKET_NAME }}
         run: |
-          STACK_NAME=amcufa-imgeo
+          STACK_NAME="amcufa-imgeo"
           echo "STACK_NAME=$STACK_NAME" >> $GITHUB_OUTPUT
           VERSION=0.0.0
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
@@ -74,4 +53,4 @@ jobs:
           --test_user_arn $TEST_USER_ARN \
           --version $VERSION \
           --aws-xray-sdk-enabled false \
-          --botoConfig {}
+          --boto-config {}
