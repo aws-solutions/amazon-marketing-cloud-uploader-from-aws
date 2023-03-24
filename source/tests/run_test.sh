@@ -198,7 +198,7 @@ then
 
     if [ -z $TEST_DATA_UPLOAD_ACCOUNT_ID ]
     then
-        echo "ERROR: You must set the variable 'TEST_DATA_UPLOAD_ACCOUNT_ID' with params --test_upload_account_id."
+        echo "ERROR: You must set the variable 'TEST_DATA_UPLOAD_ACCOUNT_ID' with params --test-data-upload-account-id."
         exit 1
     fi
 
