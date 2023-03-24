@@ -87,7 +87,7 @@ then
     pip install -r requirements-dev.txt
     cd tests
     pip install -r requirements-test.txt
-    pytest $TEST_FILE_NAME -vv --ignore="e2e/" --ignore="test_api_integration.py"
+    pytest $TEST_FILE_NAME -vv
 
 elif [[ ( $@ == *"--run_integ_test"*) ||  $@ == *"-rit"* ]]
 then

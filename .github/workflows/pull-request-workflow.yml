@@ -60,7 +60,9 @@ jobs:
           TEST_ACCOUNT_ID=$(aws sts get-caller-identity --query Account)
           TEST_ACCOUNT_ID=$(echo $TEST_ACCOUNT_ID | tr -d '"')
           TEST_USER_ARN="arn:aws:iam::${TEST_ACCOUNT_ID}:user/githubBuilderBot"
+          echo "AMC_API_ENDPOINT=${{needs.build.outputs.AMC_API_ENDPOINT}}" >> $GITHUB_ENV
           echo "DATA_BUCKET_NAME=${{secrets.DATA_BUCKET_NAME}}" >> $GITHUB_ENV
+          echo "DATA_UPLOAD_ACCOUNT_ID=${{secrets.DATA_UPLOAD_ACCOUNT_ID}}" >> $GITHUB_ENV
           ls -l
           cd source/tests/
           ./run_test.sh --run_integ_test \
@@ -69,8 +71,8 @@ jobs:
           --aws-access-key-id ${{ secrets.AWS_ACCESS_KEY_ID }} \
           --aws-secret-access-key ${{ secrets.AWS_SECRET_ACCESS_KEY }} \
           --data-bucket-name $DATA_BUCKET_NAME \
-          --amc-api-endpoint ${{ secrets.AMC_API_ENDPOINT }} \
-          --test_upload_account_id ${{ secrets.DATA_UPLOAD_ACCOUNT_ID }} \
+          --amc-api-endpoint $AMC_API_ENDPOINT \
+          --test_upload_account_id $DATA_UPLOAD_ACCOUNT_ID \
           --test_user_arn $TEST_USER_ARN \
           --version $VERSION \
           --aws-xray-sdk-enabled false
