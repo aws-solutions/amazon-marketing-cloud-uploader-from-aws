@@ -4,7 +4,7 @@
 # PURPOSE:
 #   * Regression test for amc_uploader.
 # USAGE:
-#   ./run_test.sh --run_unit_test
+#   ./run_test.sh --run_unit_test --test-file-name amc_uploader/test_amc_uploader.py
 ###############################################################################
 
 import json

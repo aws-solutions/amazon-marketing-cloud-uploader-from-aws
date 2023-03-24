@@ -6,7 +6,7 @@
 #   * Unit test for project api endpoints and workflow.
 #
 # USAGE:
-#   ./run_test.sh --run_unit_test
+#   ./run_test.sh --run_unit_test --test-file-name test_api.py
 ###############################################################################
 
 import json

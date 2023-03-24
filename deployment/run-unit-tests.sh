@@ -149,7 +149,7 @@ echo "coverage report path set to $coverage_report_path"
 cd tests
 # set PYTHONPATH to enable importing modules from ./glue/library,/anonymous_data_logger
 export PYTHONPATH=$PYTHONPATH:../glue:../anonymous_data_logger:../api
-pytest . --cov=$source_dir/glue/ --cov=$source_dir/helper/ --cov=$source_dir/amc_uploader/ --cov=$source_dir/anonymous_data_logger/ --cov=$source_dir/api/ --cov=$source_dir/share/ --cov-report term-missing --cov-report term --cov-report "xml:$coverage_report_path" --cov-config=$source_dir/.coveragerc --ignore="e2e" --ignore="test_api_integration.py" -vv
+pytest unit_test/. --cov=$source_dir/glue/ --cov=$source_dir/helper/ --cov=$source_dir/amc_uploader/ --cov=$source_dir/anonymous_data_logger/ --cov=$source_dir/api/ --cov=$source_dir/share/ --cov-report term-missing --cov-report term --cov-report "xml:$coverage_report_path" --cov-config=$source_dir/.coveragerc -vv
 cd ..
 
 # The pytest --cov with its parameters and .coveragerc generates a xml cov-report with `coverage/sources` list

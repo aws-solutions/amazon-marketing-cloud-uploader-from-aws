@@ -5,7 +5,7 @@
 # PURPOSE:
 #   * Regression test for helper.
 # USAGE:
-#   ./run_test.sh --run_unit_test
+#   ./run_test.sh --run_unit_test --test-file-name test_helper.py
 ###############################################################################
 
 
