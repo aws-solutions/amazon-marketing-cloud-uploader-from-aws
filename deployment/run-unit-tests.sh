@@ -126,7 +126,7 @@ pip install -q -r tests/requirements-test.txt
 
 # env variables
 export PYTHONDONTWRITEBYTECODE=1
-export AMC_ENDPOINT_URL="https://example.com/alpha"
+export AMC_API_ENDPOINT="https://example.com/alpha"
 export AMC_API_ROLE_ARN="arn:aws:iam::999999999999:role/SomeTestRole"
 export SOLUTION_NAME="amcufa test"
 export ARTIFACT_BUCKET="test_bucket"

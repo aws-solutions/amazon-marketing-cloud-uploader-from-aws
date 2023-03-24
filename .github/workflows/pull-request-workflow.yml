@@ -66,11 +66,11 @@ jobs:
           ./run_test.sh --run_integ_test \
           --stack-name $STACK_NAME \
           --aws-region "us-east-1" \
-          --aws-access-key-id ${{secrets.DATA_UPLOAD_ACCOUNT_ID}} \
-          --aws-secret-access-key ${{secrets.DATA_UPLOAD_ACCOUNT_ID}} \
+          --aws-access-key-id ${{ secrets.AWS_ACCESS_KEY_ID }} \
+          --aws-secret-access-key ${{ secrets.AWS_SECRET_ACCESS_KEY }} \
           --data-bucket-name $DATA_BUCKET_NAME \
-          --amc-endpoint-url ${{secrets.AMC_API_ENDPOINT}} \
-          --test_upload_account_id ${{secrets.DATA_UPLOAD_ACCOUNT_ID}} \
+          --amc-api-endpoint ${{ secrets.AMC_API_ENDPOINT }} \
+          --test_upload_account_id ${{ secrets.DATA_UPLOAD_ACCOUNT_ID }} \
           --test_user_arn $TEST_USER_ARN \
           --version $VERSION \
           --aws-xray-sdk-enabled false

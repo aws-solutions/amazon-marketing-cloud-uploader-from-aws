@@ -22,7 +22,7 @@ help(){
         [--aws-default-profile AWS_DEFAULT_PROFILE] (AWS default profiles with creds)
         [--aws-access-key-id AWS_ACCESS_KEY_ID] [--aws-secret-access-key AWS_SECRET_ACCESS_KEY] (Required if --aws-default-profile is not provided)
         [--data-bucket-name DATA_BUCKET_NAME]
-        [--amc_endpoint_url AMC_ENDPOINT_URL] 
+        [--amc-api-endpoint AMC_API_ENDPOINT] 
         [--test-data-upload-account-id TEST_DATA_UPLOAD_ACCOUNT_ID]
         [--test-user-arn TEST_USER_ARN] (Optional, if not provided '/root' user will be used, with stack account id)
         [--aws-xray-sdk-enabled] (Optional, Default is False)
@@ -51,7 +51,7 @@ then
     python3.10 -m venv "$VENV"
     source "$VENV"/bin/activate
 
-    export AMC_ENDPOINT_URL="https://example.com/alpha"
+    export AMC_API_ENDPOINT="https://example.com/alpha"
     export AMC_API_ROLE_ARN="arn:aws:iam::999999999999:role/SomeTestRole"
     export SOLUTION_NAME="amcufa test"
     export VERSION="0.0.0"
@@ -126,8 +126,8 @@ then
         DATA_BUCKET_NAME="${2}"
         shift
         ;;
-        --amc-endpoint-url)
-        AMC_ENDPOINT_URL="${2}"
+        --amc-api-endpoint)
+        AMC_API_ENDPOINT="${2}"
         shift
         ;;
         --test_upload_account_id)
@@ -190,9 +190,9 @@ then
         exit 1
     fi
 
-    if [ -z $AMC_ENDPOINT_URL ]
+    if [ -z $AMC_API_ENDPOINT ]
     then
-        echo "ERROR: You must set the variable 'AMC_ENDPOINT_URL' with params --amc-endpoint-url."
+        echo "ERROR: You must set the variable 'AMC_API_ENDPOINT' with params --amc-api-endpoint."
         exit 1
     fi
 
@@ -202,7 +202,7 @@ then
         exit 1
     fi
 
-    export AMC_API_ENDPOINT=$AMC_ENDPOINT_URL
+    export AMC_API_ENDPOINT=$AMC_API_ENDPOINT
     export SOLUTION_NAME=${SOLUTION_NAME:-"Amcufa Integration Test"}
     export VERSION=${VERSION:-"0.0.0"}
     export botoConfig=${botoConfig:-"{}"}
