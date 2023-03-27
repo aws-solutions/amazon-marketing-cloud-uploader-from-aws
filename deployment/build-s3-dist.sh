@@ -377,6 +377,7 @@ echo "amc_uploader.zip share/* -x **/__pycache__/*"
 zip -r amc_uploader.zip share/* -x "**/__pycache__/*"
 cd ..
 cp "./dist/amc_uploader.zip" "$regional_dist_dir/amc_uploader.zip"
+rm -rf ./dist
 
 echo "------------------------------------------------------------------------------"
 echo "Creating deployment package for anonymous data logger"
