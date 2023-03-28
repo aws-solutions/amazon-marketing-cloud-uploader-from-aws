@@ -383,6 +383,9 @@ SPDX-License-Identifier: Apache-2.0
       contains_hashed_identifier() {
         return this.items.filter(x => (x.column_type === 'PII')).length > 0
       },
+      contains_liveramp_id() {
+        return this.items.filter(x => (x.column_type === 'LiveRamp ID')).length > 0
+      },
       incompleteFields() {
         // check PII type
         if(this.items.filter(x => ((x.column_type === 'PII') && !!x.pii_type === false)).length > 0)
@@ -537,7 +540,7 @@ SPDX-License-Identifier: Apache-2.0
         // ------- Save form ------- //
         //
         // If hashed identifiers are present, then add user_id and user_type columns
-        if (this.contains_hashed_identifier) {
+        if (this.contains_hashed_identifier || this.contains_liveramp_id) {
           this.columns.push({
             "name": "user_id",
             "description": "The customer resolved id",
