@@ -151,6 +151,9 @@ class DataFile:
         )
         started_on = response["JobRun"]["StartedOn"].replace(tzinfo=None)
         glue_job_duration = (datetime.now() - started_on).total_seconds()
+        dataset_period = ""
+        if "--period" in response["JobRun"]["Arguments"]:
+            dataset_period = response["JobRun"]["Arguments"]["--period"]
         metrics = {
             "RequestType": "Workload",
             "Metrics": {
@@ -159,6 +162,7 @@ class DataFile:
                 "numBytes": self.num_bytes,
                 "numRows": self.num_rows,
                 "datasetType": self.dataset_type,
+                "datasetPeriod": dataset_period,
                 "glueJobDuration": glue_job_duration,
             },
         }
