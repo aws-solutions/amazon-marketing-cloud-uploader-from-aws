@@ -114,7 +114,7 @@ def describe_dataset():
         )
     except Exception as e:
         logger.error(e)
-        return {"Status": "Error", "Message": e}
+        return {"Status": "Error", "Message": str(e)}
 
 
 @app.route(
@@ -152,7 +152,7 @@ def create_dataset():
         )
     except Exception as e:
         logger.error(e)
-        return {"Status": "Error", "Message": e}
+        return {"Status": "Error", "Message": str(e)}
 
 
 @app.route(
@@ -278,7 +278,7 @@ def upload_status():
         )
     except Exception as e:
         logger.error(e)
-        return {"Status": "Error", "Message": e}
+        return {"Status": "Error", "Message": str(e)}
 
 
 @app.route("/list_uploads", cors=True, methods=["POST"], authorizer=authorizer)
