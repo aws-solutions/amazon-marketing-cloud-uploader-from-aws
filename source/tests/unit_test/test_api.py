@@ -15,6 +15,7 @@ from unittest.mock import MagicMock, patch
 
 import app
 import boto3
+import botocore
 import pytest
 from chalice.test import Client
 from moto import mock_dynamodb, mock_glue, mock_iam, mock_s3, mock_sts
@@ -394,6 +395,27 @@ def test_describe_dataset(mock_session_response, test_configs):
     mock_session_response.return_value.get.return_value = MagicMock(
         status_code=200, text=json.dumps(expected_response)
     )
+
+    content_type = test_configs["content_type"]
+    with Client(app.app) as client:
+        response = client.http.post(
+            "/describe_dataset",
+            headers={"Content-Type": content_type},
+            body=json.dumps(test_body),
+        )
+        assert response.status_code == 200
+        assert response.json_body == expected_response
+
+
+@mock_sts
+@patch("chalicelib.sigv4.sigv4.requests.Session")
+def test_describe_dataset_exception_handler(mock_session_response, test_configs):
+    # This test verifies that the POST to /describe_dataset returns an error
+    # message when test_body is missing required parameters.
+    mock_session_response.mount = MagicMock()
+    test_body = {
+    }
+    expected_response = {'Message': "'dataSetId'", 'Status': 'Error'}
 
     content_type = test_configs["content_type"]
     with Client(app.app) as client:
