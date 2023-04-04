@@ -593,7 +593,7 @@ SPDX-License-Identifier: Apache-2.0
             const column_definition = {
               "name": x.name,
               "description": x.description,
-              "dataType": x.data_type,
+              "dataType": "TIMESTAMP",
               "isMainEventTime": true
             }
             this.columns.push(column_definition)
