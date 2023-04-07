@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import Vue from 'vue'
-import { BootstrapVue, BIconQuestionCircleFill, BIconXCircle, BIconPlusSquare } from 'bootstrap-vue'
+import { BootstrapVue, BIconQuestionCircleFill, BIconXCircle, BIconPlusSquare, BIconExclamationTriangleFill } from 'bootstrap-vue'
 import 'bootstrap/dist/css/bootstrap.css'
 import 'bootstrap-vue/dist/bootstrap-vue.css'
 import App from './App.vue'
@@ -46,6 +46,7 @@ getRuntimeConfig().then(function(json) {
   Vue.component('BIconQuestionCircleFill', BIconQuestionCircleFill)
   Vue.component('BIconXCircle', BIconXCircle)
   Vue.component('BIconPlusSquare', BIconPlusSquare)
+  Vue.component('BIconExclamationTriangleFill', BIconExclamationTriangleFill)
   Vue.mixin({
     data() {
       return {

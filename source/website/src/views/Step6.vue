@@ -20,6 +20,12 @@ SPDX-License-Identifier: Apache-2.0
             >
               Server error. Failed to get AMC instance list. See Cloudwatch logs for API resource, /system/configuration.
             </b-alert>
+            <b-modal id="modal-upload-error" title="Upload Error" ok-only>
+              AMC returned the following error when attempting to upload <b>{{ selected_dataset }}</b>:
+              <br>
+              <br>
+              <code>{{ upload_failure }}</code>
+            </b-modal>
             <!-- User Interface controls -->
             <b-card no-body class="mb-1" border-variant="secondary" bg-variant="light">
               <b-card-header header-tag="header" class="p-2" role="tab">
@@ -221,7 +227,10 @@ SPDX-License-Identifier: Apache-2.0
                   <h3>Uploads</h3>
                   <div v-if="selected_dataset">
                     <p class="text-secondary">
-                      Showing uploads for <em>{{ selected_dataset }}</em>
+                      Showing uploads for <em>{{ selected_dataset }}</em>&nbsp;
+                      <b-link v-if="upload_failure!==''" v-b-modal.modal-upload-error class="text-danger">
+                        <b-icon-exclamation-triangle-fill variant="danger"></b-icon-exclamation-triangle-fill>
+                      </b-link>
                     </p>
                   </div>
                   <div v-else>
@@ -240,7 +249,7 @@ SPDX-License-Identifier: Apache-2.0
                 <b-table
                   :items="uploads"
                   :fields="upload_fields"
-                  :busy="isBusy3"
+                  :busy="isBusy3 || isBusy5"
                   :per-page="perPage2"
                   :current-page="currentPage2"
                   sort-by="dateCreated"
@@ -251,6 +260,9 @@ SPDX-License-Identifier: Apache-2.0
                 >
                   <template #empty>
                     This dataset has not been uploaded.
+                    <b-link v-if="upload_failure!==''" v-b-modal.modal-upload-error class="text-danger">
+                      (Show upload error)
+                    </b-link>
                   </template>
                   <template #table-busy>
                     <div class="text-center my-2">
@@ -423,6 +435,7 @@ SPDX-License-Identifier: Apache-2.0
           {key: 'show_details', label: 'Show Details', sortable: true}
         ],
         uploads: [],
+        upload_failure: "",
         upload_fields: [
           {key: "dateCreated", label: "Date Created", sortable: true},
           {key: "totalFileCount", label: "Total Files", sortable: true},
@@ -438,6 +451,7 @@ SPDX-License-Identifier: Apache-2.0
         isBusy2: false,
         isBusy3: false,
         isBusy4: false,
+        isBusy5: false,
         showAmcApiError: false,
         showServerError: false,
         isStep6Active: true,
@@ -551,7 +565,9 @@ SPDX-License-Identifier: Apache-2.0
       },
       async listDatasetUploads(dataSetId) {
         this.selected_dataset = dataSetId
-        await this.list_uploads({'dataSetId': dataSetId, 'destination_endpoint': this.selected_endpoint})
+        this.upload_failure = ''
+        await this.list_uploads({'dataset_id': dataSetId, 'destination_endpoint': this.selected_endpoint})
+        await this.list_upload_failures({'dataset_id': dataSetId, 'destination_endpoint': this.selected_endpoint})
       },
       async list_uploads(data) {
         this.uploads = []
@@ -577,6 +593,28 @@ SPDX-License-Identifier: Apache-2.0
           if (e.response) console.log(e.response.data.message)
         } finally {
           this.isBusy3 = false;
+        }
+      },
+      async list_upload_failures(data) {
+        this.upload_failure = ""
+        const apiName = 'amcufa-api'
+        const method = 'POST'
+        const resource = 'list_upload_failures'
+        this.isBusy5 = true;
+        try {
+          console.log("sending " + method + " " + resource + " " + JSON.stringify(data))
+          let requestOpts = {
+            headers: {'Content-Type': 'application/json'},
+            body: data
+          };
+          const response = await this.$Amplify.API.post(apiName, resource, requestOpts);
+          this.upload_failure = response
+        }
+        catch (e) {
+          console.log("ERROR: " + e)
+          if (e.response) console.log(e.response.data.message)
+        } finally {
+          this.isBusy5 = false;
         }
       },
       async list_datasets() {

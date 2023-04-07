@@ -9,6 +9,7 @@
     "AMC_GLUE_JOB_NAME": "",
     "ARTIFACT_BUCKET": "",
     "SYSTEM_TABLE_NAME": "",
+    "UPLOAD_FAILURES_TABLE_NAME": "",
     "CUSTOMER_MANAGED_KEY": ""
   },
   "stages": {

@@ -51,6 +51,7 @@ CUSTOMER_MANAGED_KEY = os.environ["CUSTOMER_MANAGED_KEY"]
 AMC_API_ROLE_ARN = os.environ["AMC_API_ROLE_ARN"]
 ARTIFACT_BUCKET = os.environ["ARTIFACT_BUCKET"]
 SYSTEM_TABLE_NAME = os.environ["SYSTEM_TABLE_NAME"]
+UPLOAD_FAILURES_TABLE_NAME = os.environ["UPLOAD_FAILURES_TABLE_NAME"]
 
 APPLICATION_JSON = "application/json"
 DATA = "/data/"
@@ -295,14 +296,14 @@ def list_uploads():
     """
     log_request_parameters()
     try:
-        data_set_id = app.current_request.json_body["dataSetId"]
+        dataset_id = app.current_request.json_body["dataset_id"]
         destination_endpoint = app.current_request.json_body[
             "destination_endpoint"
         ]
         next_token = ""
         if "nextToken" in app.current_request.json_body:
             next_token = app.current_request.json_body["nextToken"]
-        path = DATA + data_set_id + "/uploads/"
+        path = DATA + dataset_id + "/uploads/"
         response = sigv4.get(
             destination_endpoint,
             path,
@@ -312,6 +313,40 @@ def list_uploads():
             body=response.text,
             status_code=response.status_code,
             headers={"Content-Type": APPLICATION_JSON},
+        )
+    except Exception as ex:
+        logger.error(ex)
+        return {"Status": "Error", "Message": str(ex)}
+
+
+@app.route("/list_upload_failures", cors=True, methods=["POST"], authorizer=authorizer)
+def list_upload_failures():
+    """
+    List the upload failure message, if any exists, for a specified dataset and AMC instance.
+
+    Returns AMC response:
+
+    .. code-block:: python
+
+        { dict }
+
+    """
+    log_request_parameters()
+    dynamo_resource = boto3.resource("dynamodb", config=config)
+    try:
+        dataset_id = app.current_request.json_body["dataset_id"]
+        destination_endpoint = app.current_request.json_body[
+            "destination_endpoint"
+        ]
+        item_key = {"destination_endpoint": destination_endpoint, "dataset_id": dataset_id}
+        upload_failures_table = dynamo_resource.Table(UPLOAD_FAILURES_TABLE_NAME)
+        item = upload_failures_table.get_item(Key=item_key, ConsistentRead=True)
+        error_message = ""
+        if "Item" in item:
+            error_message = item["Item"]["Value"]
+        return Response(
+            body=error_message,
+            status_code=200
         )
     except Exception as ex:
         logger.error(ex)
@@ -334,7 +369,7 @@ def delete_dataset():
     """
     log_request_parameters()
     try:
-        data_set_id = app.current_request.json_body["dataSetId"]
+        dataset_id = app.current_request.json_body["dataSetId"]
         destination_endpoint = app.current_request.json_body[
             "destination_endpoint"
         ]
@@ -345,14 +380,22 @@ def delete_dataset():
         )
         path = (
             DATA
-            + data_set_id
+            + dataset_id
             + "?timeWindowStart=1970-01-01T00:00:00Z&timeWindowEnd="
             + current_datetime
         )
         sigv4.delete(destination_endpoint, path)
         # Step 2/2: delete the dataset definition
-        path = "/dataSets/" + data_set_id
+        path = "/dataSets/" + dataset_id
         response = sigv4.delete(destination_endpoint, path)
+        if response.status_code == 200:
+            dynamo_resource = boto3.resource("dynamodb", config=config)
+            item_key = {"destination_endpoint": destination_endpoint, "dataset_id": dataset_id}
+            logger.info("Removing upload record from " + UPLOAD_FAILURES_TABLE_NAME +
+                        " if the following key exists:" +
+                        json.dumps(item_key))
+            upload_failures_table = dynamo_resource.Table(UPLOAD_FAILURES_TABLE_NAME)
+            upload_failures_table.delete_item(Key=item_key)
         return Response(
             body=response.text,
             status_code=response.status_code,
