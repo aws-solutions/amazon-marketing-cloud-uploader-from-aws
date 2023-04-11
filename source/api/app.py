@@ -296,14 +296,14 @@ def list_uploads():
     """
     log_request_parameters()
     try:
-        dataset_id = app.current_request.json_body["dataset_id"]
+        data_set_id = app.current_request.json_body["dataSetId"]
         destination_endpoint = app.current_request.json_body[
             "destination_endpoint"
         ]
         next_token = ""
         if "nextToken" in app.current_request.json_body:
             next_token = app.current_request.json_body["nextToken"]
-        path = DATA + dataset_id + "/uploads/"
+        path = DATA + data_set_id + "/uploads/"
         response = sigv4.get(
             destination_endpoint,
             path,
@@ -385,7 +385,6 @@ def delete_dataset():
             + current_datetime
         )
         sigv4.delete(destination_endpoint, path)
-        # Step 2/2: delete the dataset definition
         path = "/dataSets/" + dataset_id
         response = sigv4.delete(destination_endpoint, path)
         if response.status_code == 200:
@@ -395,7 +394,10 @@ def delete_dataset():
                         " if the following key exists:" +
                         json.dumps(item_key))
             upload_failures_table = dynamo_resource.Table(UPLOAD_FAILURES_TABLE_NAME)
-            upload_failures_table.delete_item(Key=item_key)
+            try:
+                upload_failures_table.delete_item(Key=item_key, ConditionExpression="attribute_exists(item_key)")
+            except dynamo_resource.meta.client.exceptions.ConditionalCheckFailedException:
+                pass
         return Response(
             body=response.text,
             status_code=response.status_code,
