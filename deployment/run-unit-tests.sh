@@ -132,7 +132,6 @@ export SOLUTION_NAME="amcufa test"
 export ARTIFACT_BUCKET="test_bucket"
 export SYSTEM_TABLE_NAME="test_table"
 export UPLOAD_FAILURES_TABLE_NAME="upload_failures_test_table"
-export UPLOAD_FAILURES_TABLE="upload_failures_test_table"
 export VERSION="0.0.0"
 export botoConfig='{"region_name": "us-east-1"}'
 export AWS_XRAY_SDK_ENABLED=false

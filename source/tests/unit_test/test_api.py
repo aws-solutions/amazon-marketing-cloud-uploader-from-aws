@@ -35,6 +35,7 @@ def test_configs():
         "destination_endpoint": "https://example123.execute-api.us-east-1.amazonaws.com/prod/",
         "amc_endpoint": "https://test-endpoint.test/beta",
         "data_upload_account_id": "123456789012",
+        "upload_error_message": "The provided timeWindowStart is before our stated retention period. Provided TimeWindowStart = 2021-06-01T00:00:00Z, earliest allowable timeWindowStart = 2022-02-14T21:00:00Z (Service: SquallDataIngestion; Status Code: 400; Error Code: ValidationException; Request ID: 1662b4e7-aee5-418b-aa21-c1d0062ffc90; Proxy: null"
     }
 
 
@@ -133,9 +134,77 @@ def test_get_data_columns(test_configs, get_amc_json, test_data):
                 assert expected_key in response.json_body["columns"]
 
 
+@mock_dynamodb
+@patch("chalicelib.sigv4.sigv4.requests.post")
+def test_list_upload_failures(mock_response, test_configs):
+    # this test checks for a valid upload failure message in the upload_failures_table
+    dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"])
+    params = {
+        "TableName": os.environ["UPLOAD_FAILURES_TABLE_NAME"],
+        "KeySchema": [
+            {"AttributeName": "destination_endpoint", "KeyType": "HASH"},
+            {"AttributeName": "dataset_id", "KeyType": "RANGE"},
+        ],
+        "AttributeDefinitions": [
+            {"AttributeName": "destination_endpoint", "AttributeType": "S"},
+            {"AttributeName": "dataset_id", "AttributeType": "S"},
+        ],
+        "BillingMode": "PAY_PER_REQUEST",
+    }
+    table = dynamodb.create_table(**params)
+    item = {
+        "dataset_id": test_configs["data_set_id"],
+        "destination_endpoint": test_configs["destination_endpoint"],
+        "Value": test_configs["upload_error_message"]
+    }
+    table.put_item(TableName=os.environ["UPLOAD_FAILURES_TABLE_NAME"], Item=item)
+
+    payload = {
+        "destination_endpoint": test_configs["destination_endpoint"],
+        "dataset_id": test_configs["data_set_id"],
+    }
+
+    content_type = test_configs["content_type"]
+    with Client(app.app) as client:
+        response = client.http.post(
+            "/list_upload_failures",
+            headers={"Content-Type": content_type},
+            body=json.dumps(payload),
+        )
+        assert response.status_code == 200
+        assert response.body.decode('ascii') == test_configs["upload_error_message"]
+
+    # Validate the an invalid request returns an error message
+    with Client(app.app) as client:
+        response = client.http.post(
+            "/list_upload_failures",
+            headers={"Content-Type": content_type},
+            body=json.dumps({}),
+        )
+    assert response.json_body == {"Status": "Error", "Message": "'dataset_id'"}
+
+
 @mock_sts
+@mock_dynamodb
 @patch("chalicelib.sigv4.sigv4.requests.Session")
 def test_delete_dataset(mock_session_response, test_configs):
+    dynamodb = boto3.client(
+        "dynamodb", region_name=os.environ["AWS_REGION"]
+    )
+    params = {
+        "TableName": os.environ["UPLOAD_FAILURES_TABLE_NAME"],
+        "KeySchema": [
+            {"AttributeName": "destination_endpoint", "KeyType": "HASH"},
+            {"AttributeName": "dataset_id", "KeyType": "RANGE"},
+        ],
+        "AttributeDefinitions": [
+            {"AttributeName": "destination_endpoint", "AttributeType": "S"},
+            {"AttributeName": "dataset_id", "AttributeType": "S"},
+        ],
+        "BillingMode": "PAY_PER_REQUEST",
+    }
+    dynamodb.create_table(**params)
+
     mock_session_response.mount = MagicMock()
     mock_session_response.return_value.delete.return_value = MagicMock(
         status_code=200, text="{}"

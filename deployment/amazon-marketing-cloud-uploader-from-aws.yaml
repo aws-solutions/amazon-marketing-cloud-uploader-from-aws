@@ -408,7 +408,7 @@ Resources:
           AMC_API_ROLE_ARN: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-AmcApiAccessRole'
           SOLUTION_NAME: !FindInMap ["Application", "Solution", "Name"]
           SOLUTION_VERSION: !FindInMap ["Application", "Solution", "Version"]
-          UPLOAD_FAILURES_TABLE: !Ref UploadFailuresTable
+          UPLOAD_FAILURES_TABLE_NAME: !Ref UploadFailuresTable
           botoConfig: !Join
             - ''
             - - '{"region_name": "'

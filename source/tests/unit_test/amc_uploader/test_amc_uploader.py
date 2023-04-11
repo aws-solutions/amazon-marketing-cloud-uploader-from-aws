@@ -11,7 +11,7 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
-from moto import mock_sts
+from moto import mock_sts, mock_dynamodb
 
 BASE64_ENCODED_AMC_ENDPOINT = "aHR0cHM6Ly9hYmNkZTEyMzQ1LmV4ZWN1dGUtYXBpLnVzLWVhc3QtMS5hbWF6b25hd3MuY29tL3Byb2Q="
 
@@ -167,6 +167,7 @@ def test_start_dimension_upload(mock_response_post, test_configs):
 
 
 @mock_sts
+@mock_dynamodb
 @patch("amc_uploader.lib.sigv4.sigv4.requests.put")
 @patch("amc_uploader.lib.sigv4.sigv4.requests.post")
 @patch("amc_uploader.lib.sigv4.sigv4.requests.Session")
