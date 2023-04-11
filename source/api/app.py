@@ -395,7 +395,7 @@ def delete_dataset():
                         json.dumps(item_key))
             upload_failures_table = dynamo_resource.Table(UPLOAD_FAILURES_TABLE_NAME)
             try:
-                upload_failures_table.delete_item(Key=item_key, ConditionExpression="attribute_exists(item_key)")
+                upload_failures_table.delete_item(Key=item_key)
             except dynamo_resource.meta.client.exceptions.ConditionalCheckFailedException:
                 pass
         return Response(

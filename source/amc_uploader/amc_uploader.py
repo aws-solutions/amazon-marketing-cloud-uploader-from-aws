@@ -165,7 +165,7 @@ def _start_fact_upload(bucket, key):
         upload_failures_table = dynamo_resource.Table(UPLOAD_FAILURES_TABLE_NAME)
         item_key = {"dataset_id": dataset_id, "destination_endpoint": destination_endpoint}
         try:
-            upload_failures_table.delete_item(Key=item_key, ConditionExpression="attribute_exists(item_key)")
+            upload_failures_table.delete_item(Key=item_key)
         except dynamo_resource.meta.client.exceptions.ConditionalCheckFailedException:
             pass
         if response.status_code != 200:
