@@ -566,7 +566,7 @@ SPDX-License-Identifier: Apache-2.0
       async listDatasetUploads(dataSetId) {
         this.selected_dataset = dataSetId
         this.upload_failure = ''
-        await this.list_uploads({'dataset_id': dataSetId, 'destination_endpoint': this.selected_endpoint})
+        await this.list_uploads({'dataSetId': dataSetId, 'destination_endpoint': this.selected_endpoint})
         await this.list_upload_failures({'dataset_id': dataSetId, 'destination_endpoint': this.selected_endpoint})
       },
       async list_uploads(data) {
