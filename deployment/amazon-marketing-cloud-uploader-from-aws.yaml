@@ -228,6 +228,30 @@ Resources:
         - Key: "Environment"
           Value: "amcufa"
 
+  UploadFailuresTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEType: KMS
+        SSEEnabled: true
+        KMSMasterKeyId: !Ref SystemKeyAlias
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: destination_endpoint
+          AttributeType: S
+        - AttributeName: dataset_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: destination_endpoint
+          KeyType: HASH
+        - AttributeName: dataset_id
+          KeyType: RANGE
+      Tags:
+        - Key: "Environment"
+          Value: "amcufa"
+
   # Lambda
 
   AmcUploadLambdaPermission:
@@ -277,6 +301,21 @@ Resources:
                   - "xray:PutTraceSegments"
                   - "xray:PutTelemetryRecords"
                 Resource: "*"
+        - PolicyName: recordUploadFailures
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "dynamodb:GetItem"
+                  - "dynamodb:PutItem"
+                  - "dynamodb:DeleteItem"
+                Resource: !GetAtt UploadFailuresTable.Arn
+              - Effect: Allow
+                Action:
+                  - "kms:Decrypt"
+                  - "kms:GenerateDataKey"
+                Resource: !GetAtt SystemKey.Arn
         - PolicyName: getAndDeleteObjects
           PolicyDocument:
             Version: '2012-10-17'
@@ -369,6 +408,7 @@ Resources:
           AMC_API_ROLE_ARN: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-AmcApiAccessRole'
           SOLUTION_NAME: !FindInMap ["Application", "Solution", "Name"]
           SOLUTION_VERSION: !FindInMap ["Application", "Solution", "Version"]
+          UPLOAD_FAILURES_TABLE_NAME: !Ref UploadFailuresTable
           botoConfig: !Join
             - ''
             - - '{"region_name": "'
@@ -763,6 +803,7 @@ Resources:
         CustomerManagedKey: !Ref CustomerManagedKey
         LambdaLayer: !Ref LambdaLayer
         SystemTableName: !Ref SystemTable
+        UploadFailuresTableName: !Ref UploadFailuresTable
         SystemKmsKeyId: !Ref SystemKey
 
   # Resources for sending anonymous operational metrics to AWS

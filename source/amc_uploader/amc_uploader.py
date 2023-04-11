@@ -26,6 +26,7 @@ from datetime import datetime
 # Patch libraries to instrument downstream calls
 from aws_xray_sdk.core import patch_all
 from botocore import config
+import boto3
 from dateutil.relativedelta import relativedelta
 from lib.sigv4 import sigv4
 
@@ -34,6 +35,7 @@ patch_all()
 # Environment variables
 solution_config = json.loads(os.environ["botoConfig"])
 config = config.Config(**solution_config)
+UPLOAD_FAILURES_TABLE_NAME = os.environ["UPLOAD_FAILURES_TABLE_NAME"]
 
 # format log messages like this:
 formatter = logging.Formatter(
@@ -156,7 +158,21 @@ def _start_fact_upload(bucket, key):
         path = "/data/" + dataset_id + "/uploads"
         logger.info("POST " + path + " " + json.dumps(data))
         response = sigv4.post(destination_endpoint, path, json.dumps(data))
+        logger.info(f"Response code: {response.status_code}\n")
         logger.info("Response: " + response.text)
+        # Record error message if upload failed.
+        dynamo_resource = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"])
+        upload_failures_table = dynamo_resource.Table(UPLOAD_FAILURES_TABLE_NAME)
+        item_key = {"dataset_id": dataset_id, "destination_endpoint": destination_endpoint}
+        try:
+            upload_failures_table.delete_item(Key=item_key, ConditionExpression="attribute_exists(item_key)")
+        except dynamo_resource.meta.client.exceptions.ConditionalCheckFailedException:
+            pass
+        if response.status_code != 200:
+            error_message = json.loads(response.text)["message"]
+            item = item_key
+            item["Value"] = error_message
+            upload_failures_table.put_item(Item=item)
         return response.text
     except Exception as ex:
         logger.error(ex)

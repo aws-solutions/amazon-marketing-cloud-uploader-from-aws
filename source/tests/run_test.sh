@@ -63,6 +63,7 @@ then
     export SOLUTION_VERSION="0.0.0"
     export SYSTEM_TABLE_NAME="test_table"
     export ARTIFACT_BUCKET="test-etl-artifact"
+    export UPLOAD_FAILURES_TABLE_NAME="upload_failures_test_table"
 
     while :; do
         case "${1-}" in
