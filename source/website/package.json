@@ -1,13 +1,16 @@
 {
   "name": "amcufa",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
+  "description": "This application provides a utility to upload first-party data to the Amazon Marketing Cloud",
+  "author": "",
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint --no-fix",
     "deploy": "aws s3 sync --acl public-read --profile mie --delete dist/ s3://[your_website_bucket]"
   },
+  "main": "babel.config.js",
   "dependencies": {
     "aws-amplify": "^4.3.36",
     "aws-amplify-vue": "2.1.5",
@@ -18,13 +21,12 @@
     "vuex-persistedstate": "^v4.0.0-beta.3"
   },
   "devDependencies": {
-    "@vue/cli-plugin-babel": "^4.5.11",
-    "@vue/cli-plugin-eslint": "^4.5.11",
-    "@vue/cli-service": "^3.12.1",
+    "@vue/cli-plugin-babel": "~5.0.8",
+    "@vue/cli-service": "~5.0.8",
     "babel-eslint": "^10.1.0",
     "bootstrap-vue": "^2.21.2",
-    "eslint": "^6.8.0",
-    "eslint-plugin-vue": "^7.5.0",
+    "eslint": "^8.38.0",
+    "eslint-plugin-vue": "^9.10.0",
     "vue-template-compiler": "^2.6.12",
     "webpack-subresource-integrity": "^1.5.2"
   },
@@ -51,10 +53,6 @@
       "parser": "babel-eslint"
     }
   },
-  "eslintIgnore": [
-    "src/dist/*.js",
-    "src/dist/min/*.js"
-  ],
   "postcss": {
     "plugins": {
       "autoprefixer": {}
@@ -64,21 +62,22 @@
     "> 1%",
     "last 2 versions"
   ],
-  "description": "This application provides a utility to upload first-party data to the Amazon Marketing Cloud",
-  "main": "babel.config.js",
+  "bugs": {
+    "url": "https://github.com/aws-solutions/amazon-marketing-cloud-uploader-from-aws/issues"
+  },
   "directories": {
     "doc": "doc",
     "test": "../../test"
   },
+  "eslintIgnore": [
+    "src/dist/*.js",
+    "src/dist/min/*.js"
+  ],
+  "homepage": "https://github.com/aws-solutions/amazon-marketing-cloud-uploader-from-aws#readme",
+  "keywords": [],
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/aws-solutions/amazon-marketing-cloud-uploader-from-aws"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "Apache-2.0",
-  "bugs": {
-    "url": "https://github.com/aws-solutions/amazon-marketing-cloud-uploader-from-aws/issues"
-  },
-  "homepage": "https://github.com/aws-solutions/amazon-marketing-cloud-uploader-from-aws#readme"
+  }
 }
