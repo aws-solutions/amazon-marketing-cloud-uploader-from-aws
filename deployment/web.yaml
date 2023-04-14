@@ -121,6 +121,9 @@ Resources:
       LoggingConfiguration:
         DestinationBucketName: !GetAtt GetWebsiteBucketName.Data
         LogFilePrefix: "access_logs/"
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: ObjectWriter
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true

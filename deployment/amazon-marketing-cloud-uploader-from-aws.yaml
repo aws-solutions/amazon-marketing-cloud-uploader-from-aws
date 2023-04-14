@@ -131,6 +131,9 @@ Resources:
               -
                 SSEAlgorithm: "aws:kms"
                 KMSMasterKeyID: !Ref SystemKeyAlias
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: ObjectWriter
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -178,6 +181,9 @@ Resources:
       LoggingConfiguration:
         DestinationBucketName: !Ref ArtifactLogsBucket
         LogFilePrefix: "access_logs/"
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: ObjectWriter
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true

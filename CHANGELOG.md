@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Allocate more time to HelperFunction for removing stack resources [#58]
 - Remove unused lambda layer [#37]
 - Architecture diagram [#177]
+- Set s3 object ownership in order to maintain compatibility with s3 access logging [#229]
 
 ### Fixed
 
