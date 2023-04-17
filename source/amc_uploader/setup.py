@@ -14,7 +14,6 @@
 
 import setuptools
 
-
 setuptools.setup(
     name="amc_uploader",
     version="1.0.0",
@@ -36,5 +35,5 @@ setuptools.setup(
         "Topic :: Software Development :: Code Generators",
         "Topic :: Utilities",
         "Typing :: Typed",
-    ],      
+    ],
 )

@@ -8,144 +8,148 @@ SPDX-License-Identifier: Apache-2.0
     <div class="headerTextBackground">
       <Header />
       <b-container fluid>
-        <b-alert
-          v-model="showFormError"
-          variant="danger"
-          dismissible
-        >
-          Invalid dataset definition. {{ formErrorMessage }} 
-        </b-alert>
-        <b-modal id="modal-file-format" title="File Format Requirements">
-          <p><strong>CSV</strong> files must include a header, be UTF-8 encoded, and comma delimited.</p>
-          <p><strong>JSON</strong> files must contain one object per row of data. Each row must be a top-level object. No parent object or array may be present in the JSON file. An example of the accepted JSON format is shown below:</p>
-          <pre>
-{"name": "Product A", "sku": 11352987, "quantity": 2, "pur_time": "2021-06-23T19:53:58Z"} 
-{"name": "Product B", "sku": 18467234, "quantity": 2, "pur_time": "2021-06-24T19:53:58Z"} 
-{"name": "Product C", "sku": 27264393, "quantity": 2, "pur_time": "2021-06-25T19:53:58Z"} 
-{"name": "Product A", "sku": 48572094, "quantity": 2, "pur_time": "2021-06-25T19:53:58Z"} 
-{"name": "Product B", "sku": 18278476, "quantity": 1, "pur_time": "2021-06-26T13:33:58Z"}
-            </pre>
-        </b-modal>
-        <b-modal id="modal-dataset-type" title="Dataset Types">
-          <p><strong>Fact</strong> datasets represent time-series data and must include a timestamp column.</p>
-          <p><strong>Dimension</strong> datasets represent any information which is not time-bound, such as CRM audience lists, campaign metadata, mapping tables, and product metadata (e.g. a table mapping ASINs to external product names).</p>
-        </b-modal>
-        <b-modal id="modal-encryption-mode" title="Encryption Mode">
-          This value is derived from an AWS CloudFormation parameter and can only be changed by updating the deployed stack. Possible values:
-          <br><br>
-          <p><strong>default:</strong> AWS Glue and AMC will perform default encryption on your behalf.</p>
-          <p><strong>aws-kms:</strong> AWS Glue and AMC will encrypt data using the key specified in the `CustomerManagedKey` parameter of the base AWS CloudFormation template. The benefit to using a customer generated encryption key is the ability to revoke AMC’s access to uploaded data at any point. In addition, customers can monitor encryption key access via AWS CloudTrail event logs. See the AMC data upload documentation for more information.</p>
-        </b-modal>
         <b-row style="text-align: left">
           <b-col cols="2">
             <Sidebar :is-step2-active="true" />
           </b-col>
           <b-col cols="10">
-            <h3>Define Dataset</h3>
-            Specify the following details for the dataset.
-            <br>
-            <br>
-            <div>
-              <b-form-group
-                id="bucket"
-                label-cols-lg="1"
-                label-align-lg="left"
-                content-cols-lg="9"
-                label="S3 Bucket:"
-                label-for="bucket"
-              >
-                <b-form-input id="bucket" plaintext :placeholder="bucket"></b-form-input>
-              </b-form-group>
-              <b-form-group
-                id="selected-file-field"
-                label-cols-lg="1"
-                label-align-lg="left"
-                content-cols-lg="5"
-                label="S3 Key:"
-                label-for="s3key"
-              >
-                <b-form-input id="s3key" v-model="new_s3key" @change="updateS3key"></b-form-input>
-              </b-form-group>
-              <b-form-group
-                id="dataset-id-field"
-                label-cols-lg="1"
-                label-align-lg="left"
-                content-cols-lg="5"
-                description="The unique identifier of the dataset – shown in the AMC UI"
-                label="Name:"
-                label-for="dataset-id-input"
-              >
-                <b-form-input id="dataset-id-input" v-model="dataset_id"></b-form-input>
-              </b-form-group>
-              <b-form-group
-                id="dataset-description-field"
-                label-cols-lg="1"
-                label-align-lg="left"
-                content-cols-lg="7"
-                description="Human-readable description - shown in AMC UI"
-                label="Description:"
-                label-for="dataset-description-input"
-              >
-                <b-form-input id="dataset-description-input" v-model="description" placeholder="(optional)"></b-form-input>
-              </b-form-group>
+            <b-alert
+              v-model="showServerError"
+              variant="danger"
+              dismissible
+            >
+              Server error. See Cloudwatch logs for API resource, /system/configuration.
+            </b-alert>
+            <b-alert
+              v-model="showFormError"
+              variant="danger"
+              dismissible
+            >
+              You must select at least one AMC Instance.
+            </b-alert>
+            <h3>Select AMC Endpoints</h3>
+            <div v-if="isBusy === false">
+              <b-row>
+                <b-col>
+                  <p v-if="selected_amc_instances.length === 0" class="text-secondary">
+                    Select one or more AMC endpoints to receive uploads.
+                  </p>
+                  <p v-else-if="selected_amc_instances.length === 1">
+                    {{ selected_amc_instances.length }} AMC instance selected.
+                  </p>
+                  <p v-else>
+                    {{ selected_amc_instances.length }} AMC instances selected.
+                  </p>
+                </b-col>
+                <b-col sm="3" align="right" class="row align-items-end">
+                  <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push({path: '/step1'})">
+                    Previous
+                  </button> &nbsp;
+                  <button type="submit" class="btn btn-primary mb-2" @click="onSubmit">
+                    Next
+                  </button>
+                </b-col>
+              </b-row>
+              <br>
+              <!-- User Interface controls -->
+              <b-row>
+                <b-col class="my-1">
+                  <b-form-group
+                    label="Filter"
+                    label-for="filter-input"
+                    label-cols-sm="3"
+                    label-align-sm="right"
+                    label-size="sm"
+                    class="mb-0"
+                  >
+                    <b-input-group size="sm">
+                      <b-form-input
+                        id="filter-input"
+                        v-model="filter"
+                        type="search"
+                        placeholder="Type to Search"
+                      ></b-form-input>
+
+                      <b-input-group-append>
+                        <b-button :disabled="!filter" @click="filter = ''">
+                          Clear
+                        </b-button>
+                      </b-input-group-append>
+                    </b-input-group>
+                  </b-form-group>
+                </b-col>
+
+                <b-col class="my-1">
+                  <b-form-group
+                    v-slot="{ ariaDescribedby }"
+                    label="Filter On"
+                    description="Leave all unchecked to filter on all data"
+                    label-cols-sm="3"
+                    label-align-sm="right"
+                    label-size="sm"
+                    class="mb-0"
+                  >
+                    <b-form-checkbox-group
+                      v-model="filterOn"
+                      :aria-describedby="ariaDescribedby"
+                      class="mt-1"
+                    >
+                      <b-form-checkbox value="endpoint">
+                        Endpoint
+                      </b-form-checkbox>
+                      <b-form-checkbox value="tag_list">
+                        Tags
+                      </b-form-checkbox>
+                    </b-form-checkbox-group>
+                  </b-form-group>
+                </b-col>
+              </b-row>
             </div>
-            <b-row>
-              <b-col sm="3">
-                <b-form-group v-slot="{ ariaDescribedby }">
-                  <slot name="label">
-                    File format:
-                    <b-link v-b-modal.modal-file-format>
-                      <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
-                    </b-link>
-                  </slot>
-                  <b-form-radio-group
-                    v-model="file_format"
-                    :options="file_format_options"
-                    :aria-describedby="ariaDescribedby"
-                    name="file-format-radios"
-                    stacked
-                  ></b-form-radio-group>
-                </b-form-group>
-              </b-col>
-              <b-col sm="3">
-                <b-form-group v-slot="{ ariaDescribedby }">
-                  <slot name="label">
-                    Dataset Type:
-                    <b-link v-b-modal.modal-dataset-type>
-                      <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
-                    </b-link>
-                  </slot>
-                  <b-form-radio-group
-                    v-model="dataset_type"
-                    :options="dataset_type_options"
-                    :aria-describedby="ariaDescribedby"
-                    name="dataset-type-radios"
-                    stacked
-                  ></b-form-radio-group>
-                </b-form-group>
-              </b-col>
-            </b-row>
-            <b-row>
-              <b-col sm="2">
-                Encryption Mode:
-                <b-link v-b-modal.modal-encryption-mode>
-                  <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
-                </b-link>
-                <div class="text-muted">
-                  {{ ENCRYPTION_MODE }}
+            <!-- Main table element -->
+            <b-table
+              :items="formattedItems"
+              :fields="fields"
+              :filter="filter"
+              :filter-included-fields="filterOn"
+              :busy="isBusy"
+              :current-page="currentPage"
+              :per-page="perPage"
+              stacked="md"
+              show-empty
+              small
+              @filtered="onFiltered"
+            >
+              <template #table-busy>
+                <div class="text-center my-2">
+                  <b-spinner class="align-middle"></b-spinner>
+                  <strong>&nbsp;&nbsp;Loading...</strong>
                 </div>
-              </b-col>
-            </b-row>
-            <b-row>
-              <b-col sm="9" align="right">
-                <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push('Step1')">
-                  Previous
-                </button> &nbsp;
-                <button type="submit" class="btn btn-primary mb-2" @click="onSubmit">
-                  Next
-                </button>
-              </b-col>
-            </b-row>
+              </template>
+              <template #cell(actions)="row">
+                <b-button v-if="!selected_amc_instances.includes(row.item.endpoint)" size="sm" class="mr-1" @click="select(row.item.endpoint)">
+                  Select
+                </b-button>
+                <b-button v-if="selected_amc_instances.includes(row.item.endpoint)" size="sm" class="mr-1" @click="unselectEndpoint(row.item.endpoint)">
+                  Unselect
+                </b-button>
+              </template>
+            </b-table>
+            <b-pagination
+              v-if="formattedItems.length > perPage"
+              v-model="currentPage"
+              align="center"
+              :per-page="perPage"
+              :total-rows="formattedItems.length"
+              aria-controls="shotTable"
+            ></b-pagination>
+            <div v-if="isBusy === false">
+              <b-button size="sm" @click="selectAll">
+                Select all
+              </b-button> &nbsp;
+              <b-button size="sm" @click="clearAll">
+                Clear all
+              </b-button>
+            </div>
           </b-col>
         </b-row>
       </b-container>
@@ -154,113 +158,137 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script>
-  import Header from '@/components/Header.vue'
-  import Sidebar from '@/components/Sidebar.vue'
-  import { mapState } from 'vuex'
-  
-  export default {
-    name: "Step2",
-    components: {
-      Header, Sidebar
+import Header from '@/components/Header.vue'
+import Sidebar from '@/components/Sidebar.vue'
+import {mapState} from "vuex";
+
+export default {
+  name: "Step2",
+  components: {
+    Header, Sidebar
+  },
+  data() {
+    return {
+      currentPage: 1,
+      perPage: 5,
+      isBusy: false,
+      isStep2Active: true,
+      available_amc_instances: [{"endpoint": "","data_upload_account_id": "", "tags": []}],
+      filtered_amc_instances: [],
+      fields: [
+        {key: 'actions', label: 'Actions' },
+        {key: 'endpoint', label: 'AMC Endpoint', sortable: true, thStyle: { width: '50%'}},
+        {key: 'tag_list', label: 'Tags', sortable: false}
+      ],
+      filter: null,
+      filterOn: [],
+      showServerError: false,
+      showFormError: false,
+      response: '',
+      selected_amc_instances: []
+    }
+  },
+  computed: {
+    formattedItems () {
+      if (!this.available_amc_instances) return []
+      return this.available_amc_instances.map(item => {
+        if (this.selected_amc_instances.includes(item.endpoint)) {
+          item._rowVariant = "info"
+        }
+        else {
+          item._rowVariant = ""
+        }
+        return item
+      })
     },
-    data() {
-      return {
-        new_s3key: '',
-        new_dataset_definition: {},
-        dataset_id: '',
-        description: '',
-        dataset_type: '',
-        file_format: '',
-        // time_period is autodetected in Glue ETL and updated in amc_uploader.py 
-        time_period: 'P1D',
-        isStep2Active: true,
-        file_format_options: ["CSV","JSON"],
-        dataset_type_options: ["FACT","DIMENSION"],
-        showFormError: false,
-        formErrorMessage: ''
+    ...mapState(['destination_endpoints']),
+  },
+  deactivated: function () {
+    console.log('deactivated');
+  },
+  activated: function () {
+    console.log('activated')
+  },
+  created: function () {
+    console.log('created')
+  },
+  mounted: function() {
+    this.read_system_configuration('GET', 'system/configuration')
+    this.selected_amc_instances = this.destination_endpoints
+  },
+  methods: {
+    onFiltered(filteredItems) {
+      this.filtered_amc_instances = filteredItems
+    },
+    selectAll() {
+      // apply select all to the filtered table result if it has been filtered
+      if (this.filtered_amc_instances.length > 0) {
+        this.filtered_amc_instances.forEach(x => this.select(x.endpoint))
+      } else {
+        this.selected_amc_instances = this.available_amc_instances.map(x => x.endpoint)
       }
     },
-    computed: {
-      ...mapState(['dataset_definition', 's3key']),
-      bucket() {
-        return "s3://"+this.DATA_BUCKET_NAME;
+    clearAll() {
+      this.selected_amc_instances = []
+    },
+    select(endpoint) {
+      this.showFormError = false
+      if (!this.selected_amc_instances.includes(endpoint)) {
+        this.selected_amc_instances = this.selected_amc_instances.concat(endpoint)
       }
     },
-    deactivated: function () {
-      console.log('deactivated');
+    unselectEndpoint(endpoint) {
+      if (this.selected_amc_instances.includes(endpoint)) {
+        const index = this.selected_amc_instances.indexOf(endpoint)
+        this.selected_amc_instances.splice(index, 1)
+      }
     },
-    activated: function () {
-      console.log('activated')
+    onSubmit() {
+      this.showServerError = false
+      this.showFormError = false
+      if (this.validateForm()) {
+        this.$store.commit('updateDestinations', this.selected_amc_instances)
+        this.$router.push({path: '/step3'})
+      }
     },
-    created: function () {
-      console.log('created')
+    validateForm() {
+      if (this.selected_amc_instances.length === 0) {
+        this.showFormError = true;
+        return false
+      }
+      return true
     },
-    mounted: function() {
-      this.new_s3key = this.s3key
-      this.new_dataset_definition = this.dataset_definition
-      this.dataset_id = this.new_dataset_definition['dataSetId']
-      this.description = this.new_dataset_definition['description']
-      this.file_format = Object.keys(this.new_dataset_definition).includes('fileFormat')?this.new_dataset_definition['fileFormat']:this.file_format
-      // set default value for file format
-      if (this.file_format === '') {
-        if (this.s3key.split('.').pop().toLowerCase() === "csv") {
-          this.file_format = "CSV" 
+    async read_system_configuration(method, resource) {
+      this.showServerError = false
+      console.log("sending " + method + " " + resource)
+      const apiName = 'amcufa-api'
+      let response = ""
+      this.isBusy = true;
+      try {
+        if (method === "GET") {
+          response = await this.$Amplify.API.get(apiName, resource);
         }
-        else if (this.s3key.split('.').pop().toLowerCase() === "json") {
-          this.file_format = "JSON" 
+        if (response.length > 0 && "Value" in response[0]) {
+          this.available_amc_instances = response[0]["Value"]
+          // set default endpoint if there is only one to choose
+          if (this.available_amc_instances.length == 1) {
+            this.select(this.available_amc_instances[0].endpoint)
+          }
         }
       }
-      // this.time_period = this.new_dataset_definition['period']
-      this.dataset_type = this.new_dataset_definition['dataSetType']
-    },
-    methods: {
-      updateS3key() {
-        console.log("changing s3key to " + this.new_s3key)
-        this.$store.commit('updateS3key', this.new_s3key)
-        this.$store.commit('saveStep3FormInput', [])
-      },
-      onSubmit() {
-        this.showFormError = false;
-        this.new_dataset_definition['dataSetId'] = this.dataset_id
-        this.new_dataset_definition['description'] = this.description
-        this.new_dataset_definition['fileFormat'] = this.file_format
-        this.new_dataset_definition['period'] = this.time_period
-        this.new_dataset_definition['dataSetType'] = this.dataset_type
-        this.new_dataset_definition['compressionFormat'] = 'GZIP'
-        if (!this.validForm()) {
-          this.showFormError = true;
-        } else {
-          this.$store.commit('updateDatasetDefinition', this.new_dataset_definition)
-          this.$router.push('Step3')
-        }
-      },
-      validForm() {
-        if (!this.s3key && !this.new_s3key) {
-          this.formErrorMessage = "Missing s3key."
-          return false
-        }
-        if (!this.new_dataset_definition['dataSetId'] || this.new_dataset_definition['dataSetId'].length === 0) {
-          this.formErrorMessage = "Missing dataset name."
-          return false
-        }
-        if (this.dataset_id.indexOf(' ') >= 0) {
-          this.formErrorMessage = "Dataset name must not contain spaces."
-          return false
-        }
-        if (/^[a-zA-Z0-9_-]+$/.test(this.dataset_id) === false) {
-          this.formErrorMessage = "Dataset name must match regex ^[a-zA-Z0-9_-]+$"
-          return false
-        }
-        if (!this.new_dataset_definition['fileFormat'] || this.new_dataset_definition['fileFormat'].length === 0) {
-          this.formErrorMessage = "Missing file format."
-          return false
-        }
-        if (!this.new_dataset_definition['dataSetType']  || this.new_dataset_definition['dataSetType'].length === 0) {
-          this.formErrorMessage = "Missing dataset type."
-          return false
-        }
-        return true
+      catch (e) {
+        console.log(e)
+        this.showServerError = true
+      } finally {
+        this.isBusy = false;
       }
     }
   }
+}
 </script>
+
+<style>
+.hidden_header {
+  display: none;
+}
+</style>

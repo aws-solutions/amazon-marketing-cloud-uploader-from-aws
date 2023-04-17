@@ -1,6 +1,5 @@
 {
-  "Description" : "(SO0222) - amcufa. AWS CloudFormation template that defines resources for the REST API.",
-
+  "Description": "(SO0222) - amcufa. AWS CloudFormation template that defines resources for the REST API.",
   "Parameters": {
     "botoConfig": {
       "Type": "String",
@@ -22,17 +21,25 @@
       "Type": "String",
       "Description": "S3 Key of the deployment package for Lambda API handlers"
     },
+    "ArtifactBucket": {
+      "Type": "String",
+      "Description": "S3 bucket containing normalized and hashed data objects ready for ingest"
+    },
     "DataBucketName": {
       "Type": "String",
       "Description": "S3 bucket containing first-party data object for ingest"
     },
-    "AmcEndpointUrl": {
-      "Type": "String",
-      "Description": "AMC endpoint URL"
-    },
     "AmcApiRoleArn": {
       "Type": "String",
       "Description": "AMC API Role"
+    },
+    "SystemTableName": {
+      "Type": "String",
+      "Description": "Table used for storing global settings"
+    },
+    "UploadFailuresTableName": {
+      "Type": "String",
+      "Description": "Table used for storing upload failure messages"
     },
     "AmcGlueJobName": {
       "Type": "String",
@@ -45,14 +52,24 @@
     "CustomerManagedKey": {
       "Type": "String",
       "Description": "(Optional) ARN of a customer managed KMS encryption key (CMK) to use for encryption and decryption of original data files during the ETL pipeline and query computation in AMC."
+    },
+    "SystemKmsKeyId": {
+      "Type": "String",
+      "Description": "ID of the stack KMS Key"
+    },
+    "LambdaLayer": {
+      "Type": "String",
+      "Description": "Arn of the custom Lambda layer"
     }
   },
   "Conditions": {
     "EnableCmkEncryptionCondition": {
-      "Fn::Not" : [
+      "Fn::Not": [
         {
-          "Fn::Equals" : [
-            {"Ref": "CustomerManagedKey"},
+          "Fn::Equals": [
+            {
+              "Ref": "CustomerManagedKey"
+            },
             ""
           ]
         }
@@ -61,7 +78,12 @@
   },
   "Outputs": {
     "ApiHandlerRoleArn": {
-      "Value": { "Fn::GetAtt" : [ "ApiHandlerRole", "Arn" ] }
+      "Value": {
+        "Fn::GetAtt": [
+          "ApiHandlerRole",
+          "Arn"
+        ]
+      }
     }
   },
   "Resources": {
@@ -105,7 +127,7 @@
                   "Resource": {
                     "Fn::Sub": "arn:aws:s3:::${DataBucketName}/*"
                   }
-                },                
+                },
                 {
                   "Effect": "Allow",
                   "Action": [
@@ -113,6 +135,26 @@
                   ],
                   "Resource": {
                     "Fn::Sub": "arn:aws:s3:::${DataBucketName}"
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetBucketPolicy",
+                    "s3:PutBucketPolicy"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:aws:s3:::${ArtifactBucket}"
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "iam:GetRolePolicy",
+                    "iam:PutRolePolicy"
+                  ],
+                  "Resource": {
+                    "Ref": "AmcApiRoleArn"
                   }
                 },
                 {
@@ -126,12 +168,38 @@
                   }
                 },
                 {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:GetItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:Query",
+                    "dynamodb:Scan"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${SystemTableName}"
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:GetItem",
+                    "dynamodb:DeleteItem"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${UploadFailuresTableName}"
+                  }
+                },
+                {
                   "Action": [
                     "logs:CreateLogGroup",
                     "logs:CreateLogStream",
                     "logs:PutLogEvents"
                   ],
-                  "Resource": {"Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*"},
+                  "Resource": {
+                    "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*"
+                  },
                   "Effect": "Allow",
                   "Sid": "Logging"
                 },
@@ -153,20 +221,34 @@
                   }
                 },
                 {
-                "Fn::If" : [
-                  "EnableCmkEncryptionCondition",
-                  {
-                    "Action": [
-                      "kms:Decrypt",
-                      "kms:GenerateDataKey"
-                    ],
-                    "Resource": [
-                      {"Ref": "CustomerManagedKey"}
-                    ],
-                    "Effect": "Allow"
-                  },
-                  {"Ref": "AWS::NoValue"}
+                  "Fn::If": [
+                    "EnableCmkEncryptionCondition",
+                    {
+                      "Action": [
+                        "kms:Decrypt",
+                        "kms:GenerateDataKey"
+                      ],
+                      "Resource": [
+                        {
+                          "Ref": "CustomerManagedKey"
+                        }
+                      ],
+                      "Effect": "Allow"
+                    },
+                    {
+                      "Ref": "AWS::NoValue"
+                    }
                   ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "kms:Decrypt",
+                    "kms:GenerateDataKey"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/${SystemKmsKeyId}"
+                  }
                 }
               ]
             },
@@ -203,14 +285,20 @@
             "SOLUTION_NAME": {
               "Ref": "Name"
             },
-            "AMC_ENDPOINT_URL": {
-              "Ref": "AmcEndpointUrl"
-            },
             "AMC_API_ROLE_ARN": {
               "Ref": "AmcApiRoleArn"
             },
             "AMC_GLUE_JOB_NAME": {
               "Ref": "AmcGlueJobName"
+            },
+            "ARTIFACT_BUCKET": {
+              "Ref": "ArtifactBucket"
+            },
+            "SYSTEM_TABLE_NAME": {
+              "Ref": "SystemTableName"
+            },
+            "UPLOAD_FAILURES_TABLE_NAME": {
+              "Ref": "UploadFailuresTableName"
             },
             "CUSTOMER_MANAGED_KEY": {
               "Ref": "CustomerManagedKey"
@@ -218,16 +306,30 @@
           }
         },
         "Layers": [
-          "arn:aws:lambda:us-east-1:336392948345:layer:AWSDataWrangler-Python39:9"
+          {
+            "Ref": "LambdaLayer"
+          },
+          {
+            "Fn::Sub": "arn:aws:lambda:${AWS::Region}:336392948345:layer:AWSSDKPandas-Python39:3"
+          }
         ],
-        "Tracing": {"Ref": "TracingConfigMode"},
+        "Tracing": {
+          "Ref": "TracingConfigMode"
+        },
         "Role": {
           "Fn::GetAtt": [
             "ApiHandlerRole",
             "Arn"
           ]
         },
-        "CodeUri": {"Bucket":  {"Ref": "DeploymentPackageBucket"}, "Key":  {"Ref": "DeploymentPackageKey"}}
+        "CodeUri": {
+          "Bucket": {
+            "Ref": "DeploymentPackageBucket"
+          },
+          "Key": {
+            "Ref": "DeploymentPackageKey"
+          }
+        }
       }
     }
   }

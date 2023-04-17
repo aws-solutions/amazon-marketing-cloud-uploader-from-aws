@@ -8,7 +8,7 @@
 #
 # USAGE:
 #  ./build-s3-dist.sh [-h] [-v] --template-bucket {TEMPLATE_BUCKET} --code-bucket {CODE_BUCKET} --solution-name {SOLUTION_NAME} --version {VERSION} --region {REGION} [--profile {PROFILE}]
-#    TEMPLATE_BUCKET should be the name for the S3 bucket location where 
+#    TEMPLATE_BUCKET should be the name for the S3 bucket location where
 #      cloud formation templates should be saved.
 #    CODE_BUCKET should be the name for the S3 bucket location where cloud
 #      formation templates should find Lambda source code packages.
@@ -31,7 +31,7 @@ trap cleanup_and_die SIGINT SIGTERM ERR
 usage() {
   msg "$msg"
   cat <<EOF
-Usage: $(basename "${BASH_SOURCE[0]}") [-h] [-v] [--solution-name SOLUTION_NAME] [--profile PROFILE] --template-bucket TEMPLATE_BUCKET --code-bucket CODE_BUCKET --version VERSION --region REGION
+Usage: $(basename "${BASH_SOURCE[0]}") [-h] [-v] [--profile PROFILE] --template-bucket TEMPLATE_BUCKET --code-bucket CODE_BUCKET --solution-name SOLUTION_NAME --version VERSION --region REGION
 
 Available options:
 
@@ -39,7 +39,7 @@ Available options:
 -v, --verbose     Print script debug info (optional)
 --template-bucket S3 bucket to put cloud formation templates
 --code-bucket     S3 bucket to put Lambda code packages
---solution-name   Arbitrary string indicating the solution name (optional)
+--solution-name   Arbitrary string indicating the solution name
 --version         Arbitrary string indicating build version
 --region          AWS Region, formatted like us-west-2
 --profile         AWS profile for CLI commands (optional)
@@ -164,27 +164,27 @@ regional_dist_dir="$build_dir/regional-s3-assets"
 echo "------------------------------------------------------------------------------"
 echo "Creating a temporary Python virtualenv for this script"
 echo "------------------------------------------------------------------------------"
-python3 -c "import os; print (os.getenv('VIRTUAL_ENV'))" | grep -q None
+python3.10 -c "import os; print (os.getenv('VIRTUAL_ENV'))" | grep -q None
 if [ $? -ne 0 ]; then
     echo "ERROR: Do not run this script inside Virtualenv. Type \`deactivate\` and run again.";
     exit 1;
 fi
-command -v python3
+command -v python3.10
 if [ $? -ne 0 ]; then
-    echo "ERROR: install Python3 before running this script"
+    echo "ERROR: install python3.10 before running this script"
     exit 1
 fi
 echo "Using virtual python environment:"
 VENV=$(mktemp -d) && echo "$VENV"
-command -v python3 > /dev/null
+command -v python3.10 > /dev/null
 if [ $? -ne 0 ]; then
-    echo "ERROR: install Python3 before running this script"
+    echo "ERROR: install python3.10 before running this script"
     exit 1
 fi
-python3 -m venv "$VENV"
+python3.10 -m venv "$VENV"
 source "$VENV"/bin/activate
 pip3 install wheel
-pip3 install --quiet boto3 chalice requests aws_xray_sdk
+pip3 install --quiet boto3 chalice requests aws_xray_sdk awswrangler
 
 echo "------------------------------------------------------------------------------"
 echo "Create distribution directory"
@@ -201,6 +201,24 @@ echo "mkdir -p $regional_dist_dir"
 mkdir -p "$regional_dist_dir"
 echo "mkdir -p $regional_dist_dir/website/"
 mkdir -p "$regional_dist_dir"/website/
+
+echo "------------------------------------------------------------------------------"
+echo "Building Lambda Layers"
+echo "------------------------------------------------------------------------------"
+cd "$build_dir"/lambda_layer_factory/ || exit 1
+echo "Running build-lambda-layer.sh"
+rm -rf lambda_layer-python-* lambda_layer-python*.zip
+./build-lambda-layer.sh requirements.txt
+if [ $? -ne 0 ]; then
+  echo "ERROR: Lambda layer build script failed."
+  exit 1
+fi
+rm -rf lambda_layer_python-3.9/
+echo "Lambda layer build script completed.";
+mv lambda_layer_python3.9.zip "$regional_dist_dir"
+echo "Lambda layer file:"
+ls $regional_dist_dir/lambda_layer_python3.9.zip
+cd "$build_dir" || exit 1
 
 echo "------------------------------------------------------------------------------"
 echo "CloudFormation Templates"
@@ -250,6 +268,9 @@ fi
 # Otherwise, chalice will use the existing deployment package
 [ -e .chalice/deployments ] && rm -rf .chalice/deployments
 
+echo "cp -R $source_dir/share ./dist"
+cp -R "$source_dir/share" "./dist"
+
 echo "Running chalice..."
 chalice package --merge-template external_resources.json dist
 echo "Finished running chalice."
@@ -259,6 +280,10 @@ if [ $? -ne 0 ]; then
   echo "ERROR: Failed to build api template"
   exit 1
 fi
+cd dist
+echo "deployment.zip /share/* -x **/__pycache__/*"
+zip -r deployment.zip share/* -x "**/__pycache__/*"
+cd ..
 echo "cp ./dist/deployment.zip $regional_dist_dir-api.zip"
 cp ./dist/deployment.zip "$regional_dist_dir"/api.zip
 if [ $? -ne 0 ]; then
@@ -274,9 +299,9 @@ echo "Building Glue ETL script"
 cd "$source_dir/glue" || exit 1
 echo "cp amc_transformations.py $regional_dist_dir/"
 cp amc_transformations.py "$regional_dist_dir"
-zip -q address_normalizer.zip normalizers/*
-cp address_normalizer.zip "$regional_dist_dir"
-rm -f address_normalizer.zip
+zip -q library.zip library/*
+cp library.zip "$regional_dist_dir"
+rm -f library.zip
 
 echo "------------------------------------------------------------------------------"
 echo "Build vue website"
@@ -302,7 +327,7 @@ echo "--------------------------------------------------------------------------
 # files from $regional_dist_dir/website to the WebsiteBucket (see web.yaml).  Since the manifest file is computed during build
 # time, the website_helper.py Lambda can use that to figure out what files to copy
 # instead of doing a list bucket operation, which would require ListBucket permission.
-# Furthermore, the S3 bucket used to host AWS solutions disallows ListBucket 
+# Furthermore, the S3 bucket used to host AWS solutions disallows ListBucket
 # access, so the only way to copy the website files from that bucket from
 # to WebsiteBucket is to use said manifest file.
 #
@@ -331,6 +356,8 @@ echo "Building AMC uploader function"
 cd "$source_dir/amc_uploader" || exit 1
 [ -e dist ] && rm -r dist
 mkdir -p dist
+echo "cp -R $source_dir/share ./dist"
+cp -R "$source_dir/share" "./dist"
 [ -e package ] && rm -r package
 mkdir -p package
 echo "preparing packages from requirements.txt"
@@ -345,14 +372,19 @@ zip -q -r9 ../dist/amc_uploader.zip .
 popd || exit 1
 zip -q -g ./dist/amc_uploader.zip ./amc_uploader.py
 zip -q -g ./dist/amc_uploader.zip ./lib/sigv4.py
+cd dist
+echo "amc_uploader.zip share/* -x **/__pycache__/*"
+zip -r amc_uploader.zip share/* -x "**/__pycache__/*"
+cd ..
 cp "./dist/amc_uploader.zip" "$regional_dist_dir/amc_uploader.zip"
+rm -rf ./dist
 
 echo "------------------------------------------------------------------------------"
 echo "Creating deployment package for anonymous data logger"
 echo "------------------------------------------------------------------------------"
 
 echo "Building anonymous data logger"
-cd "$source_dir/anonymous-data-logger" || exit 1
+cd "$source_dir/anonymous_data_logger" || exit 1
 [ -e dist ] && rm -rf dist
 mkdir -p dist
 [ -e package ] && rm -rf package
@@ -366,16 +398,16 @@ touch ./setup.cfg
 echo "[install]" > ./setup.cfg
 echo "prefix= " >> ./setup.cfg
 pip3 install --quiet -r ../requirements.txt --target .
-cp -R ../lib .
-if ! [ -d ../dist/anonymous-data-logger.zip ]; then
-  zip -q -r9 ../dist/anonymous-data-logger.zip .
-elif [ -d ../dist/anonymous-data-logger.zip ]; then
+cp -R ../anonymous_lib .
+if ! [ -d ../dist/anonymous_data_logger.zip ]; then
+  zip -q -r9 ../dist/anonymous_data_logger.zip .
+elif [ -d ../dist/anonymous_data_logger.zip ]; then
   echo "Package already present"
 fi
 popd || exit 1
-zip -q -g ./dist/anonymous-data-logger.zip ./anonymous-data-logger.py
-cp "./dist/anonymous-data-logger.zip" "$regional_dist_dir/anonymous-data-logger.zip"
-# Finished building anonymous data logger 
+zip -q -g ./dist/anonymous_data_logger.zip ./anonymous_data_logger.py
+cp "./dist/anonymous_data_logger.zip" "$regional_dist_dir/anonymous_data_logger.zip"
+# Finished building anonymous data logger
 rm -rf ./dist ./package
 
 # Skip copy dist to S3 if building for solution builder because

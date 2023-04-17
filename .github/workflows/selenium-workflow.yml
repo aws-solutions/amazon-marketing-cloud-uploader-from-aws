@@ -1,0 +1,164 @@
+name: selenium-workflow
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      REGION: ${{ steps.init.outputs.REGION }}
+      SHORT_SHA: ${{ steps.init.outputs.SHORT_SHA }}
+      DIST_OUTPUT_BUCKET: ${{ steps.init.outputs.DIST_OUTPUT_BUCKET }}
+      TEMPLATE_OUTPUT_BUCKET: ${{ steps.init.outputs.TEMPLATE_OUTPUT_BUCKET }}
+      TEMPLATE: ${{ steps.builder.outputs.TEMPLATE }}
+    steps:
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.10'
+      - name: Check out pr branch
+        uses: actions/checkout@v2.3.4
+        with:
+          ref: ${{ github.sha }}
+      - name: Setup build environment
+        id: init
+        run: |
+          REGION="us-east-1"
+          VERSION="0.0.0"
+          SOLUTION_NAME="amazon-marketing-cloud-uploader-from-aws"
+          DATETIME=$(date '+%s')
+          DIST_OUTPUT_BUCKET=pr-amcufa-$DATETIME-dist
+          TEMPLATE_OUTPUT_BUCKET=pr-amcufa-$DATETIME
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
+          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "REGION=$REGION" >> $GITHUB_ENV
+          echo "REGION=$REGION" >> $GITHUB_OUTPUT
+          echo "DIST_OUTPUT_BUCKET=$DIST_OUTPUT_BUCKET" >> $GITHUB_ENV
+          echo "DIST_OUTPUT_BUCKET=$DIST_OUTPUT_BUCKET" >> $GITHUB_OUTPUT
+          echo "TEMPLATE_OUTPUT_BUCKET=$TEMPLATE_OUTPUT_BUCKET" >> $GITHUB_ENV
+          echo "TEMPLATE_OUTPUT_BUCKET=$TEMPLATE_OUTPUT_BUCKET" >> $GITHUB_OUTPUT
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "SOLUTION_NAME=$SOLUTION_NAME" >> $GITHUB_ENV
+      - name: Initialize AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ steps.init.outputs.REGION }}
+      - name: Run build script
+        id: builder
+        run: |
+          cd deployment
+          aws s3 mb s3://$DIST_OUTPUT_BUCKET-$REGION
+          aws s3 mb s3://$TEMPLATE_OUTPUT_BUCKET
+          echo "./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name ${SOLUTION_NAME} --version ${VERSION} --region ${REGION}"
+          echo y | ./build-s3-dist.sh --template-bucket ${TEMPLATE_OUTPUT_BUCKET} --code-bucket ${DIST_OUTPUT_BUCKET} --solution-name ${SOLUTION_NAME} --version ${VERSION}  --region ${REGION} | tee >( grep TEMPLATE >template )
+          TEMPLATE=$(cat template | cut -f 2 -d "'")
+          echo "TEMPLATE=$TEMPLATE" >> $GITHUB_OUTPUT
+
+  deploy:
+    needs:
+      - build
+    runs-on: ubuntu-latest
+    outputs:
+      STACK_NAME: ${{ steps.init.outputs.STACK_NAME }}
+    steps:
+      - name: Initialize AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{needs.build.outputs.REGION}}
+      - name: Setup deploy environment
+        id: init
+        run: |
+          STACK_NAME=github-selenium-${{needs.build.outputs.SHORT_SHA}}
+          echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
+          echo "STACK_NAME=$STACK_NAME" >> $GITHUB_OUTPUT
+          echo "EMAIL=${{secrets.EMAIL_ADDRESS}}" >> $GITHUB_ENV
+          echo "TEMPLATE=${{needs.build.outputs.TEMPLATE}}" >> $GITHUB_ENV
+          echo "DATA_BUCKET_NAME=${{secrets.DATA_BUCKET_NAME}}" >> $GITHUB_ENV
+          echo "AMC_API_ENDPOINT=${{secrets.AMC_API_ENDPOINT}}" >> $GITHUB_ENV
+          echo "DATA_UPLOAD_ACCOUNT_ID=${{secrets.DATA_UPLOAD_ACCOUNT_ID}}" >> $GITHUB_ENV
+      - name: Deploy
+        run: |
+          echo "Removing stack $STACK_NAME if it exists."
+          aws cloudformation delete-stack --stack-name $STACK_NAME
+          aws cloudformation wait stack-delete-complete --stack-name $STACK_NAME
+          echo "Creating the stack"
+          aws cloudformation create-stack --stack-name $STACK_NAME --template-url $TEMPLATE --parameters ParameterKey=AdminEmail,ParameterValue=$EMAIL ParameterKey=DataBucketName,ParameterValue=$DATA_BUCKET_NAME ParameterKey=DataUploadAccountId,ParameterValue=$DATA_UPLOAD_ACCOUNT_ID --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --disable-rollback
+          aws cloudformation wait stack-create-complete --stack-name $STACK_NAME
+
+  selenium:
+    needs:
+      - build
+      - deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out pr branch
+        uses: actions/checkout@v2.3.4
+        with:
+          ref: ${{ github.sha }}
+      - name: Initialize AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{needs.build.outputs.REGION}}
+      - name: Setup test environment
+        id: init
+        run: |
+          STACK_NAME="${{needs.deploy.outputs.STACK_NAME}}"
+          echo STACK_NAME=$STACK_NAME >> $GITHUB_ENV
+          echo EMAIL=${{ secrets.EMAIL_ADDRESS }} >> $GITHUB_ENV
+          echo PASSWORD=${{ secrets.PASSWORD }} >> $GITHUB_ENV
+          echo DATA_BUCKET_NAME=${{ secrets.DATA_BUCKET_NAME }} >> $GITHUB_ENV
+      - name: Setup Chromedriver
+        uses: nanasess/setup-chromedriver@master
+      - name: Get user pool id
+        run: |
+          USER_POOL_ID=$(aws cloudformation describe-stacks --query 'Stacks[?starts_with(StackName, `'$STACK_NAME'-AuthStack`)].Outputs[1].OutputValue' --output text)
+          echo USER_POOL_ID=$USER_POOL_ID >> $GITHUB_ENV
+      - name: Reset CL user password
+        run: |
+          aws cognito-idp admin-set-user-password --user-pool-id $USER_POOL_ID --username $EMAIL --password $PASSWORD --permanent
+      - name: Run e2e tests
+        run: |
+          cd $GITHUB_WORKSPACE
+          cd source/tests/e2e
+          ./run_e2e.sh --stack-name $STACK_NAME --region ${{needs.build.outputs.REGION}}
+
+  cleanup:
+    if: always()
+    needs:
+      - deploy
+      - build
+      - selenium
+    runs-on: ubuntu-latest
+    steps:
+      - name: Initialize AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{needs.build.outputs.REGION}}
+      - name: Remove build artifacts
+        if: needs.deploy.result == 'success' || needs.deploy.result == 'failure'
+        run: |
+          aws s3 rb s3://${{needs.build.outputs.DIST_OUTPUT_BUCKET}}-${{needs.build.outputs.REGION}} --force
+          aws s3 rb s3://${{needs.build.outputs.TEMPLATE_OUTPUT_BUCKET}} --force
+      - name: Remove stack
+        if: needs.selenium.result == 'success'
+        run: |
+          STACK_NAME=${{needs.deploy.outputs.STACK_NAME}}
+          WEB_STACK_NAME=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id WebStack --query 'StackResources[0].PhysicalResourceId' --output text | cut -f 2 -d '/')
+          WEBSITE_BUCKET=$(aws cloudformation describe-stack-resources --stack-name $WEB_STACK_NAME --logical-resource-id WebsiteBucket --query 'StackResources[0].PhysicalResourceId' --output text)
+          ARTIFACT_BUCKET=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id ArtifactLogsBucket --query 'StackResources[0].PhysicalResourceId' --output text)
+          aws s3 rb s3://$WEBSITE_BUCKET --force
+          aws s3 rb s3://$ARTIFACT_BUCKET --force
+          echo "Removing stack $STACK_NAME"
+          aws cloudformation delete-stack --stack-name $STACK_NAME
+          aws cloudformation wait stack-delete-complete --stack-name $STACK_NAME

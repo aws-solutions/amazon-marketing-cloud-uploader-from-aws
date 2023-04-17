@@ -8,13 +8,27 @@ SPDX-License-Identifier: Apache-2.0
     <div class="headerTextBackground">
       <Header />
       <b-container fluid>
+        <b-modal id="modal-file-format" title="File Format Requirements">
+          <p><strong>CSV</strong> files must include a header, be UTF-8 encoded, and comma delimited.</p>
+          <p><strong>JSON</strong> files must contain one object per row of data. Each row must be a top-level object. No parent object or array may be present in the JSON file. An example of the accepted JSON format is shown below:</p>
+          <pre>
+{"name": "Product A", "sku": 11352987, "quantity": 2, "pur_time": "2021-06-23T19:53:58Z"}
+{"name": "Product B", "sku": 18467234, "quantity": 2, "pur_time": "2021-06-24T19:53:58Z"}
+{"name": "Product C", "sku": 27264393, "quantity": 2, "pur_time": "2021-06-25T19:53:58Z"}
+{"name": "Product A", "sku": 48572094, "quantity": 2, "pur_time": "2021-06-25T19:53:58Z"}
+{"name": "Product B", "sku": 18278476, "quantity": 1, "pur_time": "2021-06-26T13:33:58Z"}
+            </pre>
+        </b-modal>
         <b-row style="text-align: left">
           <b-col cols="2">
             <Sidebar :is-step1-active="true" />
           </b-col>
           <b-col cols="10">
-            <h3>Select file</h3>
-            Select a file to ingest into Amazon Marketing Cloud.
+            <h3>Select files</h3>
+            Select one or more files to ingest. Files must be formatted as CSV or JSON with identical schemas.
+            <b-link v-b-modal.modal-file-format>
+              <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
+            </b-link>
             <br>
             <br>
             <div>
@@ -33,15 +47,14 @@ SPDX-License-Identifier: Apache-2.0
                     id="s3key-label"
                     label-cols-lg="2"
                     label-align-lg="left"
-                    description="Select a file"
-                    label="Key:"
+                    label="Keys:"
                     label-for="s3key-input"
                   >
                     <b-form-input id="s3key-input" v-model="new_s3key"></b-form-input>
                   </b-form-group>
                 </b-col>
                 <b-col sm="2" align="right">
-                  <button type="submit" class="btn btn-primary mb-2" @click="onSubmit">
+                  <button type="submit" class="btn btn-primary mb-2" :disabled="!new_s3key" @click="onSubmit">
                     Next
                   </button>
                   <br>
@@ -49,14 +62,14 @@ SPDX-License-Identifier: Apache-2.0
                 </b-col>
               </b-row>
             </div>
-            
+
             <div>
-              <b-table 
+              <b-table
                 ref="selectableTable"
                 :items="results"
                 :fields="fields"
                 :busy="isBusy"
-                select-mode="single"
+                select-mode="multi"
                 responsive="sm"
                 selectable
                 small
@@ -91,7 +104,7 @@ SPDX-License-Identifier: Apache-2.0
   import Header from '@/components/Header.vue'
   import Sidebar from '@/components/Sidebar.vue'
   import { mapState } from 'vuex'
-  
+
   export default {
     name: "Step1",
     components: {
@@ -102,8 +115,8 @@ SPDX-License-Identifier: Apache-2.0
         isBusy: false,
         fields: [
           {key: 'selected'},
-          {key: 'key', sortable: true}, 
-          {key: 'last_modified', sortable: true}, 
+          {key: 'key', sortable: true},
+          {key: 'last_modified', sortable: true},
           {key: 'size', sortable: true}],
         new_s3key: '',
         isStep1Active: true,
@@ -130,10 +143,12 @@ SPDX-License-Identifier: Apache-2.0
       onSubmit() {
         this.$store.commit('updateS3key', this.new_s3key)
         this.$store.commit('saveStep3FormInput', [])
-        this.$router.push('Step2')
+        this.$router.push({path: '/step2'})
       },
       onRowSelected(items) {
-        this.new_s3key = items[0].key
+        let newKeys = [];
+        for(let item of items) newKeys.push(item.key)
+        this.new_s3key = newKeys.join(", ");
       },
       async send_request(method, resource, data) {
         this.results = []
