@@ -18,7 +18,7 @@ from chalice import (
     IAMAuthorizer,
     Response,
 )
-from chalicelib.sigv4 import sigv4
+from chalicelib.sigv4 import sigv4, authorize_amc_request
 
 solution_config = json.loads(os.environ["botoConfig"])
 config = config.Config(**solution_config)
@@ -60,6 +60,7 @@ DATA = "/data/"
 @app.route(
     "/list_datasets", cors=True, methods=["POST"], authorizer=authorizer
 )
+@authorize_amc_request
 def list_datasets():
     """
     List datasets in AMC.
@@ -90,6 +91,7 @@ def list_datasets():
 @app.route(
     "/describe_dataset", cors=True, methods=["POST"], authorizer=authorizer
 )
+@authorize_amc_request
 def describe_dataset():
     """
     Describe the schema and properties of an existing AMC dataset.
@@ -121,6 +123,7 @@ def describe_dataset():
 @app.route(
     "/create_dataset", cors=True, methods=["POST"], authorizer=authorizer
 )
+@authorize_amc_request
 def create_dataset():
     """
     Create a dataset in AMC.
@@ -223,6 +226,7 @@ def start_amc_transformation():
 
 
 @app.route("/get_etl_jobs", cors=True, methods=["GET"], authorizer=authorizer)
+@authorize_amc_request
 def get_etl_jobs():
     """
     Retrieves metadata for all runs of a given Glue ETL job definition.
@@ -252,6 +256,7 @@ def get_etl_jobs():
 @app.route(
     "/upload_status", cors=True, methods=["POST"], authorizer=authorizer
 )
+@authorize_amc_request
 def upload_status():
     """
     Get the status of an AMC data upload operation.
@@ -283,6 +288,7 @@ def upload_status():
 
 
 @app.route("/list_uploads", cors=True, methods=["POST"], authorizer=authorizer)
+@authorize_amc_request
 def list_uploads():
     """
     List all the uploads for an AMC dataset.
@@ -320,6 +326,7 @@ def list_uploads():
 
 
 @app.route("/list_upload_failures", cors=True, methods=["POST"], authorizer=authorizer)
+@authorize_amc_request
 def list_upload_failures():
     """
     List the upload failure message, if any exists, for a specified dataset and AMC instance.
@@ -356,6 +363,7 @@ def list_upload_failures():
 @app.route(
     "/delete_dataset", cors=True, methods=["POST"], authorizer=authorizer
 )
+@authorize_amc_request
 def delete_dataset():
     """
     Delete an AMC dataset and all the records uploaded to it.
@@ -484,6 +492,7 @@ def list_bucket():
     content_types=[APPLICATION_JSON],
     authorizer=authorizer,
 )
+@authorize_amc_request
 def get_data_columns():
     """Get the column names and file format of a user-specified JSON or CSV file
 
@@ -819,7 +828,6 @@ def save_system_configuration():
         return {"Status": "Error", "Message": str(ex)}
     return {}
 
-
 @app.route(
     "/system/configuration", cors=True, methods=["GET"], authorizer=authorizer
 )
@@ -862,3 +870,24 @@ def log_request_parameters():
     )
     logger.info("request body: " + app.current_request.raw_body.decode())
     logger.debug(app.current_request.to_dict())
+
+@app.route(
+    "/validate_request", cors=True, methods=["POST"]
+)
+@authorize_amc_request
+def validate_request(*args, **kwargs):
+    client_id = app.current_request.json_body["client_id"]
+    redirect_uri = app.current_request.json_body["redirect_uri"]
+    try:
+        return authorize_amc_request(client_id=client_id, redirect_uri=redirect_uri)()
+    except Exception as ex:
+        logger.error(ex)
+        return {"Status": "Error", "Message": str(ex)}
+    
+
+@app.route(
+    "/authorize", cors=True, methods=["POST"]
+)
+@authorize_amc_request
+def authorize(*args, **kwargs):
+    return kwargs

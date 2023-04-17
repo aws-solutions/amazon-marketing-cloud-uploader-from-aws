@@ -22,7 +22,9 @@ from datetime import datetime
 import boto3
 import requests
 from botocore import config
+from botocore.exceptions import ClientError
 from requests.adapters import HTTPAdapter, Retry
+from functools import wraps
 
 # format log messages like this:
 formatter = logging.Formatter(
@@ -46,8 +48,12 @@ SOLUTION_VERSION = os.environ.get(
 )
 solution_config = json.loads(os.environ["botoConfig"])
 config = config.Config(**solution_config)
+AWS_REGION = os.environ["AWS_REGION"]
 NO_ACCESS_KEY_ERROR = "No access key is available."
 SIGNED_HEADERS = "host;x-amz-date;x-amz-security-token"
+DELETE_STRING = "TOKEN_DELETED"
+ADS_SCOPE = "advertising::campaign_management"
+DEFAULT_REDIRECT_URL = "http://localhost:8000/sample.html"
 
 
 # This function gets authentication tokens for the AMC API
@@ -123,6 +129,94 @@ def get_authorization_header(
 ):
     return f"{algorithm} Credential={access_key}/{credential_scope}, SignedHeaders={signed_headers}, Signature={signature}"
 
+def create_update_secret(secret_id, secret_string):
+    try:
+       session = boto3.session.Session()
+       client = session.client('secretsmanager')
+       client.create_secret(Name=secret_id, SecretString=secret_string)
+    except ClientError as rex:
+        if rex.response['Error']['Code'] == 'ResourceExistsException':
+            logger.debug(rex)
+            client.update_secret(SecretId=secret_id, SecretString=secret_string)
+        else:
+            raise
+
+def get_secret(secret_id):
+    session = boto3.session.Session()
+    client = session.client(
+        service_name='secretsmanager',
+        region_name=AWS_REGION,
+    )
+    res =client.get_secret_value(
+        SecretId=secret_id,
+    )
+    if not res.get("SecretString") or res.get("SecretString") == DELETE_STRING:
+        error_response = {
+            'Error': {
+                    'Code': 'ResourceNotFoundException',
+                    'Message': "SecretString is empty."
+                }
+            }
+        operation_name = 'GetSecretValue'
+        raise ClientError(error_response=error_response, operation_name=operation_name)
+    return res
+
+def _authorize_amc_request(**kwargs):
+    client_id = kwargs.get("client_id")
+    if not client_id:
+        client_id = get_secret("clientId")["SecretString"]
+    secret_id = f'refresh_token-{client_id}'
+    redirect_uri = kwargs.get("redirect_uri") or DEFAULT_REDIRECT_URL
+    auth_code = kwargs.get("auth_code") 
+    
+    client_secret = json.loads(get_secret(f'client-{client_id}')["SecretString"])["client_secret"]
+    refresh_token = None
+    code_payload = {}
+
+    if not auth_code:
+        try:
+            refresh_token = get_secret(secret_id)["SecretString"]
+            code_payload = {
+                "grant_type": "refresh_token",
+                "refresh_token": refresh_token
+            }
+        except ClientError as ex:
+            if ex.response['Error']['Code'] == 'ResourceNotFoundException':
+                return {
+                    "authorize_url": f"https://www.amazon.com/ap/oa?client_id={client_id}&scope={ADS_SCOPE}&response_type=code&redirect_uri={redirect_uri}"
+                }
+            else:
+                raise
+    else:
+        code_payload = {
+                "grant_type": "authorization_code",
+                "code": auth_code,
+            }
+    
+    response = requests.post(
+        url="https://api.amazon.com/auth/o2/token",
+        data={
+            **code_payload,
+            "redirect_uri": redirect_uri,
+            "client_id": client_id,
+            "client_secret": client_secret
+        }
+    )
+    refresh_token = response.json()["refresh_token"]
+
+    create_update_secret(secret_id, refresh_token)
+    return response.json()
+
+def authorize_amc_request(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs, **_authorize_amc_request(*args, **kwargs))
+        except Exception as ex:
+             return {"status": "error", "message": str(ex)}
+
+    return wrapper
+
 
 class Sigv4:
     def __init__(
@@ -147,7 +241,7 @@ class Sigv4:
         access_key, secret_key, session_token = get_amc_api_tokens()
         method = self.http_method
         service = "execute-api"
-        region = os.environ["AWS_REGION"]
+        region = AWS_REGION
         endpoint = f"{self.base_url}{self.path}"
         domain_name = endpoint.split("/")[2]
 
