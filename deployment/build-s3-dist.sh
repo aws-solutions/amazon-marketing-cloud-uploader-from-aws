@@ -18,6 +18,8 @@
 #    REGION needs to be in a format like us-east-1
 #    PROFILE is optional. It's the profile that you have setup in ~/.aws/credentials
 #      that you want to use for AWS CLI commands.
+#    CLIENT_ID is optional.
+#    CLIENT_SECRET is optional.
 #
 #    The following options are available:
 #
@@ -31,7 +33,7 @@ trap cleanup_and_die SIGINT SIGTERM ERR
 usage() {
   msg "$msg"
   cat <<EOF
-Usage: $(basename "${BASH_SOURCE[0]}") [-h] [-v] [--profile PROFILE] --template-bucket TEMPLATE_BUCKET --code-bucket CODE_BUCKET --solution-name SOLUTION_NAME --version VERSION --region REGION
+Usage: $(basename "${BASH_SOURCE[0]}") [-h] [-v] [--profile PROFILE] --template-bucket TEMPLATE_BUCKET --code-bucket CODE_BUCKET --solution-name SOLUTION_NAME --version VERSION --region REGION --client-id CLIENT_ID --client-secret CLIENT_SECRET 
 
 Available options:
 
@@ -43,6 +45,8 @@ Available options:
 --version         Arbitrary string indicating build version
 --region          AWS Region, formatted like us-west-2
 --profile         AWS profile for CLI commands (optional)
+--client-id       Amazon ads client id for CLI commands (optional)
+--client-secret   Amazon ads client secret for CLI commands (optional)
 EOF
   exit 1
 }
@@ -115,6 +119,14 @@ parse_params() {
       use_solution_builder_pipeline=true
       shift
       ;;
+    --client-id)
+      client-id=true
+      shift
+      ;;
+    --client-secret)
+      client-secret=true
+      shift
+      ;;
     -?*) die "Unknown option: $1" ;;
     *) break ;;
     esac
@@ -142,6 +154,8 @@ msg "- Version: ${version}"
 msg "- Region: ${region}"
 msg "- Profile: ${profile}"
 msg "- use_solution_builder_pipeline: ${use_solution_builder_pipeline}"
+msg "- client-id: ${client-id}"
+msg "- client-secret: ${client-secret}"
 
 echo ""
 sleep 3

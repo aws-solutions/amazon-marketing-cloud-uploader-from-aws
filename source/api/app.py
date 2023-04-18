@@ -18,7 +18,7 @@ from chalice import (
     IAMAuthorizer,
     Response,
 )
-from chalicelib.sigv4 import sigv4, authorize_amc_request, _authorize_amc_request
+from chalicelib.sigv4 import sigv4, authorize_amc_request, _authorize_amc_request, create_update_secret, get_secret
 
 solution_config = json.loads(os.environ["botoConfig"])
 config = config.Config(**solution_config)
@@ -872,7 +872,7 @@ def log_request_parameters():
     logger.debug(app.current_request.to_dict())
 
 @app.route(
-    "/validate_request", cors=True, methods=["POST"]
+    "/validate_request", cors=True, methods=["POST"], authorizer=authorizer
 )
 @authorize_amc_request
 def validate_request(*args, **kwargs):
@@ -886,8 +886,49 @@ def validate_request(*args, **kwargs):
     
 
 @app.route(
-    "/authorize", cors=True, methods=["POST"]
+    "/authorize", cors=True, methods=["POST"], authorizer=authorizer
 )
 @authorize_amc_request
 def authorize(*args, **kwargs):
     return kwargs
+
+@app.route(
+    "/save_secret", cors=True, methods=["POST"], authorizer=authorizer
+)
+def save_secret():
+    client_id = app.current_request.json_body["client_id"]
+    client_secret = app.current_request.json_body["client_secret"]
+    client_token = {
+        "client_id": client_id,
+        "client_secret": client_secret
+    }
+    try:
+       create_update_secret("clientId", client_id)
+       create_update_secret(f"client-{client_id}", json.dumps(client_token))
+       return {}
+    except Exception as ex:
+        logger.error(ex)
+        return {"Status": "Error", "Message": str(ex)}
+
+@app.route(
+    "/get_client_info", cors=True, methods=["GET"], authorizer=authorizer
+)
+def get_client_info():
+    try:
+        client_id = get_secret("clientId")["SecretString"]
+        client_secret = json.loads(get_secret(f"client-{client_id}")["SecretString"])["client_secret"]
+        return {
+            "client_id": client_id,
+            "client_secret": client_secret,
+        }
+    except Exception as ex:
+        logger.error(ex)
+        client_id = os.environ.get("CLIENT_ID")
+        client_secret = os.environ.get("CLIENT_SECRET")
+        if client_id and client_secret:
+            logger.info("Falling back to env declared variables.")
+            return {
+                "client_id": client_id,
+                "client_secret": client_secret,
+            }
+        return {"Status": "Error", "Message": str(ex)}
