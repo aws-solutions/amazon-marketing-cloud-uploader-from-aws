@@ -18,7 +18,7 @@ from chalice import (
     IAMAuthorizer,
     Response,
 )
-from chalicelib.sigv4 import sigv4, authorize_amc_request
+from chalicelib.sigv4 import sigv4, authorize_amc_request, _authorize_amc_request
 
 solution_config = json.loads(os.environ["botoConfig"])
 config = config.Config(**solution_config)
@@ -879,7 +879,7 @@ def validate_request(*args, **kwargs):
     client_id = app.current_request.json_body["client_id"]
     redirect_uri = app.current_request.json_body["redirect_uri"]
     try:
-        return authorize_amc_request(client_id=client_id, redirect_uri=redirect_uri)()
+        return _authorize_amc_request(client_id=client_id, redirect_uri=redirect_uri)
     except Exception as ex:
         logger.error(ex)
         return {"Status": "Error", "Message": str(ex)}

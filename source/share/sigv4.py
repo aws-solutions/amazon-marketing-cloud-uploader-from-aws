@@ -192,9 +192,11 @@ def _authorize_amc_request(**kwargs):
                 "grant_type": "authorization_code",
                 "code": auth_code,
             }
-    
-    response = requests.post(
-        url="https://api.amazon.com/auth/o2/token",
+
+    response = send_request(
+        http_method="POST",
+        request_url="https://api.amazon.com/auth/o2/token",
+        headers=None,
         data={
             **code_payload,
             "redirect_uri": redirect_uri,
