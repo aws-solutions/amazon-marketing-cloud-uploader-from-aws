@@ -18,13 +18,13 @@ import logging
 import os
 import sys
 from datetime import datetime
+from functools import wraps
 
 import boto3
 import requests
 from botocore import config
 from botocore.exceptions import ClientError
 from requests.adapters import HTTPAdapter, Retry
-from functools import wraps
 
 # format log messages like this:
 formatter = logging.Formatter(
@@ -129,47 +129,56 @@ def get_authorization_header(
 ):
     return f"{algorithm} Credential={access_key}/{credential_scope}, SignedHeaders={signed_headers}, Signature={signature}"
 
+
 def create_update_secret(secret_id, secret_string):
     try:
-       session = boto3.session.Session()
-       client = session.client('secretsmanager')
-       client.create_secret(Name=secret_id, SecretString=secret_string)
+        session = boto3.session.Session()
+        client = session.client("secretsmanager")
+        client.create_secret(Name=secret_id, SecretString=secret_string)
     except ClientError as rex:
-        if rex.response['Error']['Code'] == 'ResourceExistsException':
+        if rex.response["Error"]["Code"] == "ResourceExistsException":
             logger.debug(rex)
-            client.update_secret(SecretId=secret_id, SecretString=secret_string)
+            client.update_secret(
+                SecretId=secret_id, SecretString=secret_string
+            )
         else:
             raise
+
 
 def get_secret(secret_id):
     session = boto3.session.Session()
     client = session.client(
-        service_name='secretsmanager',
+        service_name="secretsmanager",
         region_name=AWS_REGION,
     )
-    res =client.get_secret_value(
+    res = client.get_secret_value(
         SecretId=secret_id,
     )
     if not res.get("SecretString") or res.get("SecretString") == DELETE_STRING:
         error_response = {
-            'Error': {
-                    'Code': 'ResourceNotFoundException',
-                    'Message': "SecretString is empty."
-                }
+            "Error": {
+                "Code": "ResourceNotFoundException",
+                "Message": "SecretString is empty.",
             }
-        operation_name = 'GetSecretValue'
-        raise ClientError(error_response=error_response, operation_name=operation_name)
+        }
+        operation_name = "GetSecretValue"
+        raise ClientError(
+            error_response=error_response, operation_name=operation_name
+        )
     return res
+
 
 def _authorize_amc_request(**kwargs):
     client_id = kwargs.get("client_id")
     if not client_id:
         client_id = get_secret("clientId")["SecretString"]
-    secret_id = f'refresh_token-{client_id}'
+    secret_id = f"refresh_token-{client_id}"
     redirect_uri = kwargs.get("redirect_uri") or DEFAULT_REDIRECT_URL
-    auth_code = kwargs.get("auth_code") 
-    
-    client_secret = json.loads(get_secret(f'client-{client_id}')["SecretString"])["client_secret"]
+    auth_code = kwargs.get("auth_code")
+
+    client_secret = json.loads(
+        get_secret(f"client-{client_id}")["SecretString"]
+    )["client_secret"]
     refresh_token = None
     code_payload = {}
 
@@ -178,20 +187,19 @@ def _authorize_amc_request(**kwargs):
             refresh_token = get_secret(secret_id)["SecretString"]
             code_payload = {
                 "grant_type": "refresh_token",
-                "refresh_token": refresh_token
+                "refresh_token": refresh_token,
             }
         except ClientError as ex:
-            if ex.response['Error']['Code'] == 'ResourceNotFoundException':
+            if ex.response["Error"]["Code"] == "ResourceNotFoundException":
                 return {
                     "authorize_url": f"https://www.amazon.com/ap/oa?client_id={client_id}&scope={ADS_SCOPE}&response_type=code&redirect_uri={redirect_uri}"
                 }
-            else:
-                raise
+            raise
     else:
         code_payload = {
-                "grant_type": "authorization_code",
-                "code": auth_code,
-            }
+            "grant_type": "authorization_code",
+            "code": auth_code,
+        }
 
     response = send_request(
         http_method="POST",
@@ -201,21 +209,24 @@ def _authorize_amc_request(**kwargs):
             **code_payload,
             "redirect_uri": redirect_uri,
             "client_id": client_id,
-            "client_secret": client_secret
-        }
+            "client_secret": client_secret,
+        },
     )
     refresh_token = response.json()["refresh_token"]
 
     create_update_secret(secret_id, refresh_token)
     return response.json()
 
+
 def authorize_amc_request(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         try:
-            return func(*args, **kwargs, **_authorize_amc_request(*args, **kwargs))
+            return func(
+                *args, **kwargs, **_authorize_amc_request(*args, **kwargs)
+            )
         except Exception as ex:
-             return {"status": "error", "message": str(ex)}
+            return {"status": "error", "message": str(ex)}
 
     return wrapper
 

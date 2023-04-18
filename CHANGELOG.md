@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add Unit Tests, combine coverage report for source/api/tests and source/tests. [#100]
 - API documentation [#152]
 - Show upload failure messages when provided by AMC [#221]
- 
+
 ### Changed
 
 - Prefix S3 bucket names with CF stack name to help organize S3 resources [#29]

@@ -33,7 +33,7 @@ trap cleanup_and_die SIGINT SIGTERM ERR
 usage() {
   msg "$msg"
   cat <<EOF
-Usage: $(basename "${BASH_SOURCE[0]}") [-h] [-v] [--profile PROFILE] --template-bucket TEMPLATE_BUCKET --code-bucket CODE_BUCKET --solution-name SOLUTION_NAME --version VERSION --region REGION --client-id CLIENT_ID --client-secret CLIENT_SECRET 
+Usage: $(basename "${BASH_SOURCE[0]}") [-h] [-v] [--profile PROFILE] --template-bucket TEMPLATE_BUCKET --code-bucket CODE_BUCKET --solution-name SOLUTION_NAME --version VERSION --region REGION --client-id CLIENT_ID --client-secret CLIENT_SECRET
 
 Available options:
 

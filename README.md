@@ -56,7 +56,7 @@ For more installation options, see the [Advanced Installation](#advanced-install
 
 ## INPUT
 
-* *Stack name:* Required by AWS CloudFormation, this must be all lowercase. 
+* *Stack name:* Required by AWS CloudFormation, this must be all lowercase.
 * *AdminEmail:* Email address of the administrator
 * *DataBucketName:* Name of the S3 bucket from which source data will be uploaded.
 * *CustomerManagedKey:* (Optional) Customer Managed Key to be used for decrypting source data, encrypting ETL results, and encrypting the corresponding datasets in AMC

@@ -18,7 +18,13 @@ from chalice import (
     IAMAuthorizer,
     Response,
 )
-from chalicelib.sigv4 import sigv4, authorize_amc_request, _authorize_amc_request, create_update_secret, get_secret
+from chalicelib.sigv4 import (
+    _authorize_amc_request,
+    authorize_amc_request,
+    create_update_secret,
+    get_secret,
+    sigv4,
+)
 
 solution_config = json.loads(os.environ["botoConfig"])
 config = config.Config(**solution_config)
@@ -325,7 +331,9 @@ def list_uploads():
         return {"Status": "Error", "Message": str(ex)}
 
 
-@app.route("/list_upload_failures", cors=True, methods=["POST"], authorizer=authorizer)
+@app.route(
+    "/list_upload_failures", cors=True, methods=["POST"], authorizer=authorizer
+)
 @authorize_amc_request
 def list_upload_failures():
     """
@@ -345,16 +353,20 @@ def list_upload_failures():
         destination_endpoint = app.current_request.json_body[
             "destination_endpoint"
         ]
-        item_key = {"destination_endpoint": destination_endpoint, "dataset_id": dataset_id}
-        upload_failures_table = dynamo_resource.Table(UPLOAD_FAILURES_TABLE_NAME)
-        item = upload_failures_table.get_item(Key=item_key, ConsistentRead=True)
+        item_key = {
+            "destination_endpoint": destination_endpoint,
+            "dataset_id": dataset_id,
+        }
+        upload_failures_table = dynamo_resource.Table(
+            UPLOAD_FAILURES_TABLE_NAME
+        )
+        item = upload_failures_table.get_item(
+            Key=item_key, ConsistentRead=True
+        )
         error_message = ""
         if "Item" in item:
             error_message = item["Item"]["Value"]
-        return Response(
-            body=error_message,
-            status_code=200
-        )
+        return Response(body=error_message, status_code=200)
     except Exception as ex:
         logger.error(ex)
         return {"Status": "Error", "Message": str(ex)}
@@ -397,14 +409,24 @@ def delete_dataset():
         response = sigv4.delete(destination_endpoint, path)
         if response.status_code == 200:
             dynamo_resource = boto3.resource("dynamodb", config=config)
-            item_key = {"destination_endpoint": destination_endpoint, "dataset_id": dataset_id}
-            logger.info("Removing upload record from " + UPLOAD_FAILURES_TABLE_NAME +
-                        " if the following key exists:" +
-                        json.dumps(item_key))
-            upload_failures_table = dynamo_resource.Table(UPLOAD_FAILURES_TABLE_NAME)
+            item_key = {
+                "destination_endpoint": destination_endpoint,
+                "dataset_id": dataset_id,
+            }
+            logger.info(
+                "Removing upload record from "
+                + UPLOAD_FAILURES_TABLE_NAME
+                + " if the following key exists:"
+                + json.dumps(item_key)
+            )
+            upload_failures_table = dynamo_resource.Table(
+                UPLOAD_FAILURES_TABLE_NAME
+            )
             try:
                 upload_failures_table.delete_item(Key=item_key)
-            except dynamo_resource.meta.client.exceptions.ConditionalCheckFailedException:
+            except (
+                dynamo_resource.meta.client.exceptions.ConditionalCheckFailedException
+            ):
                 pass
         return Response(
             body=response.text,
@@ -828,6 +850,7 @@ def save_system_configuration():
         return {"Status": "Error", "Message": str(ex)}
     return {}
 
+
 @app.route(
     "/system/configuration", cors=True, methods=["GET"], authorizer=authorizer
 )
@@ -871,44 +894,42 @@ def log_request_parameters():
     logger.info("request body: " + app.current_request.raw_body.decode())
     logger.debug(app.current_request.to_dict())
 
+
 @app.route(
     "/validate_request", cors=True, methods=["POST"], authorizer=authorizer
 )
 @authorize_amc_request
-def validate_request(*args, **kwargs):
+def validate_request():
     client_id = app.current_request.json_body["client_id"]
     redirect_uri = app.current_request.json_body["redirect_uri"]
     try:
-        return _authorize_amc_request(client_id=client_id, redirect_uri=redirect_uri)
+        return _authorize_amc_request(
+            client_id=client_id, redirect_uri=redirect_uri
+        )
     except Exception as ex:
         logger.error(ex)
         return {"Status": "Error", "Message": str(ex)}
-    
 
-@app.route(
-    "/authorize", cors=True, methods=["POST"], authorizer=authorizer
-)
+
+@app.route("/authorize", cors=True, methods=["POST"], authorizer=authorizer)
 @authorize_amc_request
-def authorize(*args, **kwargs):
+def authorize(**kwargs):
     return kwargs
 
-@app.route(
-    "/save_secret", cors=True, methods=["POST"], authorizer=authorizer
-)
+
+@app.route("/save_secret", cors=True, methods=["POST"], authorizer=authorizer)
 def save_secret():
     client_id = app.current_request.json_body["client_id"]
     client_secret = app.current_request.json_body["client_secret"]
-    client_token = {
-        "client_id": client_id,
-        "client_secret": client_secret
-    }
+    client_token = {"client_id": client_id, "client_secret": client_secret}
     try:
-       create_update_secret("clientId", client_id)
-       create_update_secret(f"client-{client_id}", json.dumps(client_token))
-       return {}
+        create_update_secret("clientId", client_id)
+        create_update_secret(f"client-{client_id}", json.dumps(client_token))
+        return {}
     except Exception as ex:
         logger.error(ex)
         return {"Status": "Error", "Message": str(ex)}
+
 
 @app.route(
     "/get_client_info", cors=True, methods=["GET"], authorizer=authorizer
@@ -916,7 +937,9 @@ def save_secret():
 def get_client_info():
     try:
         client_id = get_secret("clientId")["SecretString"]
-        client_secret = json.loads(get_secret(f"client-{client_id}")["SecretString"])["client_secret"]
+        client_secret = json.loads(
+            get_secret(f"client-{client_id}")["SecretString"]
+        )["client_secret"]
         return {
             "client_id": client_id,
             "client_secret": client_secret,

@@ -36,9 +36,10 @@ repos:
    - id: flake8
      additional_dependencies:
      - flake8-bugbear
+     exclude: ^source/tests/
 
 -  repo: https://github.com/pycqa/pylint
    rev: v2.16.1
    hooks:
     - id: pylint
-      exclude: ^source/tests/|^source/api/tests/
+      exclude: ^source/tests/

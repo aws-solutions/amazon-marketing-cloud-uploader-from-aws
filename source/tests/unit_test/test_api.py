@@ -35,7 +35,7 @@ def test_configs():
         "destination_endpoint": "https://example123.execute-api.us-east-1.amazonaws.com/prod/",
         "amc_endpoint": "https://test-endpoint.test/beta",
         "data_upload_account_id": "123456789012",
-        "upload_error_message": "The provided timeWindowStart is before our stated retention period. Provided TimeWindowStart = 2021-06-01T00:00:00Z, earliest allowable timeWindowStart = 2022-02-14T21:00:00Z (Service: SquallDataIngestion; Status Code: 400; Error Code: ValidationException; Request ID: 1662b4e7-aee5-418b-aa21-c1d0062ffc90; Proxy: null"
+        "upload_error_message": "The provided timeWindowStart is before our stated retention period. Provided TimeWindowStart = 2021-06-01T00:00:00Z, earliest allowable timeWindowStart = 2022-02-14T21:00:00Z (Service: SquallDataIngestion; Status Code: 400; Error Code: ValidationException; Request ID: 1662b4e7-aee5-418b-aa21-c1d0062ffc90; Proxy: null",
     }
 
 
@@ -155,9 +155,11 @@ def test_list_upload_failures(mock_response, test_configs):
     item = {
         "dataset_id": test_configs["data_set_id"],
         "destination_endpoint": test_configs["destination_endpoint"],
-        "Value": test_configs["upload_error_message"]
+        "Value": test_configs["upload_error_message"],
     }
-    table.put_item(TableName=os.environ["UPLOAD_FAILURES_TABLE_NAME"], Item=item)
+    table.put_item(
+        TableName=os.environ["UPLOAD_FAILURES_TABLE_NAME"], Item=item
+    )
 
     payload = {
         "destination_endpoint": test_configs["destination_endpoint"],
@@ -172,7 +174,10 @@ def test_list_upload_failures(mock_response, test_configs):
             body=json.dumps(payload),
         )
         assert response.status_code == 200
-        assert response.body.decode('ascii') == test_configs["upload_error_message"]
+        assert (
+            response.body.decode("ascii")
+            == test_configs["upload_error_message"]
+        )
 
     # Validate the an invalid request returns an error message
     with Client(app.app) as client:
@@ -188,9 +193,7 @@ def test_list_upload_failures(mock_response, test_configs):
 @mock_dynamodb
 @patch("chalicelib.sigv4.sigv4.requests.Session")
 def test_delete_dataset(mock_session_response, test_configs):
-    dynamodb = boto3.client(
-        "dynamodb", region_name=os.environ["AWS_REGION"]
-    )
+    dynamodb = boto3.client("dynamodb", region_name=os.environ["AWS_REGION"])
     params = {
         "TableName": os.environ["UPLOAD_FAILURES_TABLE_NAME"],
         "KeySchema": [
@@ -478,13 +481,14 @@ def test_describe_dataset(mock_session_response, test_configs):
 
 @mock_sts
 @patch("chalicelib.sigv4.sigv4.requests.Session")
-def test_describe_dataset_exception_handler(mock_session_response, test_configs):
+def test_describe_dataset_exception_handler(
+    mock_session_response, test_configs
+):
     # This test verifies that the POST to /describe_dataset returns an error
     # message when test_body is missing required parameters.
     mock_session_response.mount = MagicMock()
-    test_body = {
-    }
-    expected_response = {'Message': "'dataSetId'", 'Status': 'Error'}
+    test_body = {}
+    expected_response = {"Message": "'dataSetId'", "Status": "Error"}
 
     content_type = test_configs["content_type"]
     with Client(app.app) as client:
