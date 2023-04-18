@@ -15,7 +15,6 @@ from unittest.mock import MagicMock, patch
 
 import app
 import boto3
-import botocore
 import pytest
 from chalice.test import Client
 from moto import mock_dynamodb, mock_glue, mock_iam, mock_s3, mock_sts
