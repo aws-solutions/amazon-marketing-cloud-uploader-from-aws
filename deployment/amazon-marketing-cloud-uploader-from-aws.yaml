@@ -115,12 +115,40 @@ Resources:
             Condition:
               Bool:
                 aws:SecureTransport: false
+          - Sid: "S3ServerAccessLogsPolicy"
+            Effect: Allow
+            Principal:
+              Service:
+                - logging.s3.amazonaws.com
+            Action: 's3:PutObject'
+            Resource:
+              - !Join [
+                "",
+                [
+                  "arn:",
+                  Ref: "AWS::Partition",
+                  ":s3:::",
+                  Ref: ArtifactLogsBucket,
+                  "/access_logs/*"
+                ]
+              ]
+            Condition:
+              ArnLike:
+                aws:SourceArn: 
+                  - !Join [
+                    "",
+                    [
+                      "arn:",
+                      Ref: "AWS::Partition",
+                      ":s3:::",
+                      Ref: ArtifactLogsBucket
+                    ]
+                  ]
 
   ArtifactLogsBucket:
     DeletionPolicy: "Delete"
     Type: AWS::S3::Bucket
     Properties:
-      AccessControl: LogDeliveryWrite
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault: !If
@@ -131,9 +159,6 @@ Resources:
               -
                 SSEAlgorithm: "aws:kms"
                 KMSMasterKeyID: !Ref SystemKeyAlias
-      OwnershipControls:
-        Rules:
-          - ObjectOwnership: ObjectWriter
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -181,9 +206,6 @@ Resources:
       LoggingConfiguration:
         DestinationBucketName: !Ref ArtifactLogsBucket
         LogFilePrefix: "access_logs/"
-      OwnershipControls:
-        Rules:
-          - ObjectOwnership: ObjectWriter
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
