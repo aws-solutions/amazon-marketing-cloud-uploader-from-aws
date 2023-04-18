@@ -165,12 +165,18 @@ Resources:
         Ref: "WebsiteBucket"
       PolicyDocument:
         Statement:
-          - Effect: "Allow"
+          - Effect: Allow
             Action:
               - "s3:GetObject"
             Resource:
               - !Sub "arn:aws:s3:::${WebsiteBucket}"
               - !Sub "arn:aws:s3:::${WebsiteBucket}/*"
+            Principal:
+              CanonicalUser: !GetAtt OriginAccessIdentity.S3CanonicalUserId
+          - Effect: Deny
+            Action: "*"
+            Resource:
+              - !Sub "arn:aws:s3:::${WebsiteBucket}/*logs*/*"
             Principal:
               CanonicalUser: !GetAtt OriginAccessIdentity.S3CanonicalUserId
           - Effect: Deny
