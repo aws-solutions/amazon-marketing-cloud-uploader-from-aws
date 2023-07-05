@@ -164,24 +164,24 @@ regional_dist_dir="$build_dir/regional-s3-assets"
 echo "------------------------------------------------------------------------------"
 echo "Creating a temporary Python virtualenv for this script"
 echo "------------------------------------------------------------------------------"
-python3.10 -c "import os; print (os.getenv('VIRTUAL_ENV'))" | grep -q None
+python3 -c "import os; print (os.getenv('VIRTUAL_ENV'))" | grep -q None
 if [ $? -ne 0 ]; then
     echo "ERROR: Do not run this script inside Virtualenv. Type \`deactivate\` and run again.";
     exit 1;
 fi
-command -v python3.10
+command -v python3
 if [ $? -ne 0 ]; then
-    echo "ERROR: install python3.10 before running this script"
+    echo "ERROR: install python3 before running this script"
     exit 1
 fi
 echo "Using virtual python environment:"
 VENV=$(mktemp -d) && echo "$VENV"
-command -v python3.10 > /dev/null
+command -v python3 > /dev/null
 if [ $? -ne 0 ]; then
-    echo "ERROR: install python3.10 before running this script"
+    echo "ERROR: install python3 before running this script"
     exit 1
 fi
-python3.10 -m venv "$VENV"
+python3 -m venv "$VENV"
 source "$VENV"/bin/activate
 pip3 install wheel
 pip3 install --quiet boto3 chalice requests aws_xray_sdk awswrangler
@@ -213,43 +213,12 @@ if [ $? -ne 0 ]; then
   echo "ERROR: Lambda layer build script failed."
   exit 1
 fi
-rm -rf lambda_layer_python-3.9/
+rm -rf lambda_layer_python-3.10/
 echo "Lambda layer build script completed.";
-mv lambda_layer_python3.9.zip "$regional_dist_dir"
+mv lambda_layer_python3.10.zip "$regional_dist_dir"
 echo "Lambda layer file:"
-ls $regional_dist_dir/lambda_layer_python3.9.zip
+ls $regional_dist_dir/lambda_layer_python3.10.zip
 cd "$build_dir" || exit 1
-
-echo "------------------------------------------------------------------------------"
-echo "CloudFormation Templates"
-echo "------------------------------------------------------------------------------"
-echo ""
-echo "Preparing template files:"
-cp "$build_dir/amazon-marketing-cloud-uploader-from-aws.yaml" "$global_dist_dir/amazon-marketing-cloud-uploader-from-aws.template"
-cp "$build_dir/glue.yaml" "$global_dist_dir/glue.template"
-cp "$build_dir/auth.yaml" "$global_dist_dir/auth.template"
-cp "$build_dir/web.yaml" "$global_dist_dir/web.template"
-find "$global_dist_dir"
-echo "Updating template source bucket in template files with '$global_bucket'"
-echo "Updating code source bucket in template files with '$regional_bucket'"
-echo "Updating solution version in template files with '$version'"
-new_global_bucket="s/%%GLOBAL_BUCKET_NAME%%/$global_bucket/g"
-new_regional_bucket="s/%%REGIONAL_BUCKET_NAME%%/$regional_bucket/g"
-new_version="s/%%VERSION%%/$version/g"
-new_solution="s/%%SOLUTION_NAME%%/$solution_name/g"
-# Update templates in place. Copy originals to [filename].orig
-sed -i.orig -e "$new_global_bucket" "$global_dist_dir/amazon-marketing-cloud-uploader-from-aws.template"
-sed -i.orig -e "$new_regional_bucket" "$global_dist_dir/amazon-marketing-cloud-uploader-from-aws.template"
-sed -i.orig -e "$new_version" "$global_dist_dir/amazon-marketing-cloud-uploader-from-aws.template"
-sed -i.orig -e "$new_solution" "$global_dist_dir/amazon-marketing-cloud-uploader-from-aws.template"
-sed -i.orig -e "$new_global_bucket" "$global_dist_dir/glue.template"
-sed -i.orig -e "$new_regional_bucket" "$global_dist_dir/glue.template"
-sed -i.orig -e "$new_version" "$global_dist_dir/glue.template"
-sed -i.orig -e "$new_solution" "$global_dist_dir/glue.template"
-sed -i.orig -e "$new_global_bucket" "$global_dist_dir/web.template"
-sed -i.orig -e "$new_regional_bucket" "$global_dist_dir/web.template"
-sed -i.orig -e "$new_version" "$global_dist_dir/web.template"
-sed -i.orig -e "$new_solution" "$global_dist_dir/web.template"
 
 echo "------------------------------------------------------------------------------"
 echo "API Stack"
@@ -291,6 +260,39 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 rm -rf ./dist
+
+echo "------------------------------------------------------------------------------"
+echo "CloudFormation Templates"
+echo "------------------------------------------------------------------------------"
+echo ""
+echo "Preparing template files:"
+cp "$build_dir/amazon-marketing-cloud-uploader-from-aws.yaml" "$global_dist_dir/amazon-marketing-cloud-uploader-from-aws.template"
+cp "$build_dir/glue.yaml" "$global_dist_dir/glue.template"
+cp "$build_dir/auth.yaml" "$global_dist_dir/auth.template"
+cp "$build_dir/web.yaml" "$global_dist_dir/web.template"
+find "$global_dist_dir"
+echo "Updating template source bucket in template files with '$global_bucket'"
+echo "Updating code source bucket in template files with '$regional_bucket'"
+echo "Updating solution version in template files with '$version'"
+new_global_bucket="s/%%GLOBAL_BUCKET_NAME%%/$global_bucket/g"
+new_regional_bucket="s/%%REGIONAL_BUCKET_NAME%%/$regional_bucket/g"
+new_version="s/%%VERSION%%/$version/g"
+new_solution="s/%%SOLUTION_NAME%%/$solution_name/g"
+# Update templates in place. Copy originals to [filename].orig
+sed -i.orig -e "$new_global_bucket" "$global_dist_dir/amazon-marketing-cloud-uploader-from-aws.template"
+sed -i.orig -e "$new_regional_bucket" "$global_dist_dir/amazon-marketing-cloud-uploader-from-aws.template"
+sed -i.orig -e "$new_version" "$global_dist_dir/amazon-marketing-cloud-uploader-from-aws.template"
+sed -i.orig -e "$new_solution" "$global_dist_dir/amazon-marketing-cloud-uploader-from-aws.template"
+sed -i.orig -e "$new_global_bucket" "$global_dist_dir/glue.template"
+sed -i.orig -e "$new_regional_bucket" "$global_dist_dir/glue.template"
+sed -i.orig -e "$new_version" "$global_dist_dir/glue.template"
+sed -i.orig -e "$new_solution" "$global_dist_dir/glue.template"
+sed -i.orig -e "$new_global_bucket" "$global_dist_dir/web.template"
+sed -i.orig -e "$new_regional_bucket" "$global_dist_dir/web.template"
+sed -i.orig -e "$new_version" "$global_dist_dir/web.template"
+sed -i.orig -e "$new_solution" "$global_dist_dir/web.template"
+sed -i.orig -e "$new_version" "$global_dist_dir/api.template"
+sed -i.orig -e "$new_version" "$global_dist_dir/auth.template"
 
 echo "------------------------------------------------------------------------------"
 echo "Glue ETL"
@@ -464,7 +466,7 @@ if [ $use_solution_builder_pipeline = false ]; then
   echo "---"
 
   set -x
-  aws s3 sync $global_dist_dir s3://$global_bucket/$solution_name/$version/ $(if [ ! -z $profile ]; then echo "--profile $profile"; fi)
+  aws s3 sync $global_dist_dir s3://$global_bucket/$solution_name/$version/ --exclude '*.orig' $(if [ ! -z $profile ]; then echo "--profile $profile"; fi)
   aws s3 sync $regional_dist_dir s3://${regional_bucket}-${region}/$solution_name/$version/ $(if [ ! -z $profile ]; then echo "--profile $profile"; fi)
   set +x
 

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import Vue from 'vue'
-import { BootstrapVue, BIconQuestionCircleFill, BIconXCircle, BIconPlusSquare, BIconExclamationTriangleFill } from 'bootstrap-vue'
+import { BootstrapVue, BIconClipboard, BIconQuestionCircleFill, BIconXCircle, BIconPlusSquare, BIconExclamationTriangleFill } from 'bootstrap-vue'
 import 'bootstrap/dist/css/bootstrap.css'
 import 'bootstrap-vue/dist/bootstrap-vue.css'
 import App from './App.vue'
@@ -43,6 +43,7 @@ getRuntimeConfig().then(function(json) {
   console.log("Runtime config: " + JSON.stringify(json));
   Amplify.configure(awsconfig);
   Vue.config.productionTip = false;
+  Vue.component('BIconClipboard', BIconClipboard)
   Vue.component('BIconQuestionCircleFill', BIconQuestionCircleFill)
   Vue.component('BIconXCircle', BIconXCircle)
   Vue.component('BIconPlusSquare', BIconPlusSquare)
@@ -52,6 +53,7 @@ getRuntimeConfig().then(function(json) {
       return {
         // Distribute runtime configs into every Vue component
         AWS_REGION: json.AWS_REGION,
+        API_ENDPOINT: json.API_ENDPOINT,
         DATA_BUCKET_NAME: json.DATA_BUCKET_NAME,
         ARTIFACT_BUCKET_NAME: json.ARTIFACT_BUCKET_NAME,
         ENCRYPTION_MODE: json.ENCRYPTION_MODE

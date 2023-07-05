@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "(SO0222) - amcufa. AWS CloudFormation template that provisions Cognito resources."
+Description: "(SO0222) - Amazon Marketing Cloud Uploader from AWS %%VERSION%%. This AWS CloudFormation template defines Cognito resources."
 
 Parameters:
   ParentStackName:
@@ -103,7 +103,7 @@ Resources:
           - - index
             - .handler
         Role: !GetAtt CognitoRoleMapperLambdaExecutionRole.Arn
-        Runtime: python3.9
+        Runtime: python3.10
         Timeout: 30
 
   CognitoRoleMappingTransformerLogGroup:

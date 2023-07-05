@@ -572,8 +572,10 @@ def get_data_columns():
                     path=["s3://" + bucket + "/" + key], chunksize=1
                 )
             else:
+                logger.info("File has unsupported content type, " + content_type)
+                logger.info("Content type must be text/csv, application/json, or application/x-gzip.")
                 return Response(
-                    body={"message": "File format must be CSV or JSON."},
+                    body={"message": "Unsupported content type: " + content_type},
                     status_code=400,
                     headers={"Content-Type": plain_text_content_type},
                 )

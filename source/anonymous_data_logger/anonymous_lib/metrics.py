@@ -17,7 +17,7 @@
 
 import datetime
 import json
-import urllib.request
+import requests
 
 
 def send_metrics(config):
@@ -30,8 +30,6 @@ def send_metrics(config):
     url = "https://metrics.awssolutionsbuilder.com/generic"
     data = json.dumps(metrics).encode("utf8")
     headers = {"content-type": "application/json"}
-    req = urllib.request.Request(url, data, headers)
-    # nosec B310 is needed to avoid a false alarm in python-bandit
-    with urllib.request.urlopen(req) as response:  # nosec B310
-        print("RESPONSE CODE:: {}".format(response.getcode()))
-        print("METRICS SENT:: {}".format(data))
+    req = requests.post(url, headers=headers, data=metrics, timeout=15)
+    print("RESPONSE CODE:: {}".format(req.text))
+    print("METRICS SENT:: {}".format(metrics))

@@ -45,14 +45,14 @@ echo "--------------------------------------------------------------------------
 echo "Building Lambda Layer zip file"
 echo "------------------------------------------------------------------------------"
 
-rm -rf ./lambda_layer_python-3.9/
-rm -f ./lambda_layer_python3.9.zip
+rm -rf ./lambda_layer_python-3.10/
+rm -f ./lambda_layer_python3.10.zip
 docker logout public.ecr.aws
 docker build --tag=lambda_layer_factory:latest . 2>&1 > /dev/null
 if [ $? -eq 0 ]; then
   docker run --rm -v "$PWD":/packages lambda_layer_factory
 fi
-if [[ ! -f ./lambda_layer_python3.9.zip ]]; then
+if [[ ! -f ./lambda_layer_python3.10.zip ]]; then
     echo "ERROR: Failed to build lambda layer zip file."
     exit 1
 fi
@@ -61,18 +61,18 @@ echo "Verifying the Lambda layer meets AWS size limits"
 echo "------------------------------------------------------------------------------"
 # See https://docs.aws.amazon.com/lambda/latest/dg/limits.html
 
-unzip -q -d lambda_layer_python-3.9 ./lambda_layer_python3.9.zip
+unzip -q -d lambda_layer_python-3.10 ./lambda_layer_python3.10.zip
 ZIPPED_LIMIT=50
 UNZIPPED_LIMIT=250
-UNZIPPED_SIZE_39=$(du -sm ./lambda_layer_python-3.9/ | cut -f 1)
-ZIPPED_SIZE_39=$(du -sm ./lambda_layer_python3.9.zip | cut -f 1)
+UNZIPPED_SIZE_310=$(du -sm ./lambda_layer_python-3.10/ | cut -f 1)
+ZIPPED_SIZE_310=$(du -sm ./lambda_layer_python3.10.zip | cut -f 1)
 
-rm -rf ./lambda_layer-python-3.9/
-if (($UNZIPPED_SIZE_39 > $UNZIPPED_LIMIT || $ZIPPED_SIZE_39 > $ZIPPED_LIMIT)); then
+rm -rf ./lambda_layer-python-3.10/
+if (($UNZIPPED_SIZE_310 > $UNZIPPED_LIMIT || $ZIPPED_SIZE_310 > $ZIPPED_LIMIT)); then
 	echo "ERROR: Deployment package exceeds AWS Lambda layer size limits.";
 	exit 1
 fi
-echo "Lambda layers have been saved to ./lambda_layer_python3.9.zip."
+echo "Lambda layers have been saved to ./lambda_layer_python3.10.zip."
 
 echo "------------------------------------------------------------------------------"
 echo "Done"
