@@ -22,7 +22,6 @@ SPDX-License-Identifier: Apache-2.0
         <!-- Right aligned nav items -->
         <b-navbar-nav class="ml-auto">
           <b-nav-item
-            v-if="signedIn"
             @click="signOut()"
           >
             Sign Out
@@ -35,33 +34,9 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script>
-import { AmplifyEventBus } from "aws-amplify-vue";
-
 export default {
   name: 'Header',
   props: ['isCollectionActive', 'isUploadActive'],
-  data() {
-    return {
-      signedIn: false
-    }
-  },
-  async beforeCreate() {
-    try {
-      await this.$Amplify.Auth.currentAuthenticatedUser();
-      this.signedIn = true;
-    } catch (err) {
-      this.signedIn = false;
-    }
-    AmplifyEventBus.$on("authState", info => {
-      this.signedIn = info === "signedIn";
-    });
-  },
-  async mounted() {
-    AmplifyEventBus.$on("authState", info => {
-      this.signedIn = info === "signedOut";
-      this.$router.push({name: 'Login'})
-    });
-  },
   methods: {
     openWindow: function (url) {
       window.open(url, "noopener,noreferer");

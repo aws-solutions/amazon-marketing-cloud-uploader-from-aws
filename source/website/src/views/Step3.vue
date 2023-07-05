@@ -90,7 +90,7 @@ SPDX-License-Identifier: Apache-2.0
                   label-cols-lg="1"
                   label-align-lg="left"
                   content-cols-lg="5"
-                  description="The unique identifier of the dataset – shown in the AMC UI"
+                  description="Unique identifier of the dataset - shown in the AMC UI."
                   label="Name:"
                   label-for="dataset-id-input"
                 >
@@ -109,7 +109,7 @@ SPDX-License-Identifier: Apache-2.0
                   label-cols-lg="1"
                   label-align-lg="left"
                   content-cols-lg="7"
-                  description="Human-readable description - shown in AMC UI"
+                  description="Human-readable description - shown in the AMC UI."
                   label="Description:"
                   label-for="dataset-description-input"
                 >
@@ -188,35 +188,35 @@ SPDX-License-Identifier: Apache-2.0
                 </b-col>
                 <b-col sm="5">
                   <b-form-group
-                    description="Select country - this tool applies country-specific normalization to all rows in the input file"
+                    description="This tool applies country-specific normalization to each input file."
                   >
                     <b-form-select id="country-code-dropdown" v-model="country_code">
-                      <b-form-select-option value="US">
-                        US
-                      </b-form-select-option>
-                      <b-form-select-option value="UK">
-                        UK
-                      </b-form-select-option>
-                      <b-form-select-option value="JP">
-                        JP
-                      </b-form-select-option>
-                      <b-form-select-option value="IN">
-                        IN
-                      </b-form-select-option>
-                      <b-form-select-option value="IT">
-                        IT
-                      </b-form-select-option>
-                      <b-form-select-option value="ES">
-                        ES
-                      </b-form-select-option>
                       <b-form-select-option value="CA">
-                        CA
-                      </b-form-select-option>
-                      <b-form-select-option value="DE">
-                        DE
+                        Canada
                       </b-form-select-option>
                       <b-form-select-option value="FR">
-                        FR
+                        France
+                      </b-form-select-option>
+                      <b-form-select-option value="DE">
+                        Germany
+                      </b-form-select-option>
+                      <b-form-select-option value="IN">
+                        India
+                      </b-form-select-option>
+                      <b-form-select-option value="IT">
+                        Italy
+                      </b-form-select-option>
+                      <b-form-select-option value="JP">
+                        Japan
+                      </b-form-select-option>
+                      <b-form-select-option value="ES">
+                        Spain
+                      </b-form-select-option>
+                      <b-form-select-option value="UK">
+                        United Kingdom
+                      </b-form-select-option>
+                      <b-form-select-option value="US">
+                        United States
                       </b-form-select-option>
                     </b-form-select>
                   </b-form-group>
@@ -268,10 +268,10 @@ export default {
       time_period: 'autodetect',
       time_period_options: [
         { value: "autodetect", text: "Autodetect" },
-        { value: "PT1M", text: "PT1M" },
-        { value: "PT1H", text: "PT1H" },
-        { value: "P1D", text: "P1D" },
-        { value: "P7D", text: "P7D" }
+        { value: "PT1M", text: "PT1M (minutely)" },
+        { value: "PT1H", text: "PT1H (hourly)" },
+        { value: "P1D", text: "P1D (daily)" },
+        { value: "P7D", text: "P7D (weekly)" }
       ],
       isStep3Active: true,
       dataset_type_options: ["FACT","DIMENSION"],
@@ -343,7 +343,7 @@ export default {
           this.showServerError = true
           this.isBusy = false;
         } else {
-          this.datasets = response.dataSets.map(x => x.dataSetId)
+          this.datasets = response.dataSets.map(x => x.dataSetId).sort()
           this.isBusy = false;
         }
       } catch (e) {

@@ -44,7 +44,6 @@ const router = new VueRouter({
     },
     {
       path: '/step5',
-      alias: '/',
       name: 'Step5',
       component: Step5,
       meta: { requiresAuth: true }

@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2023-06-01
+
+### Added
+
+- Added instructions for automating uploads via S3 trigger to Step 5 in the front-end.
+- Added support for Mobile Ad ID column types.
+
+### Changed
+
+- Alphabetize the country code list shown in dataset definition web form
+- Enhance the protection of S3 access logs. (#232)
+
+### Fixed
+
+- Allow stack names to contain upper case characters
+- Avoid redirecting / web requests to /step5
+
+### Security
+
+- Update npm dependencies for vuejs, vue-cli, aws-amplify, bootstrap, webpack-subresource-integrity, and eslint.
+- Removed the eslint package in order to avoid a vulnerability in one of its dependencies
+
 ## [2.0.0] - 2023-04-17
 
 ### Added
@@ -31,7 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add Unit Tests, combine coverage report for source/api/tests and source/tests. [#100]
 - API documentation [#152]
 - Show upload failure messages when provided by AMC [#221]
- 
+
 ### Changed
 
 - Prefix S3 bucket names with CF stack name to help organize S3 resources [#29]
@@ -51,8 +73,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Enable integrity checks for front-end assets [#39]
 - Migrate python 3.9 to python 3.10 in build script [#33, #95]
-
-
 
 ## [1.0.0] - 2023-01-05
 

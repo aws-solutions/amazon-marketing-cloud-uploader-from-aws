@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "(SO0222) - amcufa %%VERSION%%. This is the base AWS CloudFormation template that defines resources and nested stacks for this solution."
+Description: "(SO0222) - Amazon Marketing Cloud Uploader from AWS %%VERSION%%. This solution provides a mechanism to extract, transform, and load first party data from S3 to the Amazon Marketing Cloud."
 
 Parameters:
   AdminEmail:
@@ -8,6 +8,8 @@ Parameters:
   DataBucketName:
     Description: "Name of the S3 bucket from which source data will be uploaded. Bucket is NOT created by this CFT."
     Type: String
+    AllowedPattern: ^[a-zA-Z0-9.\-_]{1,255}$
+    MinLength: 1
   CustomerManagedKey:
     Description: "(Optional) ARN of a customer managed KMS encryption key (CMK) to use for encryption and decryption of original data files during the ETL pipeline and query computation in AMC."
     Type: String
@@ -115,12 +117,46 @@ Resources:
             Condition:
               Bool:
                 aws:SecureTransport: false
+          - Sid: "S3ServerAccessLogsPolicy"
+            Effect: Allow
+            Principal:
+              Service:
+                - logging.s3.amazonaws.com
+            Action: 's3:PutObject'
+            Resource:
+              - !Join [
+                "",
+                [
+                  "arn:",
+                  Ref: "AWS::Partition",
+                  ":s3:::",
+                  Ref: ArtifactLogsBucket,
+                  "/access_logs/*"
+                ]
+              ]
+            Condition:
+              ArnLike:
+                aws:SourceArn: 
+                  - !Join [
+                    "",
+                    [
+                      "arn:",
+                      Ref: "AWS::Partition",
+                      ":s3:::",
+                      Ref: ArtifactLogsBucket
+                    ]
+                  ]
 
   ArtifactLogsBucket:
-    DeletionPolicy: "Delete"
     Type: AWS::S3::Bucket
+    DeletionPolicy: "Delete"
     Properties:
-      AccessControl: LogDeliveryWrite
+      BucketName:
+        'Fn::Join':
+          - ""
+          - - !GetAtt GetLowerStackName.Data
+            - "-etl-artifacts-logs"
+            - !GetAtt GetShortUUID2.Data
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault: !If
@@ -131,9 +167,6 @@ Resources:
               -
                 SSEAlgorithm: "aws:kms"
                 KMSMasterKeyID: !Ref SystemKeyAlias
-      OwnershipControls:
-        Rules:
-          - ObjectOwnership: ObjectWriter
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -167,9 +200,9 @@ Resources:
       BucketName:
         'Fn::Join':
           - ""
-          - - !Ref "AWS::StackName"
+          - - !GetAtt GetLowerStackName.Data
             - "-etl-artifacts-"
-            - !GetAtt GetShortUUID.Data
+            - !GetAtt GetShortUUID2.Data
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault: !If
@@ -181,9 +214,6 @@ Resources:
       LoggingConfiguration:
         DestinationBucketName: !Ref ArtifactLogsBucket
         LogFilePrefix: "access_logs/"
-      OwnershipControls:
-        Rules:
-          - ObjectOwnership: ObjectWriter
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -269,10 +299,10 @@ Resources:
       SourceArn:
         'Fn::Join':
           - ""
-          - - 'arn:aws:s3:::'
-            - !Ref "AWS::StackName"
-            - '-etl-artifacts-'
-            - !GetAtt GetShortUUID.Data
+          - - "arn:aws:s3:::"
+            - !GetAtt GetLowerStackName.Data
+            - "-etl-artifacts-"
+            - !GetAtt GetShortUUID2.Data
       SourceAccount: !Ref AWS::AccountId
 
   AmcUploadLambdaExecutionRole:
@@ -332,11 +362,11 @@ Resources:
                 Resource:
                   'Fn::Join':
                     - ""
-                    - - 'arn:aws:s3:::'
-                      - !Ref "AWS::StackName"
-                      - '-etl-artifacts-'
-                      - !GetAtt GetShortUUID.Data
-                      - '/*'
+                    - - "arn:aws:s3:::"
+                      - !GetAtt GetLowerStackName.Data
+                      - "-etl-artifacts-"
+                      - !GetAtt GetShortUUID2.Data
+                      - "/*"
         - PolicyName: invokeAmcApi
           PolicyDocument:
             Version: '2012-10-17'
@@ -351,7 +381,7 @@ Resources:
     Type: "AWS::Lambda::LayerVersion"
     Properties:
       CompatibleRuntimes:
-        - python3.9
+        - python3.10
       Content:
         S3Bucket: !Join ["-", [!FindInMap ["Application", "SourceCode", "RegionalS3Bucket"], Ref: "AWS::Region"]]
         S3Key:
@@ -359,14 +389,14 @@ Resources:
             "/",
             [
               !FindInMap ["Application", "SourceCode", "CodeKeyPrefix"],
-              "lambda_layer_python3.9.zip",
+              "lambda_layer_python3.10.zip",
             ],
           ]
       Description:
         !Join [
           "",
           [
-            "Python 3.9 packages for ",
+            "Python 3.10 packages for ",
             !FindInMap ["Application", "Solution", "Name"]
           ]
         ]
@@ -375,7 +405,7 @@ Resources:
           "",
           [
             !FindInMap [ "Application", "Solution", "Name" ],
-            "-python39"
+            "-python310"
           ]
         ]
       LicenseInfo: Apache-2.0
@@ -404,7 +434,7 @@ Resources:
           ]
       Handler: amc_uploader.lambda_handler
       Role: !GetAtt AmcUploadLambdaExecutionRole.Arn
-      Runtime: python3.9
+      Runtime: python3.10
       MemorySize: 256
       Timeout: 60
       Layers:
@@ -444,10 +474,9 @@ Resources:
       LogGroupName: !Join ['/', ['/aws/lambda', !Ref AmcUploadLambdaFunction]]
       RetentionInDays: 30
 
-  # Helper function
-  # - Generates a unique name for the ArtifactBucket
-  # - Also purges ArtifactLogsBucket, so it can be removed when the stack is deleted.
-  HelperFunction:
+  # Bucket Name Helper function
+  # - Generates a UUID to use for uniquely naming for the ArtifactBucket and ArtifactLogsBucket
+  BucketNameHelper:
     Type: AWS::Lambda::Function
     Metadata:
       cfn_nag:
@@ -459,17 +488,12 @@ Resources:
           - id: W92
             reason: "This function does not require performance optimization, so the default concurrency limits suffice."
     Properties:
-      Environment:
-        Variables:
-          DESIGNATED_LOGGING_BUCKET: !Ref ArtifactLogsBucket
       Code:
         ZipFile: |
           import string
           import cfnresponse
           import random
-          import boto3
           import json
-          import os
           import logging
           from urllib.request import build_opener, HTTPHandler, Request
 
@@ -486,22 +510,104 @@ Resources:
             try:
               LOGGER.info('REQUEST RECEIVED:\n {s}'.format(s=event))
               LOGGER.info('REQUEST RECEIVED:\n {s}'.format(s=context))
+              if event['ResourceProperties']['FunctionKey'] == 'get_lower_stackname':
+                stack_name = event['StackId'].split('/')[1]
+                response_data = {'Data': stack_name.lower()}
+                cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data, "CustomResourcePhysicalID")
               if event['ResourceProperties']['FunctionKey'] == 'get_short_uuid':
                 response_data = {'Data': id_generator()}
                 cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data, "CustomResourcePhysicalID")
+            except Exception as e:
+              LOGGER.info('FAILED!')
+              send_response(event, context, "FAILED", {"Message": "Exception during processing: {e}".format(e=e)})
+
+          def send_response(event, context, response_status, response_data):
+            """
+            Send a resource manipulation status response to CloudFormation
+            """
+            response_body = json.dumps({
+                "Status": response_status,
+                "Reason": "See the details in CloudWatch Log Stream: " + context.log_stream_name,
+                "PhysicalResourceId": context.log_stream_name,
+                "StackId": event['StackId'],
+                "RequestId": event['RequestId'],
+                "LogicalResourceId": event['LogicalResourceId'],
+                "Data": response_data
+            })
+
+            LOGGER.info('ResponseURL: {s}'.format(s=event['ResponseURL']))
+            LOGGER.info('ResponseBody: {s}'.format(s=response_body))
+
+            opener = build_opener(HTTPHandler)
+            request = Request(event['ResponseURL'], data=response_body.encode('utf-8'))
+            request.add_header('Content-Type', '')
+            request.add_header('Content-Length', len(response_body))
+            request.get_method = lambda: 'PUT'
+            response = opener.open(request)
+
+      Handler: index.handler
+      Runtime: python3.10
+      Timeout: 900
+      Role: !GetAtt BucketNameHelperRole.Arn
+      Tags:
+        - Key: "Environment"
+          Value: "amcufa"
+
+  # Bucket Removal Helper function
+  # - Purges the ArtifactBucket and ArtifactLogsBucket, so they can be removed
+  #   when the stack is deleted.
+  BucketRemovalHelper:
+    Type: AWS::Lambda::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W58
+            reason: "The role includes permission to write to CloudWatch Logs"
+          - id: W89
+            reason: "This Lambda function does not need to access any resource provisioned within a VPC."
+          - id: W92
+            reason: "This function does not require performance optimization, so the default concurrency limits suffice."
+    Properties:
+      Environment:
+        Variables:
+          ARTIFACT_LOGS_BUCKET: !Ref ArtifactLogsBucket
+          ARTIFACT_BUCKET: !Ref ArtifactBucket
+      Code:
+        ZipFile: |
+          import string
+          import cfnresponse
+          import boto3
+          import json
+          import os
+          import logging
+          from urllib.request import build_opener, HTTPHandler, Request
+
+          LOGGER = logging.getLogger()
+          LOGGER.setLevel(logging.INFO)
+
+
+          def handler(event, context):
+            print("We got the following event:\n", event)
+            try:
+              LOGGER.info('REQUEST RECEIVED:\n {s}'.format(s=event))
+              LOGGER.info('REQUEST RECEIVED:\n {s}'.format(s=context))
               if event['RequestType'] == 'Delete':
                 LOGGER.info('DELETE!')
                 purge_bucket(event, context)
                 send_response(event, context, "SUCCESS", {"Message": "Resource deletion successful!"})
             except Exception as e:
-                          LOGGER.info('FAILED!')
-                          send_response(event, context, "FAILED", {"Message": "Exception during processing: {e}".format(e=e)})
+              LOGGER.info('FAILED!')
+              send_response(event, context, "FAILED", {"Message": "Exception during processing: {e}".format(e=e)})
 
 
           def purge_bucket(event, context):
             try:
               s3 = boto3.resource('s3')
-              bucket_name = os.environ["DESIGNATED_LOGGING_BUCKET"]
+              bucket_name = os.environ["ARTIFACT_BUCKET"]
+              LOGGER.info("Purging bucket, " + bucket_name)
+              bucket = s3.Bucket(bucket_name)
+              bucket.objects.all().delete()
+              bucket_name = os.environ["ARTIFACT_LOGS_BUCKET"]
               LOGGER.info("Purging bucket, " + bucket_name)
               bucket = s3.Bucket(bucket_name)
               bucket.objects.all().delete()
@@ -537,14 +643,14 @@ Resources:
             response = opener.open(request)
 
       Handler: index.handler
-      Runtime: python3.9
+      Runtime: python3.10
       Timeout: 900
-      Role: !GetAtt HelperFunctionRole.Arn
+      Role: !GetAtt BucketRemovalHelperRole.Arn
       Tags:
         - Key: "Environment"
           Value: "amcufa"
 
-  HelperFunctionLogGroup:
+  BucketRemovalHelperLogGroup:
     Type: AWS::Logs::LogGroup
     Metadata:
       cfn_nag:
@@ -552,10 +658,58 @@ Resources:
           - id: W84
             reason: "The data generated via this role does not need to be encrypted."
     Properties:
-      LogGroupName: !Join ['/', ['/aws/lambda', !Ref HelperFunction]]
+      LogGroupName: !Join ['/', ['/aws/lambda', !Ref BucketRemovalHelper]]
+      RetentionInDays: 30
+  
+  BucketNameHelperLogGroup:
+    Type: AWS::Logs::LogGroup
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W84
+            reason: "The data generated via this role does not need to be encrypted."
+    Properties:
+      LogGroupName: !Join ['/', ['/aws/lambda', !Ref BucketNameHelper]]
       RetentionInDays: 30
 
-  HelperFunctionRole:
+  BucketNameHelperRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Join [
+                      "",
+                    [
+                        "arn:aws:logs:",
+                        Ref: "AWS::Region",
+                        ":",
+                        Ref: "AWS::AccountId",
+                        ":log-group:/aws/lambda/*",
+                    ],
+                  ]
+      Tags:
+        - Key: "Environment"
+          Value: "amcufa"
+ 
+  BucketRemovalHelperRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -616,20 +770,31 @@ Resources:
         - Key: "Environment"
           Value: "amcufa"
 
-  HelperFunctionPermissions:
+  BucketNameHelperPermissions:
     Type: AWS::Lambda::Permission
     Properties:
       Action: 'lambda:InvokeFunction'
-      FunctionName: !GetAtt HelperFunction.Arn
+      FunctionName: !GetAtt BucketNameHelper.Arn
+      Principal: 'cloudformation.amazonaws.com'
+ 
+  BucketRemovalHelperPermissions:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt BucketRemovalHelper.Arn
       Principal: 'cloudformation.amazonaws.com'
 
-  GetShortUUID:
+  GetShortUUID2:
     Type: Custom::CustomResource
-    DependsOn:
-      - ArtifactLogsBucket
     Properties:
-      ServiceToken: !GetAtt HelperFunction.Arn
+      ServiceToken: !GetAtt BucketNameHelper.Arn
       FunctionKey: "get_short_uuid"
+
+  GetLowerStackName:
+    Type: Custom::CustomResource
+    Properties:
+      ServiceToken: !GetAtt BucketNameHelper.Arn
+      FunctionKey: "get_lower_stackname"
 
   # Auth stack
 
@@ -657,7 +822,7 @@ Resources:
 
   # Glue ETL stack
 
-  GlueStack:
+  GlueStack2:
     Type: "AWS::CloudFormation::Stack"
     Properties:
       TemplateURL: !Join
@@ -684,7 +849,7 @@ Resources:
 
   # Web stack
 
-  WebStack:
+  WebStack2:
     Type: "AWS::CloudFormation::Stack"
     Properties:
       TemplateURL: !Join
@@ -804,7 +969,7 @@ Resources:
         ArtifactBucket: !Ref ArtifactBucket
         DataBucketName: !Ref DataBucketName
         AmcApiRoleArn: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-AmcApiAccessRole'
-        AmcGlueJobName: !GetAtt GlueStack.Outputs.AmcGlueJobName
+        AmcGlueJobName: !GetAtt GlueStack2.Outputs.AmcGlueJobName
         TracingConfigMode: "Active"
         CustomerManagedKey: !Ref CustomerManagedKey
         LambdaLayer: !Ref LambdaLayer
@@ -864,7 +1029,7 @@ Resources:
       Code:
         S3Bucket: !Join [ "-", [ !FindInMap [ "Application", "SourceCode", "RegionalS3Bucket" ], Ref: "AWS::Region" ] ]
         S3Key: !Join [ "/", [ !FindInMap [ "Application", "SourceCode", "CodeKeyPrefix" ], "anonymous_data_logger.zip" ] ]
-      Runtime:  python3.8
+      Runtime:  python3.10
       Timeout: 180
 
   # SendAnonymousData
@@ -925,7 +1090,7 @@ Resources:
     Properties:
       Application: !GetAtt Application.Id
       Resource:
-        !Ref WebStack
+        !Ref WebStack2
       ResourceType: CFN_STACK
 
   AppRegistryApplicationStackAssociationNestedGlueStack:
@@ -933,7 +1098,7 @@ Resources:
     Properties:
       Application: !GetAtt Application.Id
       Resource:
-        !Ref GlueStack
+        !Ref GlueStack2
       ResourceType: CFN_STACK
 
   AppRegistryApplicationStackAssociationNestedAuthStack:
@@ -964,4 +1129,4 @@ Resources:
 
 Outputs:
   UserInterface:
-    Value: !GetAtt WebStack.Outputs.CloudfrontUrl
+    Value: !GetAtt WebStack2.Outputs.CloudfrontUrl

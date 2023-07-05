@@ -10,8 +10,8 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script>
-
-import { AmplifyEventBus } from "aws-amplify-vue";
+import { Auth } from 'aws-amplify';
+import { Hub } from 'aws-amplify';
 
 export default {
   name: "Login",
@@ -19,26 +19,34 @@ export default {
     return {};
   },
   mounted() {
-    AmplifyEventBus.$on("authState", eventInfo => {
-      if (eventInfo === "signedIn") {
-        this.$router.push({ path: "/step6" });
-      } else if (eventInfo === "signedOut") {
-        this.$router.push({ name: "Login" });
+    Hub.listen('auth', (data) => {
+      switch (data.payload.event) {
+        case 'signIn':
+          console.log('user signed in');
+          this.$router.push({path: "/step6"});
+          break;
+        case 'signOut':
+          console.log('user signed out');
+          this.$router.push({name: "Login"});
+          break;
       }
     });
   },
   created() {
+    // handle users who have already signed in 
     this.getLoginStatus()
   },
   methods: {
     getLoginStatus () {
-      this.$Amplify.Auth.currentSession().then(data => {
+      Auth.currentSession().then(data => {
         this.session = data;
-        if (this.session == null) {
-          console.log('user must login')
-        } else {
-          this.$router.push({name: "Home"})
+        if (this.session != null) {
+          console.log('user already signed in');
+          console.log(this.session)
+          this.$router.push({path: "/step6"});
         }
+      }).catch(err => {
+        console.log(err);
       })
     }
   }
