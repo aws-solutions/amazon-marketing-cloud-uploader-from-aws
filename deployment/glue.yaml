@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "(SO0222) - amcufa. AWS CloudFormation template that defines Glue ETL resources."
+Description: "(SO0222) - Amazon Marketing Cloud Uploader from AWS %%VERSION%%. This AWS CloudFormation template defines Glue ETL resources."
 
 Parameters:
   ArtifactBucketName:
@@ -219,7 +219,7 @@ Resources:
             request.get_method = lambda: 'PUT'
             response = opener.open(request)
       Handler: index.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.10
       MemorySize: 256
       Timeout: 900
       Role: !GetAtt GlueHelperRole.Arn

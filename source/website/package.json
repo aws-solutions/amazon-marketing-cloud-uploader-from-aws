@@ -1,68 +1,51 @@
 {
   "name": "amcufa",
-  "version": "1.0.0",
+  "version": "2.1.0",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
-    "lint": "vue-cli-service lint --no-fix",
-    "deploy": "aws s3 sync --acl public-read --profile mie --delete dist/ s3://[your_website_bucket]"
+    "lint": "vue-cli-service lint --no-fix"
   },
   "dependencies": {
     "aws-amplify": "^4.3.36",
     "aws-amplify-vue": "2.1.5",
+    "bootstrap": "^4.5.0",
+    "bootstrap-vue": "^2.23.1",
     "register-service-worker": "^1.7.2",
-    "vue": "^2.6.12",
-    "vue-router": "^3.5.1",
+    "vue": "^2.7.14",
+    "vue-router": "^3.6.5",
     "vuex": "^3.6.2",
-    "vuex-persistedstate": "^v4.0.0-beta.3"
+    "webpack-subresource-integrity": "^5.1.0"
   },
   "devDependencies": {
-    "@vue/cli-plugin-babel": "^4.5.11",
-    "@vue/cli-plugin-eslint": "^4.5.11",
-    "@vue/cli-service": "^3.12.1",
-    "babel-eslint": "^10.1.0",
-    "bootstrap-vue": "^2.21.2",
-    "eslint": "^6.8.0",
-    "eslint-plugin-vue": "^7.5.0",
-    "vue-template-compiler": "^2.6.12",
-    "webpack-subresource-integrity": "^1.5.2"
+    "@vue/cli-plugin-eslint": "^5.0.8",
+    "@vue/cli-service": "^5.0.8",
+    "eslint-plugin-vue": "^7.20.0",
+    "vue-template-compiler": "^2.6.12"
   },
   "eslintConfig": {
-    "root": false,
+    "root": true,
     "env": {
-      "node": false
+      "node": true
     },
     "extends": [
-      "plugin:vue/recommended",
-      "plugin:vue/essential",
-      "eslint:recommended"
+      "plugin:vue/essential"
     ],
-    "rules": {
-      "no-console": "off",
-      "no-undef": "off",
-      "vue/require-prop-types": "off",
-      "vue/attribute-hyphenation": "off",
-      "vue/valid-v-for": "off",
-      "vue/max-attributes-per-line": "off",
-      "vue/html-self-closing": "off"
-    },
-    "parserOptions": {
-      "parser": "babel-eslint"
-    }
+    "rules": {}
   },
-  "eslintIgnore": [
-    "src/dist/*.js",
-    "src/dist/min/*.js"
-  ],
-  "postcss": {
-    "plugins": {
-      "autoprefixer": {}
-    }
+  "overrides": {
+    "fast-xml-parser": "4.2.5",
+    "semver": "7.5.2"
+  },
+  "resolutions": {
+    "fast-xml-parser": "4.2.5",
+    "semver": "7.5.2"
   },
   "browserslist": [
     "> 1%",
-    "last 2 versions"
+    "last 2 versions",
+    "not dead"
   ],
   "description": "This application provides a utility to upload first-party data to the Amazon Marketing Cloud",
   "main": "babel.config.js",
@@ -75,7 +58,10 @@
     "url": "git+https://github.com/aws-solutions/amazon-marketing-cloud-uploader-from-aws"
   },
   "keywords": [],
-  "author": "",
+  "author": {
+    "name": "Amazon Web Services",
+    "url": "https://aws.amazon.com/solutions"
+  },
   "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/aws-solutions/amazon-marketing-cloud-uploader-from-aws/issues"

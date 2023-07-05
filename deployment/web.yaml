@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "(SO0222) - amcufa. AWS CloudFormation template that defines front-end resources."
+Description: "(SO0222) - Amazon Marketing Cloud Uploader from AWS %%VERSION%%. This AWS CloudFormation template defines front-end resources."
 
 Parameters:
   DataBucketName:
@@ -51,11 +51,11 @@ Resources:
           import cfnresponse
           def handler(event, context):
             print("We got the following event:\n", event)
-            stack_name = event['StackId'].split('/')[1].split('-Uuid')[0]
+            stack_name = event['StackId'].split('/')[1]
             response_data = {'Data': stack_name.lower() + '-website'}
             cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data, "CustomResourcePhysicalID")
       Handler: index.handler
-      Runtime: python3.9
+      Runtime: python3.10
       Role: !GetAtt WebsiteBucketNameExecutionRole.Arn
 
   WebsiteBucketNameFunctionLogGroup:
@@ -165,12 +165,18 @@ Resources:
         Ref: "WebsiteBucket"
       PolicyDocument:
         Statement:
-          - Effect: "Allow"
+          - Effect: Allow
             Action:
               - "s3:GetObject"
             Resource:
               - !Sub "arn:aws:s3:::${WebsiteBucket}"
               - !Sub "arn:aws:s3:::${WebsiteBucket}/*"
+            Principal:
+              CanonicalUser: !GetAtt OriginAccessIdentity.S3CanonicalUserId
+          - Effect: Deny
+            Action: "*"
+            Resource:
+              - !Sub "arn:aws:s3:::${WebsiteBucket}/*logs*/*"
             Principal:
               CanonicalUser: !GetAtt OriginAccessIdentity.S3CanonicalUserId
           - Effect: Deny
@@ -338,7 +344,7 @@ Resources:
       Handler: website_helper.lambda_handler
       MemorySize: 256
       Role: !GetAtt WebsiteHelperRole.Arn
-      Runtime: python3.9
+      Runtime: python3.10
       Timeout: 900
       Environment:
         Variables:

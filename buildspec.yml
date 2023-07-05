@@ -8,8 +8,8 @@ version: 0.2
 phases:
   install:
     runtime-versions:
-      nodejs: 16
-      python: 3.10
+      nodejs: 18
+      python: 3.11
     commands:
       - echo "nothing to do in install"
   pre_build:
@@ -30,7 +30,6 @@ phases:
       - echo "Starting open-source-dist `date` in `pwd`"
       - chmod +x ./build-open-source-dist.sh && ./build-open-source-dist.sh $SOLUTION_NAME
       - echo "Open Source Dist completed `date`"
-
   post_build:
     commands:
       - echo "Retrieving next stage buildspec `date` in `pwd`"
@@ -39,11 +38,4 @@ phases:
       - echo "Post build completed on `date`"
 artifacts:
   files:
-      - deployment/**/*
-      - source/**/*
-      - .gitignore
-      - sonar-project.properties
-      - buildspec.yml
-      - CHANGELOG.md
-      - NOTICE.txt
-      - LICENSE.txt
+      - '**/*'

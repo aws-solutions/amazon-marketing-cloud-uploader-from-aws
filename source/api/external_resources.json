@@ -1,5 +1,5 @@
 {
-  "Description": "(SO0222) - amcufa. AWS CloudFormation template that defines resources for the REST API.",
+  "Description": "(SO0222) - Amazon Marketing Cloud Uploader from AWS %%VERSION%%. This AWS CloudFormation template defines resources for the REST API.",
   "Parameters": {
     "botoConfig": {
       "Type": "String",
@@ -273,7 +273,7 @@
         }
       },
       "Properties": {
-        "Runtime": "python3.9",
+        "Runtime": "python3.10",
         "Environment": {
           "Variables": {
             "botoConfig": {
@@ -310,7 +310,7 @@
             "Ref": "LambdaLayer"
           },
           {
-            "Fn::Sub": "arn:aws:lambda:${AWS::Region}:336392948345:layer:AWSSDKPandas-Python39:3"
+            "Fn::Sub": "arn:aws:lambda:${AWS::Region}:336392948345:layer:AWSSDKPandas-Python310:3"
           }
         ],
         "Tracing": {
