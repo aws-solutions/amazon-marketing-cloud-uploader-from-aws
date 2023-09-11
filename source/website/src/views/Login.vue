@@ -10,8 +10,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script>
-import { Auth } from 'aws-amplify';
-import { Hub } from 'aws-amplify';
+import { Auth, Hub } from 'aws-amplify';
 
 export default {
   name: "Login",

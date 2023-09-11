@@ -1,9 +1,9 @@
 -e amc_uploader
 aws-xray-sdk==2.12.0
-awswrangler==3.2.1
+awswrangler==3.3.0
 boto3==1.26.158 
 botocore==1.29.158
-moto==4.1.2
+moto==4.2.0
 pandas==2.0.2
 phonenumbers==8.13.14
 pytest==7.3.2
