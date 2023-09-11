@@ -17,7 +17,7 @@ Parameters:
 
 Conditions:
   EnableCmkEncryptionCondition: !Not [!Equals [!Ref CustomerManagedKey, ""]]
-  EnableAnonymousData: !Equals [ !FindInMap [AnonymousData,SendAnonymousData,Data], Yes]
+  EnableAnonymousData: !Equals [ !FindInMap [AnonymizedData,SendAnonymizedData,Data], Yes]
 
 Mappings:
   Application:
@@ -32,8 +32,8 @@ Mappings:
       TemplateKeyPrefix: "%%SOLUTION_NAME%%/%%VERSION%%"
       RegionalS3Bucket: "%%REGIONAL_BUCKET_NAME%%"
       CodeKeyPrefix: "%%SOLUTION_NAME%%/%%VERSION%%"
-  AnonymousData:
-    SendAnonymousData:
+  AnonymizedData:
+    SendAnonymizedData:
       Data: Yes
 
 Resources:
@@ -842,7 +842,7 @@ Resources:
         ArtifactBucketName: !Ref ArtifactBucket
         DataBucketName: !Ref DataBucketName
         CustomerManagedKey: !Ref CustomerManagedKey
-        EnableAnonymousData: !FindInMap [AnonymousData,SendAnonymousData,Data]
+        EnableAnonymousData: !FindInMap [AnonymizedData,SendAnonymizedData,Data]
         AnonymousDataLogger: !Ref AnonymousDataCustomResource
         SolutionId: !FindInMap [ "Application", "Solution", "Id" ]
         UUID: !GetAtt AnonymousDataUuid.UUID

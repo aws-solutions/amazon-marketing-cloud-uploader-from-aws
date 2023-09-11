@@ -1,19 +1,6 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
-##############################################################################
-#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.   #
-#                                                                            #
-#  Licensed under the Apache License Version 2.0 (the "License").            #
-#  You may not use this file except in compliance with the License.          #
-#  A copy of the License is located at                                       #
-#                                                                            #
-#      http://www.apache.org/licenses/                                       #
-#                                                                            #
-#  or in the "license" file accompanying this file. This file is distributed #
-#  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,        #
-#  express or implied. See the License for the specific language governing   #
-#  permissions and limitations under the License.                            #
-##############################################################################
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 
 import datetime
 import json
@@ -30,6 +17,6 @@ def send_metrics(config):
     url = "https://metrics.awssolutionsbuilder.com/generic"
     data = json.dumps(metrics).encode("utf8")
     headers = {"content-type": "application/json"}
-    req = requests.post(url, headers=headers, data=metrics, timeout=15)
+    req = requests.post(url, headers=headers, data=data, timeout=15)
     print("RESPONSE CODE:: {}".format(req.text))
     print("METRICS SENT:: {}".format(metrics))

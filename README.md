@@ -160,7 +160,7 @@ sh deployment/run-unit-tests.sh
 
 ## Collection of operational metrics
 
-This solution collects anonymous operational metrics to help AWS improve the
+This solution collects anonymized operational metrics to help AWS improve the
 quality of features of the solution. For more information, including how to disable
 this capability, please see the [implementation guide](https://docs.aws.amazon.com/solutions/latest/amazon-marketing-cloud-uploader-from-aws/collection-of-operational-metrics.html).
 

@@ -9,7 +9,8 @@
 
 import json
 from unittest.mock import MagicMock, patch
-
+import os
+import boto3
 import pytest
 from moto import mock_sts, mock_dynamodb
 
@@ -25,7 +26,7 @@ def test_configs():
         + "/etl_output_data.json-2022_01_06-09:01:00.gz",
         "s3_fact_key2": "amc/dataset_id/PT1M/"
         + BASE64_ENCODED_AMC_ENDPOINT
-        + "/filename",
+        + "/invalid_filename",
         "s3_fact_key3": "amc/dataset_id/P1D/"
         + BASE64_ENCODED_AMC_ENDPOINT
         + "/etl_output_data.json-2022_01_06-09:01:00.gz",
@@ -176,14 +177,7 @@ def test_start_fact_upload(
 ):
     from amc_uploader.amc_uploader import _start_fact_upload
 
-    mock_session_response.mount = MagicMock()
-
-    mock_session_response.return_value.get.return_value = MagicMock(
-        status_code=200, text=json.dumps({"period": "PT1M_FAIL"})
-    )
-    mock_response_put.return_value = None  # this is not called
-
-    # test invalid file names
+    # The following test exercises the logic for handling invalid filenames.
     # Filenames should look like this, "etl_output_data.json-2022_01_06-09:01:00.gz"
     data = _start_fact_upload(
         test_configs["s3_bucket"], test_configs["s3_fact_key2"]
@@ -191,31 +185,60 @@ def test_start_fact_upload(
     assert data["Status"] == "Error"
     assert str(data["Message"]) == "list index out of range"
 
+    # Uploads are performed asynchronously by the amc_uploader.py Lambda function.
+    # That function is triggered by S3 when the Glue ETL job saves its results.
+    # If an upload fails, then amc_uploader.py saves the error message to DynamoDB
+    # so that the front-end can show the error message to the user.
+    #
+    # The following test exercises that logic by trying to upload a dataset with an
+    # invalid time period, called "PT1M_FAIL".
+    dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"])
+    params = {
+        "TableName": os.environ["UPLOAD_FAILURES_TABLE_NAME"],
+        "KeySchema": [
+            {"AttributeName": "destination_endpoint", "KeyType": "HASH"},
+            {"AttributeName": "dataset_id", "KeyType": "RANGE"},
+        ],
+        "AttributeDefinitions": [
+            {"AttributeName": "destination_endpoint", "AttributeType": "S"},
+            {"AttributeName": "dataset_id", "AttributeType": "S"},
+        ],
+        "BillingMode": "PAY_PER_REQUEST",
+    }
+    dynamodb.create_table(**params)
+    mock_session_response.mount = MagicMock()
     mock_session_response.return_value.get.return_value = MagicMock(
         status_code=200, text=json.dumps({"period": "PT1M_FAIL"})
     )
     mock_response_put.return_value = MagicMock(
         status_code=200, text=json.dumps("Looks good")
     )
-
-    # test invalid dataset time period
     data = _start_fact_upload(
         test_configs["s3_bucket"], test_configs["s3_fact_key"]
     )
     assert data["Status"] == "Error"
     assert str(data["Message"]) == "Failed to update dataset time period."
 
+    # The following test exercises the logic for uploading a valid dataset.
     mock_session_response.return_value.get.return_value = MagicMock(
         status_code=200, text=json.dumps({"period": "P1D"})
     )
     mock_response_put.return_value = None  # this is not called
-
     expected_data = {"upload": [{"some_upload": "data"}]}
-
     mock_response_post.return_value = MagicMock(
         status_code=200, text=json.dumps(expected_data)
     )
+    assert expected_data == json.loads(
+        _start_fact_upload(
+            test_configs["s3_bucket"], test_configs["s3_fact_key3"]
+        )
+    )
 
+    # The following test exercises the logic for an AMC server error.
+    expected_data = {"message": "fake server error"}
+    mock_response_post.return_value = MagicMock(
+        status_code=500, text=json.dumps(expected_data)
+    )
     assert expected_data == json.loads(
         _start_fact_upload(
             test_configs["s3_bucket"], test_configs["s3_fact_key3"]
