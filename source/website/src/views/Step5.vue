@@ -19,7 +19,7 @@ SPDX-License-Identifier: Apache-2.0
               <ol>
                 <li>
                   Verify the following configurations:
-                  <table>
+                  <table><!-- //NOSONAR -->
                   <tr>
                     <td>Target dataset:</td>
                     <td>
@@ -366,6 +366,7 @@ SPDX-License-Identifier: Apache-2.0
           'datasetId': this.dataset_definition.dataSetId,
           'period': this.dataset_definition.period,
           'countryCode': this.dataset_definition.countryCode,
+          'fileFormat': this.dataset_definition.fileFormat,
           'destination_endpoints': JSON.stringify(this.destination_endpoints)
         })
       },
@@ -490,7 +491,7 @@ SPDX-License-Identifier: Apache-2.0
         a.download = "permissions_policy.json";
         a.href = window.URL.createObjectURL(blob);
         a.dataset.downloadurl = ['text/plain', a.download, a.href].join(':');
-        e.initEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+        e.initEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null); //NOSONAR
         a.dispatchEvent(e);
       },
       saveTrustPolicy() {
@@ -512,7 +513,7 @@ SPDX-License-Identifier: Apache-2.0
         a.download = "trust_policy.json";
         a.href = window.URL.createObjectURL(blob);
         a.dataset.downloadurl = ['text/plain', a.download, a.href].join(':');
-        e.initEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+        e.initEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null); //NOSONAR
         a.dispatchEvent(e);
       },
       saveFile() {
@@ -669,7 +670,7 @@ SPDX-License-Identifier: Apache-2.0
         a.download = "lambda_function.py";
         a.href = window.URL.createObjectURL(blob);
         a.dataset.downloadurl = ['text/plain', a.download, a.href].join(':');
-        e.initEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+        e.initEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null); //NOSONAR
         a.dispatchEvent(e);
       },
     }

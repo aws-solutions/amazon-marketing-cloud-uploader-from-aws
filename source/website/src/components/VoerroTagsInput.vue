@@ -354,7 +354,7 @@ export default {
          * @param ignoreSearchResults
          * @returns void
          */
-        tagFromInput(ignoreSearchResults = false) {
+        tagFromInput(ignoreSearchResults = false) { //NOSONAR
             // If we're choosing a tag from the search results
             if (this.searchResults.length && this.searchSelection >= 0 && !ignoreSearchResults) {
                 this.tagFromSearch(this.searchResults[this.searchSelection]);
@@ -500,7 +500,7 @@ export default {
          *
          * @returns void | Boolean
          */
-        searchTag() {
+        searchTag() { // NOSONAR
             if (this.typeahead !== true) {
                 return false;
             }

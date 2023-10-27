@@ -58,6 +58,7 @@ REQUIRED_PARAMS = [
     "deleted_fields",
     "dataset_id",
     "country_code",
+    "file_format",
     "destination_endpoints",
 ]
 OPTIONAL_PARAMS = ["period", "timestamp_column"]
@@ -107,10 +108,16 @@ def check_params(required: list, optional: list) -> dict:
         print("ERROR: Invalid user-defined value for country:")
         print(args["country_code"])
         sys.exit(1)
+    if args["file_format"] not in (
+            "JSON",
+            "CSV"
+    ):
+        print("ERROR: Invalid file format for input files:")
+        print(args["file_format"])
+        sys.exit(1)
     if len(args["destination_endpoints"]) == 0:
         print("destination_endpoints cannot be empty")
         sys.exit(1)
-
     return args
 
 

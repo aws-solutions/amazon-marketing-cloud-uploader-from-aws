@@ -1,0 +1,9 @@
+---
+id: SO0222 # Solution Id
+name: amazon-marketing-cloud-uploader-from-aws # trademarked name
+version: v2.2.0 # current version of the solution. Used to verify template headers
+cloudformation_templates: # This list should match with AWS CloudFormation templates section of IG
+  - template: amazon-marketing-cloud-uploader-from-aws.template
+    main_template: true
+build_environment:
+    build_image: 'aws/codebuild/standard:7.0' # Options include: 'aws/codebuild/standard:5.0','aws/codebuild/standard:6.0','aws/codebuild/standard:7.0','aws/codebuild/amazonlinux2-x86_64-standard:4.0','aws/codebuild/amazonlinux2-x86_64-standard:5.0'

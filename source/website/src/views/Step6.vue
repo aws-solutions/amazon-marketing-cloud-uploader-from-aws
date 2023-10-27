@@ -507,7 +507,7 @@ SPDX-License-Identifier: Apache-2.0
       this.amc_selector_visible = this.amc_selector_visible_state
     },
     methods: {
-      datetimeSortCompare(a, b, key) {
+      datetimeSortCompare(a, b, key) { //NOSONAR
         // this function is used to sort the StartedOn column
         if (key === 'StartedOn') {
           return new Date(b["StartedOn"]) - new Date(a["StartedOn"]);
@@ -655,8 +655,8 @@ SPDX-License-Identifier: Apache-2.0
         try {
           console.log("sending " + method + " " + resource)
           response = await this.$Amplify.API.get(apiName, resource);
-          if ('JobRuns' in response) {
-            this.etl_jobs = response.JobRuns.map(x => {
+          if ('JobRuns' in response) { //NOSONAR
+            this.etl_jobs = response.JobRuns.map(x => { //NOSONAR
               x["filename"] = x.Arguments["--source_key"];
               if ("StartedOn" in x) x["StartedOn"] = new Date(x["StartedOn"]).toLocaleString()
               return x
@@ -678,12 +678,13 @@ SPDX-License-Identifier: Apache-2.0
         this.isBusy4 = true;
         try {
           response = await this.$Amplify.API.get(apiName, resource);
-          if (response.length > 0 && "Value" in response[0]) {
-            this.available_amc_instances = response[0]["Value"]
-            // If there is only one registered AMC Instance, then select that one by default:
-            if (this.available_amc_instances.length === 1) {
-              this.selected_endpoint = this.available_amc_instances[0].endpoint
-            }
+          if (Array.isArray(response) && response.length > 0 &&
+            typeof response[0] == "object" && "Value" in response[0]) {
+              this.available_amc_instances = response[0]["Value"]
+              // If there is only one registered AMC Instance, then select that one by default:
+              if (this.available_amc_instances.length === 1) {
+                this.selected_endpoint = this.available_amc_instances[0].endpoint
+              }
           } else {
             this.$router.push({path: '/settings'})
           }

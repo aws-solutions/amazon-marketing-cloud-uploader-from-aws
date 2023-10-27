@@ -489,12 +489,20 @@ SPDX-License-Identifier: Apache-2.0
         a.download = "column_definitions.json";
         a.href = window.URL.createObjectURL(blob);
         a.dataset.downloadurl = ['text/json', a.download, a.href].join(':');
-        e.initEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+        e.initEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null); //NOSONAR
         a.dispatchEvent(e);
       },
       onReset() {
         this.$store.commit('updateDeletedColumns', [])
-        this.get_datafile_columns('POST', 'get_data_columns', {'s3bucket': this.DATA_BUCKET_NAME, 's3key':this.s3key})
+        this.get_datafile_columns(
+            'POST',
+            'get_data_columns',
+            {
+              's3bucket': this.DATA_BUCKET_NAME,
+              's3key': this.s3key,
+              'fileFormat': this.new_dataset_definition.fileFormat
+            }
+        )
         this.column_type_options.forEach(x => x.disabled = false)
         this.pii_type_options.forEach(x => x.disabled = false)
       },
@@ -526,7 +534,7 @@ SPDX-License-Identifier: Apache-2.0
         }
         return true
       },
-      onSubmit() {
+      onSubmit() { // NOSONAR
         if (this.selected_dataset !== null) {
           this.extra_columns.forEach(x => this.deleteColumn(x))
           this.items = this.selected_dataset_items
@@ -783,9 +791,9 @@ SPDX-License-Identifier: Apache-2.0
           if(e.response.status === 400) this.showBadRequestError = true;
           else this.showServerError = true;
 
-          console.log("ERROR: " + e.response.data.message)
+          console.log("ERROR: " + e.response.data.Message)
           this.busy_getting_datafile_columns = false;
-          this.results = e.response.data.message
+          this.results = e.response.data.Message
         }
         this.busy_getting_datafile_columns = false;
       },

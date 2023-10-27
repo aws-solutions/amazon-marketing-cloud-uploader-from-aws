@@ -268,7 +268,8 @@ export default {
         if (method === "GET") {
           response = await this.$Amplify.API.get(apiName, resource);
         }
-        if (response.length > 0 && "Value" in response[0]) {
+        if (Array.isArray(response) && response.length > 0 &&
+          typeof response[0] == "object" && "Value" in response[0]) {
           this.available_amc_instances = response[0]["Value"]
           // set default endpoint if there is only one to choose
           if (this.available_amc_instances.length == 1) {

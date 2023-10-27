@@ -8,7 +8,6 @@ package
 deployment/regional-s3-assets
 deployment/global-s3-assets
 dist
-package-lock.json
 webapp-manifest.json
 *.zip
 source/.coverage

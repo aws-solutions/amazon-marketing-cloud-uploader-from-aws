@@ -10,6 +10,8 @@
 import os
 import shutil
 from unittest.mock import ANY, patch
+from moto import mock_s3
+import boto3
 
 import pandas as pd
 import pytest
@@ -214,6 +216,7 @@ test_args = {
     "period": "autodetect",
     "timestamp_column": "timestamp",
     "country_code": "US",
+    "file_format": "JSON",
     "JOB_NAME": "test",
     "JOB_RUN_ID": "test",
     "solution_id": "test",
@@ -226,13 +229,13 @@ test_args = {
 
 @patch("awswrangler.s3.to_json")
 def test_write_to_s3_json(mock_to_json):
-    rw.write_to_s3(df="test", filepath="test", content_type="application/json")
+    rw.write_to_s3(df="test", filepath="test", file_format="JSON")
     mock_to_json.assert_called()
 
 
 @patch("awswrangler.s3.to_csv")
 def test_write_to_s3_csv(mock_to_csv):
-    rw.write_to_s3(df="test", filepath="test", content_type="text/csv")
+    rw.write_to_s3(df="test", filepath="test", file_format="CSV")
     mock_to_csv.assert_called()
 
 
@@ -252,7 +255,7 @@ def test_load_input_data(mock_read_csv):
     test_file.data = pd.DataFrame(data=[[1234]], columns=["phone"])
     test_file.source_bucket = "bucket"
     test_file.key = "key"
-    test_file.content_type = "text/csv"
+    test_file.file_format = "CSV"
     test_file.pii_fields = [{"column_name": "phone", "pii_type": "PHONE"}]
 
     test_file.load_input_data()
@@ -333,7 +336,7 @@ def test_time_series_partitioning():
 def test_save_dimension_output(mock_write_to_s3):
     test_file = rw.DimensionDataset(test_args)
     test_file.data = "test"
-    test_file.content_type = "test"
+    test_file.file_format = "test"
 
     df = "test"
     filepath = (
@@ -349,17 +352,16 @@ def test_save_dimension_output(mock_write_to_s3):
         + "test"
         + ".gz"
     )
-    content_type = "test"
     test_file.save_dimension_output()
     mock_write_to_s3.assert_called_once_with(
-        df=df, filepath=filepath, content_type=content_type
+        df=df, filepath=filepath, file_format=test_file.file_format
     )
 
 
 @patch("glue.library.read_write.write_to_s3")
 def test_save_fact_output(mock_write_to_s3):
     test_file = rw.FactDataset(test_args)
-    test_file.content_type = "test"
+    test_file.file_format = "test"
     test_file.timeseries_partition_size = "P1D"
     test_file.destination_endpoints = [
         "http://sample_endpoint1.execute-api.us-east-1.amazonaws.com/prod",
@@ -416,17 +418,17 @@ def test_save_fact_output(mock_write_to_s3):
         {
             "df": ANY,
             "filepath": "s3://test/amc/test/P1D/sample_endpoint1.execute-api.us-east-1.amazonaws.com/test-2020_04_12-00:00:00.gz",
-            "content_type": "test",
+            "file_format": "test",
         },
         {
             "df": ANY,
             "filepath": "s3://test/amc/test/P1D/sample_endpoint2.execute-api.us-east-1.amazonaws.com/test-2020_04_12-00:00:00.gz",
-            "content_type": "test",
+            "file_format": "test",
         },
         {
             "df": ANY,
             "filepath": "s3://test/amc/test/P1D/sample_endpoint1.execute-api.us-east-1.amazonaws.com/test-2020_04_11-00:00:00.gz",
-            "content_type": "test",
+            "file_format": "test",
         },
         {
             "df": ANY,
@@ -436,12 +438,12 @@ def test_save_fact_output(mock_write_to_s3):
         {
             "df": ANY,
             "filepath": "s3://test/amc/test/P1D/sample_endpoint1.execute-api.us-east-1.amazonaws.com/test-2020_04_10-00:00:00.gz",
-            "content_type": "test",
+            "file_format": "test",
         },
         {
             "df": ANY,
             "filepath": "s3://test/amc/test/P1D/invalid_sample_endpoint2.execute-api.us-east-1.amazonaws.com/test-2020_04_10-00:00:00.gz",
-            "content_type": "test",
+            "file_format": "test",
         },
     ]
 

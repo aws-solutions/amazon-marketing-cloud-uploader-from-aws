@@ -434,6 +434,7 @@ Resources:
         "--deleted_fields": ""
         "--dataset_id": ""
         "--country_code": ""
+        "--file_format": ""
         "--destination_endpoints": ""
       ExecutionProperty:
         MaxConcurrentRuns: 200

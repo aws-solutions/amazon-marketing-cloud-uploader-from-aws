@@ -849,7 +849,7 @@ Resources:
 
   # Web stack
 
-  WebStack2:
+  WebStack3:
     Type: "AWS::CloudFormation::Stack"
     Properties:
       TemplateURL: !Join
@@ -1090,7 +1090,7 @@ Resources:
     Properties:
       Application: !GetAtt Application.Id
       Resource:
-        !Ref WebStack2
+        !Ref WebStack3
       ResourceType: CFN_STACK
 
   AppRegistryApplicationStackAssociationNestedGlueStack:
@@ -1129,4 +1129,4 @@ Resources:
 
 Outputs:
   UserInterface:
-    Value: !GetAtt WebStack2.Outputs.CloudfrontUrl
+    Value: !GetAtt WebStack3.Outputs.CloudfrontUrl

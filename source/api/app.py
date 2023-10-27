@@ -53,9 +53,11 @@ ARTIFACT_BUCKET = os.environ["ARTIFACT_BUCKET"]
 SYSTEM_TABLE_NAME = os.environ["SYSTEM_TABLE_NAME"]
 UPLOAD_FAILURES_TABLE_NAME = os.environ["UPLOAD_FAILURES_TABLE_NAME"]
 
-APPLICATION_JSON = "application/json"
 DATA = "/data/"
-
+JSON_CONTENT_TYPE = "application/json"
+CSV_CONTENT_TYPE = "text/csv"
+PLAIN_TEXT_CONTENT_TYPE = "text/plain"
+GZIP_CONTENT_TYPE = "application/x-gzip"
 
 @app.route(
     "/list_datasets", cors=True, methods=["POST"], authorizer=authorizer
@@ -80,7 +82,7 @@ def list_datasets():
         return Response(
             body=response.text,
             status_code=response.status_code,
-            headers={"Content-Type": APPLICATION_JSON},
+            headers={"Content-Type": JSON_CONTENT_TYPE},
         )
     except Exception as ex:
         logger.error(ex)
@@ -111,7 +113,7 @@ def describe_dataset():
         return Response(
             body=response.text,
             status_code=response.status_code,
-            headers={"Content-Type": APPLICATION_JSON},
+            headers={"Content-Type": JSON_CONTENT_TYPE},
         )
     except Exception as e:
         logger.error(e)
@@ -149,7 +151,7 @@ def create_dataset():
         return Response(
             body=response.text,
             status_code=response.status_code,
-            headers={"Content-Type": APPLICATION_JSON},
+            headers={"Content-Type": JSON_CONTENT_TYPE},
         )
     except Exception as e:
         logger.error(e)
@@ -165,6 +167,8 @@ def create_dataset():
 def start_amc_transformation():
     """
     Invoke Glue job to prepare data for uploading into AMC.
+    This function is called from the GUI. It may also be called
+    directly (e.g. from an S3 trigger function).  
 
     Returns AMC response:
 
@@ -187,6 +191,24 @@ def start_amc_transformation():
         destination_endpoints = app.current_request.json_body[
             "destination_endpoints"
         ]
+        
+        # The fileFormat parameter is optional. 
+        # If this function  is called from the GUI then the payload will
+        # include fileFormat. If it is called directly, then it might not include 
+        # fileFormat since that is an optional argument. If fileFormat is not 
+        # provided then this function will attempt to infer it from the file 
+        # content_type. 
+        #
+        # At the end of this function, fileFormat is required so that it can be
+        # passed to the Glue ETL job.
+        file_format = app.current_request.json_body.get("fileFormat", "")
+        if file_format not in ("", "JSON", "CSV"):
+            logger.error("Unexpected fileFormat value: " + file_format)
+            logger.error("fileFormat must be \"CSV\" or \"JSON\".")
+            raise BadRequestError("Unexpected file format: " + file_format)
+        if file_format == "":
+            file_format = get_file_format(source_bucket, source_key)
+
         client = session.client("glue", config=config)
         args = {
             "--source_bucket": source_bucket,
@@ -198,6 +220,7 @@ def start_amc_transformation():
             "--dataset_id": dataset_id,
             "--period": period,
             "--country_code": country_code,
+            "--file_format": file_format,
             "--destination_endpoints": destination_endpoints,
         }
         logger.info("Starting Glue job:")
@@ -275,7 +298,7 @@ def upload_status():
         return Response(
             body=response.text,
             status_code=response.status_code,
-            headers={"Content-Type": APPLICATION_JSON},
+            headers={"Content-Type": JSON_CONTENT_TYPE},
         )
     except Exception as e:
         logger.error(e)
@@ -312,7 +335,7 @@ def list_uploads():
         return Response(
             body=response.text,
             status_code=response.status_code,
-            headers={"Content-Type": APPLICATION_JSON},
+            headers={"Content-Type": JSON_CONTENT_TYPE},
         )
     except Exception as ex:
         logger.error(ex)
@@ -401,7 +424,7 @@ def delete_dataset():
         return Response(
             body=response.text,
             status_code=response.status_code,
-            headers={"Content-Type": APPLICATION_JSON},
+            headers={"Content-Type": JSON_CONTENT_TYPE},
         )
     except Exception as ex:
         logger.error(ex)
@@ -428,7 +451,7 @@ def version():
     "/list_bucket",
     cors=True,
     methods=["POST"],
-    content_types=[APPLICATION_JSON],
+    content_types=[JSON_CONTENT_TYPE],
     authorizer=authorizer,
 )
 def list_bucket():
@@ -481,26 +504,37 @@ def list_bucket():
     "/get_data_columns",
     cors=True,
     methods=["POST"],
-    content_types=[APPLICATION_JSON],
+    content_types=[JSON_CONTENT_TYPE],
     authorizer=authorizer,
 )
 def get_data_columns():
-    """Get the column names and file format of a user-specified JSON or CSV file
+    """Get the column names and content_type of a user-specified JSON or CSV file.
+
+       This function is used by the front-end to generate a web form where
+       users can specify attributes for each column in the input file.
+
+       This function is also used to raise errors in the front-end when:
+         - the user inputs a list of more than 200 files
+         - the user inputs a file that is not formatted as CSV or JSON
+         - the user inputs files that have different content_types
+         - the user inputs files that have different columns
 
     Body:
+        The fileFormat parameter is optional. Accepted values are "JSON" or
+        "CSV". If it is not specified then fileFormat will be inferred from
+        the content_type specified by S3.
 
-    .. code-block:: python
+        .. code-block:: python
 
-        {
-            "s3bucket": string,
-            "s3key": string
-        }
+            {
+                "s3bucket": string,
+                "s3key": string
+                "fileFormat": string
+            }
 
 
     Returns:
-        List of column names and data types found in the first row of
-        the user-specified data file.
-        Also returns the content_type, "application/json" or  "text/csv", of the data file.
+        List of column names and content_type common to each input file.
 
         .. code-block:: python
 
@@ -514,140 +548,103 @@ def get_data_columns():
     """
 
     log_request_parameters()
+    current_request = json.loads(app.current_request.raw_body.decode())
     try:
-        bucket = json.loads(app.current_request.raw_body.decode())["s3bucket"]
-        keys = json.loads(app.current_request.raw_body.decode())["s3key"]
-        keys_to_validate = [x.strip() for x in keys.split(",")]
+        # Validate and extract request parameters:
+        s3bucket, keys, file_format = extract_request_parameters(current_request)
 
-        json_content_type = APPLICATION_JSON
-        csv_content_type = "text/csv"
-        plain_text_content_type = "text/plain"
-        gzip_content_type = "application/x-gzip"
-        input_gzip_content_type = ""
-        content_type = ""
+        # Return an error if the user inputs more than 200 files because
+        # AWS Glue service quota allows maximum of 200 concurrent glue jobs
+        # per account.
+        if len(keys) > 200:
+            raise BadRequestError("Number of files selected cannot exceed 200.")
 
-        # for concurrent glue jobs, can only run a max of 200 per account
-        if len(keys_to_validate) > 200:
-            return Response(
-                body={
-                    "message": "Number of files selected cannot exceed 200."
-                },
-                status_code=400,
-                headers={"Content-Type": plain_text_content_type},
-            )
-        # get first columns to compare against to ensure all files have same schema
-        base_key = keys_to_validate[0]
+        # If file format is unspecified then infer it from the first file:
+        if file_format == "":
+            file_format = get_file_format(s3bucket, keys[0])
 
-        for key in keys_to_validate:
-            s3_obj = boto3.client("s3", config=config)
-            response = s3_obj.head_object(Bucket=bucket, Key=key)
-            is_gzip_file = bool(response["ContentType"] == gzip_content_type)
+        # Get the list of data fields from the first file:
+        first_file_description = describe_file(s3bucket, keys[0], file_format)
 
-            # determine if .json.gz or .csv.gz
-            if is_gzip_file:
-                input_gzip_content_type = check_input_gzip_content_type(
-                    key=key
-                )
+        # Make sure all files have the same format and data fields:
+        for key in keys[1:]:
+            if describe_file(s3bucket, key, file_format) != first_file_description:
+                raise BadRequestError("Every file must have the same format and data fields.")
 
-            # Return an error if user selected a combination
-            # of CSV and JSON files.
-            content_type = validate_file_format_match(
-                response=response,
-                content_type=content_type,
-                is_gzip_file=is_gzip_file,
-                input_gzip_content_type=input_gzip_content_type,
-            )
+        return first_file_description
 
-            # Read first row
-            logger.info("Reading " + "s3://" + bucket + "/" + key)
-
-            if json_content_type in (content_type, gzip_content_type):
-                dfs = wr.s3.read_json(
-                    path=["s3://" + bucket + "/" + key],
-                    chunksize=1,
-                    lines=True,
-                )
-            elif csv_content_type in (content_type, gzip_content_type):
-                dfs = wr.s3.read_csv(
-                    path=["s3://" + bucket + "/" + key], chunksize=1
-                )
-            else:
-                logger.info("File has unsupported content type, " + content_type)
-                logger.info("Content type must be text/csv, application/json, or application/x-gzip.")
-                return Response(
-                    body={"message": "Unsupported content type: " + content_type},
-                    status_code=400,
-                    headers={"Content-Type": plain_text_content_type},
-                )
-            chunk = next(dfs)
-            columns = list(chunk.columns.values)
-
-            if key == base_key:
-                base_columns = columns
-                result = json.dumps(
-                    {"columns": base_columns, "content_type": content_type}
-                )
-
-            if set(columns) != set(base_columns):
-                error_text = (
-                    "Schemas must match for each file. The schemas in "
-                    + key
-                    + " and "
-                    + base_key
-                    + " do not match."
-                )
-                logger.error(error_text)
-                return Response(
-                    body={"message": error_text},
-                    status_code=400,
-                    headers={"Content-Type": plain_text_content_type},
-                )
-
-        return result
-    except Exception as ex:
-        logger.error(ex)
-        return {"Status": "Error", "Message": str(ex)}
+    except Exception as e:
+        logger.error(e)
+        raise e
 
 
-# Helper function to check if GZIP file is JSON or CSV format
-def check_input_gzip_content_type(key):
-    json_content_type = APPLICATION_JSON
-    csv_content_type = "text/csv"
+# This function extracts request parameters for /get_data_columns
+def extract_request_parameters(request):
+    s3bucket = request.get("s3bucket")
+    keys = [x.strip() for x in request.get("s3key", "").split(",")]
+    file_format = request.get("fileFormat", "")
+    if not s3bucket:
+        raise BadRequestError("Missing parameter s3bucket")
+    if not keys:
+        raise BadRequestError("Missing parameter s3key")
+    if file_format not in ("", "JSON", "CSV"):
+        logger.error("Unexpected fileFormat value: " + file_format)
+        logger.error("fileFormat must be \"CSV\" or \"JSON\".")
+        raise BadRequestError("Unexpected file format: " + file_format)
+    return s3bucket, keys, file_format
 
-    # regex file name to see if json.gz
-    if re.search(r"\.json\.gz$", key):
-        input_gzip_content_type = json_content_type
 
-    # regex file name to see if csv.gz
-    elif re.search(r"\.csv\.gz$", key):
-        input_gzip_content_type = csv_content_type
-
-    return input_gzip_content_type
-
-
-# Helper function to validate if file types are compatible for upload
-def validate_file_format_match(
-    response, content_type, is_gzip_file, input_gzip_content_type
-):
-    plain_text_content_type = "text/plain"
-
-    if content_type == "":
-        if is_gzip_file:
-            content_type = input_gzip_content_type
+# This function determines whether the input file contains data formatted as
+# CSV or JSON.
+def get_file_format(bucket, key):
+    s3_obj = boto3.client("s3", config=config)
+    head_object_response = s3_obj.head_object(Bucket=bucket, Key=key)
+    content_type = head_object_response["ContentType"]
+    if content_type == JSON_CONTENT_TYPE:
+        file_format = "JSON"
+    elif content_type == CSV_CONTENT_TYPE:
+        file_format = "CSV"
+    elif content_type == GZIP_CONTENT_TYPE:
+        if re.search(r"\.json\.gz$", key):
+            file_format = "JSON"
+        elif re.search(r"\.csv\.gz$", key):
+            file_format = "CSV"
         else:
-            content_type = response["ContentType"]
-    elif content_type not in (
-        response["ContentType"],
-        input_gzip_content_type,
-    ):
-        return Response(
-            body={
-                "message": "Files must all have the same format (CSV or JSON)."
-            },
-            status_code=400,
-            headers={"Content-Type": plain_text_content_type},
+            message = "Cannot infer file format of gzipped file."
+            logger.error(message)
+            raise BadRequestError(message)
+    else:
+        message = "Unsupported content type " + str(content_type)
+        logger.error(message)
+        raise BadRequestError(message)
+    return file_format
+
+
+# This function reads the first row of the input file and returns the data
+# fields present in that row along with the content_type of the file.
+def describe_file(bucket, key, file_format):
+    file_description = None
+    if file_format == "JSON":
+        dfs = wr.s3.read_json(
+            path=["s3://" + bucket + "/" + key],
+            chunksize=1,
+            lines=True,
         )
-    return content_type
+        chunk = next(dfs)
+        columns = chunk.columns.to_list()
+        file_description = json.dumps(
+            {"columns": columns, "content_type": JSON_CONTENT_TYPE}
+        )
+    elif file_format == "CSV":
+        dfs = wr.s3.read_csv(
+            path=["s3://" + bucket + "/" + key], chunksize=1
+        )
+        chunk = next(dfs)
+        columns = chunk.columns.to_list()
+        file_description = json.dumps(
+            {"columns": columns, "content_type": CSV_CONTENT_TYPE}
+        )
+    return file_description
 
 
 # Validate the AmcInstances parameter
@@ -679,7 +676,7 @@ def validate_amc_system_parameter(system_parameter):
     "/system/configuration",
     cors=True,
     methods=["POST"],
-    content_types=[APPLICATION_JSON],
+    content_types=[JSON_CONTENT_TYPE],
     authorizer=authorizer,
 )
 def save_system_configuration():
