@@ -124,7 +124,7 @@ def test_get_data_columns(test_configs, get_amc_json, test_data):
                 body=json.dumps(
                     {
                         "s3bucket": test_configs["s3bucket"],
-                        "s3key": test_configs["source_key"],
+                        "s3key": test_configs["source_key"]
                     }
                 ),
             )
@@ -132,6 +132,116 @@ def test_get_data_columns(test_configs, get_amc_json, test_data):
             assert response.json_body["columns"] is not None
             for expected_key in list(test_data[0].keys()):
                 assert expected_key in response.json_body["columns"]
+
+
+def test_get_data_columns_invalid_content_type(test_configs, get_amc_json):
+    with mock_s3():
+        s3 = boto3.client("s3", region_name=os.environ["AWS_REGION"])
+        s3.create_bucket(Bucket=test_configs["s3bucket"])
+        s3 = boto3.resource("s3")
+        s3_object = s3.Object(
+            test_configs["s3bucket"], test_configs["source_key"]
+        )
+        s3_object.put(Body=get_amc_json, ContentType="application/octet-stream")
+
+        with Client(app.app) as client:
+            response = client.http.post(
+                "/get_data_columns",
+                body=json.dumps(
+                    {
+                        "s3bucket": test_configs["s3bucket"],
+                        "s3key": test_configs["source_key"]
+                    }
+                ),
+            )
+            assert response.status_code == 400
+            assert response.json_body["Message"] == "Unsupported content type application/octet-stream"
+
+
+def test_get_data_columns_gzip(test_configs, get_amc_json):
+    # This test validates the error message which is returned when content type
+    # is application/x-gzip but the filename does not end with .json.gz or .csv.gz
+    with mock_s3():
+        s3 = boto3.client("s3", region_name=os.environ["AWS_REGION"])
+        s3.create_bucket(Bucket=test_configs["s3bucket"])
+        s3 = boto3.resource("s3")
+        s3_object = s3.Object(
+            test_configs["s3bucket"], test_configs["source_key"]
+        )
+        s3_object.put(Body=get_amc_json, ContentType="application/x-gzip")
+
+        with Client(app.app) as client:
+            response = client.http.post(
+                "/get_data_columns",
+                body=json.dumps(
+                    {
+                        "s3bucket": test_configs["s3bucket"],
+                        "s3key": test_configs["source_key"]
+                    }
+                ),
+            )
+            message = "Cannot infer file format of gzipped file."
+            assert response.status_code == 400
+            assert response.json_body["Message"] == message
+
+
+def test_get_data_columns_fileformat(test_configs, get_amc_json, test_data):
+    # This test validates the error message which is returned when the fileFormat
+    # parameter is invalid.
+    content_type = test_configs["content_type"]
+    with mock_s3():
+        s3 = boto3.client("s3", region_name=os.environ["AWS_REGION"])
+        s3.create_bucket(Bucket=test_configs["s3bucket"])
+        s3 = boto3.resource("s3")
+        s3_object = s3.Object(
+            test_configs["s3bucket"], test_configs["source_key"]
+        )
+        s3_object.put(Body=get_amc_json, ContentType=content_type)
+
+        with Client(app.app) as client:
+            response = client.http.post(
+                "/get_data_columns",
+                headers={"Content-Type": content_type},
+                body=json.dumps(
+                    {
+                        "s3bucket": test_configs["s3bucket"],
+                        "s3key": test_configs["source_key"],
+                        "fileFormat": "NONSENSE_FORMAT"
+                    }
+                ),
+            )
+            assert response.status_code == 400
+            assert response.json_body["Message"] == "Unexpected file format: NONSENSE_FORMAT"
+
+            response = client.http.post(
+                "/get_data_columns",
+                headers={"Content-Type": content_type},
+                body=json.dumps(
+                    {
+                        "s3bucket": test_configs["s3bucket"],
+                        "s3key": test_configs["source_key"],
+                        "fileFormat": "JSON"
+                    }
+                ),
+            )
+            assert response.status_code == 200
+            assert response.json_body["columns"] is not None
+            for expected_key in list(test_data[0].keys()):
+                assert expected_key in response.json_body["columns"]
+
+            response = client.http.post(
+                "/get_data_columns",
+                headers={"Content-Type": content_type},
+                body=json.dumps(
+                    {
+                        "s3bucket": test_configs["s3bucket"],
+                        "s3key": test_configs["source_key"],
+                        "fileFormat": "CSV"
+                    }
+                ),
+            )
+            assert response.status_code == 200
+            assert response.json_body["columns"] is not None
 
 
 @mock_dynamodb
@@ -606,52 +716,62 @@ def test_create_dataset(mock_response, test_configs):
 
 
 @mock_sts
-def test_start_amc_transformation(test_configs):
-    with mock_glue():
-        solution_config = json.loads(os.environ["botoConfig"])
-        from botocore import config
-
-        config = config.Config(**solution_config)
-        glue_client = boto3.client("glue", config=config)
-
-        glue_client.create_job(
-            Name=os.environ["AMC_GLUE_JOB_NAME"],
-            Role="Glue_DefaultRole",
-            Command={
-                "Name": "glueetl",
-                "ScriptLocation": "s3://my_script_bucket/scripts/my_etl_script.py",
-            },
+def test_start_amc_transformation(test_configs, get_amc_json):
+    with mock_s3():
+        s3 = boto3.client("s3", region_name=os.environ["AWS_REGION"])
+        s3.create_bucket(Bucket=test_configs["s3bucket"])
+        s3 = boto3.resource("s3")
+        s3_object = s3.Object(
+            test_configs["s3bucket"], test_configs["source_key"]
         )
+        s3_object.put(Body=get_amc_json, ContentType=test_configs["content_type"])
 
-        content_type = test_configs["content_type"]
-        with Client(app.app) as client:
-            response = client.http.post(
-                "/start_amc_transformation",
-                headers={"Content-Type": content_type},
-                body=json.dumps(
-                    {
-                        "sourceBucket": test_configs["s3bucket"],
-                        "sourceKey": test_configs["source_key"],
-                        "outputBucket": test_configs["outputBucket"],
-                        "piiFields": '[{"column_name":"first_name","pii_type":"FIRST_NAME"},{"column_name":"last_name","pii_type":"LAST_NAME"},{"column_name":"email","pii_type":"EMAIL"}]',
-                        "deletedFields": "[]",
-                        "timestampColumn": "timestamp",
-                        "datasetId": test_configs["data_set_id"],
-                        "period": test_configs["period"],
-                        "countryCode": "USA",
-                        "destination_endpoints": test_configs[
-                            "destination_endpoint"
-                        ],
-                    }
-                ),
+        with mock_glue():
+            solution_config = json.loads(os.environ["botoConfig"])
+            from botocore import config
+
+            config = config.Config(**solution_config)
+            glue_client = boto3.client("glue", config=config)
+
+            glue_client.create_job(
+                Name=os.environ["AMC_GLUE_JOB_NAME"],
+                Role="Glue_DefaultRole",
+                Command={
+                    "Name": "glueetl",
+                    "ScriptLocation": "s3://my_script_bucket/scripts/my_etl_script.py",
+                },
             )
-            assert response.status_code == 200
-            assert response.json_body["JobRunId"]
-            glue_resp = glue_client.get_job_run(
-                JobName=os.environ["AMC_GLUE_JOB_NAME"],
-                RunId=response.json_body["JobRunId"],
-            )
-            assert glue_resp["JobRun"]["Id"] == response.json_body["JobRunId"]
+
+            content_type = test_configs["content_type"]
+            with Client(app.app) as client:
+                response = client.http.post(
+                    "/start_amc_transformation",
+                    headers={"Content-Type": content_type},
+                    body=json.dumps(
+                        {
+                            "sourceBucket": test_configs["s3bucket"],
+                            "sourceKey": test_configs["source_key"],
+                            "outputBucket": test_configs["outputBucket"],
+                            "piiFields": '[{"column_name":"first_name","pii_type":"FIRST_NAME"},{"column_name":"last_name","pii_type":"LAST_NAME"},{"column_name":"email","pii_type":"EMAIL"}]',
+                            "deletedFields": "[]",
+                            "timestampColumn": "timestamp",
+                            "datasetId": test_configs["data_set_id"],
+                            "period": test_configs["period"],
+                            "countryCode": "USA",
+                            "file_format": "JSON",
+                            "destination_endpoints": test_configs[
+                                "destination_endpoint"
+                            ],
+                        }
+                    ),
+                )
+                assert response.status_code == 200
+                assert response.json_body["JobRunId"]
+                glue_resp = glue_client.get_job_run(
+                    JobName=os.environ["AMC_GLUE_JOB_NAME"],
+                    RunId=response.json_body["JobRunId"],
+                )
+                assert glue_resp["JobRun"]["Id"] == response.json_body["JobRunId"]
 
 
 @patch("chalicelib.sigv4.sigv4.requests.post")

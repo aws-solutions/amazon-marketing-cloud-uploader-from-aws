@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2023-11-01
+
+### Added
+
+- Added the option for users to specify CSV/JSON file format in the dataset definition web form.
+- Added an optional parameter to API resources /get_data_columns and /start_amc_transformation that allows users to specify CSV/JSON file format.
+
+### Changed
+
+- Resolve code quality issues identified by SonarQube in the front-end.
+- Remove Autodetect and PT1M options from the dataset definition web form.
+
 ## [2.1.1] - 2023-09-11
 
 ### Fixed

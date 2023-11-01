@@ -2,14 +2,23 @@
 .idea
 .venv
 source/website/node_modules
+package-lock.json
 deployment/global-s3-assets
 deployment/regional-s3-assets
-source/api/.chalice/deployments/*
-source/amc_uploader/dist/*
-source/helper/dist/*
-source/tests/*
-source/api/tests/*
+source/tests/unit_test/amc_transformation/sample_data
+source/tests/integration_test/test_api_integration.py
 
 # Account Id is public and available through an AWS Lambda Managed layer for AWS Data Wrangler Lambda
 deployment/amazon-marketing-cloud-uploader-from-aws.yaml:331
 source/api/external_resources.json:313
+
+[node-npmoutdated]
+aws-amplify=4.3.46
+aws-amplify-vue=2.1.5
+bootstrap=4.6.2
+eslint=7.32.0
+eslint-plugin-vue=7.20.0
+vue=2.7.14
+vue-router=3.6.5
+vuex=3.6.2
+webpack-subresource-integrity=5.1.0

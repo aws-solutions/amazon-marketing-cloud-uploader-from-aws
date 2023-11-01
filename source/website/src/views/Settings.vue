@@ -275,7 +275,7 @@ SPDX-License-Identifier: Apache-2.0
         a.download = "amc_instances.json";
         a.href = window.URL.createObjectURL(blob);
         a.dataset.downloadurl = ['text/json', a.download, a.href].join(':');
-        e.initEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+        e.initEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null); //NOSONAR
         a.dispatchEvent(e);
       },
       onReset() {
@@ -323,7 +323,8 @@ SPDX-License-Identifier: Apache-2.0
           if (method === "GET") {
             response = await this.$Amplify.API.get(apiName, resource);
           }
-          if (response.length > 0 && "Value" in response[0]) {
+        if (Array.isArray(response) && response.length > 0 && 
+          typeof response[0] == "object" && "Value" in response[0]) {
             this.amcInstances = response[0]["Value"]
             console.log(JSON.stringify(this.amcInstances))
           }
@@ -349,9 +350,7 @@ SPDX-License-Identifier: Apache-2.0
     margin-bottom: 0px !important;
   }
   .tags-input-wrapper-default {
-    border: 0
-  }
-  .tags-input-wrapper-default {
+    border: 0;
     padding: 0em 0em;
   }
 </style>

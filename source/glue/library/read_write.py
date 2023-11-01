@@ -16,9 +16,6 @@ import pandas as pd
 # Resolve sonarqube code smells
 WRITING = "Writing "
 ROWS_TO = " rows to "
-JSON_CONTENT_TYPE = "application/json"
-CSV_CONTENT_TYPE = "text/csv"
-GZIP_CONTENT_TYPE = "application/x-gzip"
 AMC_STR = "amc"
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
@@ -27,8 +24,8 @@ DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 ###############################
 
 
-def write_to_s3(df: pd.DataFrame, filepath: str, content_type: str) -> None:
-    if content_type == JSON_CONTENT_TYPE:
+def write_to_s3(df: pd.DataFrame, filepath: str, file_format: str) -> None:
+    if file_format == "JSON":
         wr.s3.to_json(
             df=df,
             path=filepath,
@@ -36,7 +33,7 @@ def write_to_s3(df: pd.DataFrame, filepath: str, content_type: str) -> None:
             lines=True,
             orient="records",
         )
-    elif content_type == CSV_CONTENT_TYPE:
+    elif file_format == "CSV":
         wr.s3.to_csv(
             df=df,
             path=filepath,
@@ -72,6 +69,7 @@ class DataFile:
         self.destination_endpoints = list(
             json.loads(args["destination_endpoints"])
         )
+        self.file_format = args["file_format"]
 
         # other attributes
         self.data = pd.DataFrame()
@@ -82,12 +80,8 @@ class DataFile:
     def read_bucket(self) -> None:
         s3 = boto3.client("s3")
         response = s3.head_object(Bucket=self.source_bucket, Key=self.key)
-        content_type = response["ContentType"]
-        print("CONTENT TYPE: " + content_type)
         num_bytes = response["ContentLength"]
         print("FILE SIZE: " + str(num_bytes))
-
-        self.content_type = content_type
         self.num_bytes = num_bytes
 
     def load_input_data(self) -> None:
@@ -100,33 +94,21 @@ class DataFile:
         for field in self.pii_fields:
             pii_column_names[field["column_name"]] = str
 
-        content_type = self.content_type
-
-        # if a gzip, determine whether it is a zipped json or csv
-        if self.content_type == GZIP_CONTENT_TYPE:
-            # regex file name to see if json.gz
-            if re.search(r"\.json\.gz$", self.key):
-                content_type = JSON_CONTENT_TYPE
-
-            # regex file name to see if csv.gz
-            elif re.search(r"\.csv\.gz$", self.key):
-                content_type = CSV_CONTENT_TYPE
-
-        if content_type == JSON_CONTENT_TYPE:
+        if self.file_format == "JSON":
             df_chunks = wr.s3.read_json(
                 path=["s3://" + self.source_bucket + "/" + self.key],
                 chunksize=chunksize,
                 lines=True,
                 dtype=pii_column_names,
             )
-        elif content_type == CSV_CONTENT_TYPE:
+        elif self.file_format == "CSV":
             df_chunks = wr.s3.read_csv(
                 path=["s3://" + self.source_bucket + "/" + self.key],
                 chunksize=chunksize,
                 dtype=pii_column_names,
             )
         else:
-            print("Unsupported content type: " + self.content_type)
+            print("Unsupported file format: " + self.file_format)
             sys.exit(1)
 
         for chunk in df_chunks:
@@ -302,7 +284,7 @@ class FactDataset(DataFile):
             print(WRITING + str(len(df)) + ROWS_TO + output_file)
             self.num_rows += len(df)
             write_to_s3(
-                df=df, filepath=output_file, content_type=self.content_type
+                df=df, filepath=output_file, file_format=self.file_format
             )
             uploads.append(output_file)
 
@@ -431,7 +413,7 @@ class DimensionDataset(DataFile):
         print(WRITING + str(len(df)) + ROWS_TO + output_file)
         self.num_rows += len(df)
         write_to_s3(
-            df=df, filepath=output_file, content_type=self.content_type
+            df=df, filepath=output_file, file_format=self.file_format
         )
 
         output = {"output files": output_file}

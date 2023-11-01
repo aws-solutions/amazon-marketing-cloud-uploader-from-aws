@@ -35,12 +35,15 @@ SPDX-License-Identifier: Apache-2.0
         <b-modal id="modal-dataset-period" title="File Partitioning" ok-only>
           <p>When uploading time series data, each file must be partitioned according to a specific unit of time. This unit of time is referred to as the <b>dataset period</b>. The available periods are:</p>
           <ul>
-            <li>PT1M (minute)</li>
             <li>PT1H (hour)</li>
             <li>P1D (day)</li>
             <li>P7D (7 days)</li>
           </ul>
-          <p>By default, this tool will automatically use the shortest possible period which is appropriate for your data and partition input files accordingly. However, you can override the auto-detected period by explicitly setting it in the dataset definition.</p>
+          <p>PT1M and Autodetect have been temporarily disabled.</p>
+          <p>Autodetect will detect the shortest possible period which is appropriate for your data and partition input files accordingly.</p>
+        </b-modal>
+        <b-modal id="modal-file-format" title="File Format" ok-only>
+          <p>The file format for input data, CSV or JSON.</p>
         </b-modal>
         <b-modal id="modal-country" title="Country" ok-only>
           <p><strong>One country per file:</strong> If uploaded data contains hashed identifiers, it is recommended to separate upload data by country. For example, if you have data with both CA and US records, these records should be split into different files as the tool will apply country-specific normalization rules for fields such as phone number and address.</p>
@@ -116,7 +119,7 @@ SPDX-License-Identifier: Apache-2.0
                   <b-form-input id="dataset-description-input" v-model="description" placeholder="(optional)"></b-form-input>
                 </b-form-group>
                 <b-row>
-                  <b-col sm="3">
+                  <b-col sm="2">
                     <b-form-group v-slot="{ ariaDescribedby }">
                       <slot name="label">
                         Dataset Type:
@@ -133,7 +136,7 @@ SPDX-License-Identifier: Apache-2.0
                       ></b-form-radio-group>
                     </b-form-group>
                   </b-col>
-                  <b-col v-if="dataset_type==='FACT'" sm="3">
+                  <b-col v-if="dataset_type==='FACT'" sm="2">
                     <b-form-group v-slot="{ ariaDescribedby }">
                       <slot name="label">
                         Dataset Period:
@@ -148,6 +151,23 @@ SPDX-License-Identifier: Apache-2.0
                         :aria-describedby="ariaDescribedby"
                         name="time-period-radios"
                         stacked
+                      ></b-form-radio-group>
+                    </b-form-group>
+                  </b-col>
+                  <b-col sm="2">
+                    <b-form-group v-slot="{ ariaDescribedby }">
+                      <slot name="label">
+                        File Format:
+                        <b-link v-b-modal.modal-file-format>
+                          <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
+                        </b-link>
+                      </slot>
+                      <b-form-radio-group
+                          v-model="file_format"
+                          :options="file_format_options"
+                          :aria-describedby="ariaDescribedby"
+                          name="file-format-radios"
+                          stacked
                       ></b-form-radio-group>
                     </b-form-group>
                   </b-col>
@@ -265,16 +285,18 @@ export default {
       country_code: '',
       dataset_type: '',
       // time_period is autodetected in Glue ETL and updated in amc_uploader.py
-      time_period: 'autodetect',
+      time_period: 'PT1H',
       time_period_options: [
-        { value: "autodetect", text: "Autodetect" },
-        { value: "PT1M", text: "PT1M (minutely)" },
+        { value: "autodetect", text: "Autodetect", disabled: true},
+        { value: "PT1M", text: "PT1M (minutely)", disabled: true },
         { value: "PT1H", text: "PT1H (hourly)" },
         { value: "P1D", text: "P1D (daily)" },
         { value: "P7D", text: "P7D (weekly)" }
       ],
       isStep3Active: true,
       dataset_type_options: ["FACT","DIMENSION"],
+      file_format: "",
+      file_format_options: ["CSV", "JSON"],
       isBusy: false,
       showFormError: false,
       showServerError: false,
@@ -298,9 +320,12 @@ export default {
     console.log('created')
   },
   mounted: function() {
-    // Run list_datasets() so we can warn users when they enter
-    // a dataset name which already exists.
-    this.list_datasets()
+    // Avoid running list_datasets() if the user skipped Step 1
+    if (this.s3key) {
+      // Run list_datasets() so we can warn users when they enter
+      // a dataset name which already exists.
+      this.list_datasets()
+    }
     // pre-populate the form with previously selected values:
     if (this.selected_dataset !== null) {
       this.dataset_mode = 'JOIN'
@@ -311,15 +336,6 @@ export default {
     this.description = this.new_dataset_definition['description']
     this.country_code = this.new_dataset_definition['countryCode']
     this.file_format = Object.keys(this.new_dataset_definition).includes('fileFormat')?this.new_dataset_definition['fileFormat']:this.file_format
-    // set default value for file format
-    if (this.file_format === '') {
-      if (this.s3key.split('.').pop().toLowerCase() === "csv") {
-        this.file_format = "CSV"
-      }
-      else if (this.s3key.split('.').pop().toLowerCase() === "json") {
-        this.file_format = "JSON"
-      }
-    }
     this.time_period = Object.keys(this.new_dataset_definition).includes('period')?this.new_dataset_definition['period']:this.time_period
     this.dataset_type = this.new_dataset_definition['dataSetType']
   },
@@ -370,9 +386,12 @@ export default {
       this.showFormError = false;
       this.new_dataset_definition['dataSetId'] = this.dataset_id
       this.new_dataset_definition['description'] = this.description
-      this.new_dataset_definition['countryCode'] = this.country_code
       this.new_dataset_definition['period'] = this.time_period
       this.new_dataset_definition['dataSetType'] = this.dataset_type
+      this.new_dataset_definition['countryCode'] = this.country_code
+      this.new_dataset_definition['fileFormat'] = this.file_format
+      // The compressionFormat must be GZIP because GZIP is the only supported
+      // value. See AMC Data Upload documentation.
       this.new_dataset_definition['compressionFormat'] = 'GZIP'
       if (!this.validForm()) {
         this.showFormError = true;
@@ -392,10 +411,6 @@ export default {
     validForm() {
       if (!this.s3key) {
         this.formErrorMessage = "Missing s3key."
-        return false
-      }
-      if (!this.new_dataset_definition['countryCode']  || this.new_dataset_definition['countryCode'].length === 0) {
-        this.formErrorMessage = "Missing country."
         return false
       }
       if (this.dataset_mode === 'JOIN' && this.new_selected_dataset != null) {
@@ -419,6 +434,14 @@ export default {
       }
       if (!this.new_dataset_definition['dataSetType']  || this.new_dataset_definition['dataSetType'].length === 0) {
         this.formErrorMessage = "Missing dataset type."
+        return false
+      }
+      if (!this.file_format) {
+        this.formErrorMessage = "Missing file format."
+        return false
+      }
+      if (!this.new_dataset_definition['countryCode']  || this.new_dataset_definition['countryCode'].length === 0) {
+        this.formErrorMessage = "Missing country."
         return false
       }
       return true
