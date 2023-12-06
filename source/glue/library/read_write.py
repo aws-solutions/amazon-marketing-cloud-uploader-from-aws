@@ -410,11 +410,10 @@ class DimensionDataset(DataFile):
                 + re.split(".gz", self.filename, 0)[0]
                 + ".gz"
             )
-        print(WRITING + str(len(df)) + ROWS_TO + output_file)
-        self.num_rows += len(df)
-        write_to_s3(
-            df=df, filepath=output_file, file_format=self.file_format
-        )
-
-        output = {"output files": output_file}
-        print(output)
+            print(WRITING + str(len(df)) + ROWS_TO + output_file)
+            self.num_rows += len(df)
+            write_to_s3(
+                df=df, filepath=output_file, file_format=self.file_format
+            )
+            output = {"output files": output_file}
+            print(output)
