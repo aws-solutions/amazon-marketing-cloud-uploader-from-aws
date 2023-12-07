@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@babel/core": "^7.23.2",
-    "aws-amplify": "^5.3.12",
+    "aws-amplify": "^6.0.6",
     "aws-amplify-vue": "2.1.5",
     "bootstrap": "^4.5.0",
     "bootstrap-vue": "^2.23.1",
