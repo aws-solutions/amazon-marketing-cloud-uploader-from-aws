@@ -186,6 +186,23 @@ SPDX-License-Identifier: Apache-2.0
               <div>
                 <b-row v-if="dataset_mode === 'JOIN'">
                   <b-col sm="2">
+                    <b-form-group v-slot="{ ariaDescribedby }">
+                      <slot name="label">
+                        File Format:
+                        <b-link v-b-modal.modal-file-format>
+                          <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
+                        </b-link>
+                      </slot>
+                      <b-form-radio-group
+                          v-model="file_format"
+                          :options="file_format_options"
+                          :aria-describedby="ariaDescribedby"
+                          name="file-format-radios"
+                          stacked
+                      ></b-form-radio-group>
+                    </b-form-group>
+                  </b-col>
+                  <b-col sm="2">
                     Encryption Mode:
                     <b-link v-b-modal.modal-encryption-mode>
                       <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
@@ -413,12 +430,21 @@ export default {
         this.formErrorMessage = "Missing s3key."
         return false
       }
-      if (this.dataset_mode === 'JOIN' && this.new_selected_dataset != null) {
-        return true
-      }
       if (this.dataset_mode === 'JOIN' && this.new_selected_dataset == null) {
         this.formErrorMessage = "Missing dataset selection."
         return false
+      }
+      if (!this.file_format) {
+        this.formErrorMessage = "Missing file format."
+        return false
+      }
+      if (!this.new_dataset_definition['countryCode']  || this.new_dataset_definition['countryCode'].length === 0) {
+        this.formErrorMessage = "Missing country."
+        return false
+      }
+      if (this.dataset_mode === 'JOIN') {
+        // No more checks needed if user is appending to existing dataset.
+        return true
       }
       if (!this.new_dataset_definition['dataSetId'] || this.new_dataset_definition['dataSetId'].length === 0) {
         this.formErrorMessage = "Missing dataset name."
@@ -434,14 +460,6 @@ export default {
       }
       if (!this.new_dataset_definition['dataSetType']  || this.new_dataset_definition['dataSetType'].length === 0) {
         this.formErrorMessage = "Missing dataset type."
-        return false
-      }
-      if (!this.file_format) {
-        this.formErrorMessage = "Missing file format."
-        return false
-      }
-      if (!this.new_dataset_definition['countryCode']  || this.new_dataset_definition['countryCode'].length === 0) {
-        this.formErrorMessage = "Missing country."
         return false
       }
       return true

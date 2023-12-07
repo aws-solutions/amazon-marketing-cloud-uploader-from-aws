@@ -574,6 +574,7 @@ SPDX-License-Identifier: Apache-2.0
             "    '\"timestampColumn\": \"" + this.timestamp_column_name + "\",' + \\\n" +
             "    '\"datasetId\": \"" + this.s3_trigger_dataset_id + "\",' + \\\n" +
             "    '\"period\": \"" + this.dataset_definition.period + "\",' + \\\n" +
+            "    '\"fileFormat\": \"" + this.dataset_definition.fileFormat + "\",' + \\\n" +
             "    '\"countryCode\": \"" + this.dataset_definition.countryCode + "\",' + \\\n" +
             "    '\"destination_endpoints\": \"" + JSON.stringify(this.destination_endpoints).replace(/"/g, '\\\\"') + "\",' + \\\n" +
             "    '\"sourceKey\": \"' + source_key + '\"}'\n" +

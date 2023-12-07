@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - 2023-12-07
+
+### Added
+
+- Added the option for users to specify CSV/JSON file format when uploading to existing datasets.
+
+### Fixed
+
+- Resolved an error that occurs when uploading files with an unexpected content type from a CloudFormation stack that was updated from v2.1.0.
+- Resolved a defect that prevented users from being able to upload Dimension datasets to multiple AMC instances.
+
 ## [2.2.0] - 2023-11-01
 
 ### Added

@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "(SO0222) - Amazon Marketing Cloud Uploader from AWS %%VERSION%%. This AWS CloudFormation template defines Cognito resources."
+Description: "(SO0222auth) - Amazon Marketing Cloud Uploader from AWS %%VERSION%%. This AWS CloudFormation template defines Cognito resources."
 
 Parameters:
   ParentStackName:
