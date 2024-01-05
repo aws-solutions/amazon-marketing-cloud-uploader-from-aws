@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.2] - 2024-01-11
+
+### Fixed
+
+- Resolve a defect that causes Glue ETL dependencies to be deleted after updating the Cloud Formation stack from v2.0.0, v2.1.0, v2.2.0, or v2.2.1 to a newer version.  
+
+### Changed
+
+- The Artifact Bucket resource is no longer automatically removed when the stack is removed. Customers will need to remove this bucket manually after removing the stack.
+
 ## [2.2.1] - 2023-12-07
 
 ### Added

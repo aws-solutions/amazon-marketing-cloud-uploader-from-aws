@@ -159,7 +159,6 @@ Resources:
                 copy_source(event, context)
               elif event['RequestType'] == 'Delete':
                 LOGGER.info('DELETE!')
-                purge_bucket(event, context)
                 send_response(event, context, "SUCCESS", {"Message": "Resource deletion successful!"})
               else:
                 LOGGER.info('FAILED!')
