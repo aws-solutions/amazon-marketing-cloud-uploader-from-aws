@@ -103,6 +103,7 @@ Resources:
               Bool:
                 aws:SecureTransport: false
 
+
   ArtifactLogsBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -195,7 +196,7 @@ Resources:
     Type: AWS::S3::Bucket
     DependsOn:
       - AmcUploadLambdaPermission
-    DeletionPolicy: "Delete"
+    DeletionPolicy: "Retain"
     Properties:
       BucketName:
         'Fn::Join':
@@ -591,19 +592,108 @@ Resources:
             try:
               LOGGER.info('REQUEST RECEIVED:\n {s}'.format(s=event))
               LOGGER.info('REQUEST RECEIVED:\n {s}'.format(s=context))
-              if event['RequestType'] == 'Delete':
+              request_type = event["RequestType"]
+              if request_type in ("Create", "Update"):
+                # Here we handle the CloudFormation CREATE and UPDATE events.
+                # sent by the ArtifactBucketManager custom resource.
+                #
+                # When users upgrade from v2.x.x to a subsequent version, 
+                # then the nested stack for Glue ETL resources will be replaced.
+                # When that nested stack is replaced, then it removes files that 
+                # are needed for Glue ETL job. We can't retroactively go back an 
+                # fix all the previously published versions, but we can change the 
+                # bucket policy to prevent those old stacks from removing the files.
+                # We do that here:
+                add_statement_to_bucket_policy()
+                send_response(event, context, "SUCCESS", {"Message": "Bucket policy update successful!"})
+              elif request_type == "Delete":
                 LOGGER.info('DELETE!')
                 purge_bucket(event, context)
-                send_response(event, context, "SUCCESS", {"Message": "Resource deletion successful!"})
+                send_response(event, context, "SUCCESS", {"Message": "Buckets purged and ready for deletion."})
+              else:
+                send_response(event, context, "SUCCESS", {"Message": "Unknown RequestType."})
             except Exception as e:
               LOGGER.info('FAILED!')
               send_response(event, context, "FAILED", {"Message": "Exception during processing: {e}".format(e=e)})
 
 
+          def add_statement_to_bucket_policy():
+            # This statement prevents anything from removing the files
+            # that are needed by the Glue ETL job.
+            bucket_name = os.environ["ARTIFACT_BUCKET"]
+          
+            # Define the bucket policy statement that we want to add.
+            new_statement = {
+              "Sid": "prevent-accidental-etl-script-deletion-during-upgrades",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:DeleteObject",
+              "Resource": [
+                f"arn:aws:s3:::{bucket_name}/amc_transformations.py",
+                f"arn:aws:s3:::{bucket_name}/library.zip"
+              ]
+            }
+        
+            # Get the current bucket policy
+            s3 = boto3.client('s3')
+            bucket_policy = s3.get_bucket_policy(Bucket=bucket_name)
+            current_policy = json.loads(bucket_policy['Policy'])
+        
+            # Add the new statement to the existing policy.
+            for statement in current_policy['Statement']:
+              if statement.get("Sid") == new_statement.get("Sid"):
+                # Exit if bucket policy already contains new_statement.
+                return
+            current_policy['Statement'].append(new_statement)
+        
+            # Update the bucket policy
+            updated_policy = json.dumps(current_policy)
+            s3.put_bucket_policy(Bucket=bucket_name, Policy=updated_policy)
+            LOGGER.info("Updated bucket policy to deny DeleteObject")
+
+    
+          def remove_statement_from_bucket_policy(bucket_name):
+            # This function reinstates the ability to delete Glue ETL files
+            # from the Artifact Bucket.
+            s3 = boto3.client('s3')
+            
+            # Retrieve the current bucket policy
+            bucket_policy = s3.get_bucket_policy(Bucket=bucket_name)
+            
+            # Parse the bucket policy
+            policy_json = json.loads(bucket_policy['Policy'])
+            
+            # Check if the statement to remove exists
+            statement_id_to_remove = 'prevent-accidental-etl-script-deletion-during-upgrades'
+            found = False
+            updated_statements = []
+            for statement in policy_json['Statement']:
+              if statement.get('Sid') != statement_id_to_remove:
+                updated_statements.append(statement)
+              else:
+                found = True
+            
+            # If the statement to remove was found, update the policy
+            if found:
+              LOGGER.info("Updating bucket policy to allow DeleteObject")
+              policy_json['Statement'] = updated_statements
+              
+              # Convert the updated policy back to JSON string
+              updated_policy = json.dumps(policy_json)
+              
+              # Update the bucket policy
+              s3.put_bucket_policy(Bucket=bucket_name, Policy=updated_policy)
+              LOGGER.info(f"Statement with ID '{statement_id_to_remove}' removed from bucket policy.")
+            else:
+              LOGGER.info(f"Statement with ID '{statement_id_to_remove}' not found in bucket policy.")
+          
+
           def purge_bucket(event, context):
             try:
               s3 = boto3.resource('s3')
               bucket_name = os.environ["ARTIFACT_BUCKET"]
+              LOGGER.info("Validating DeleteObject permission")
+              remove_statement_from_bucket_policy(bucket_name)
               LOGGER.info("Purging bucket, " + bucket_name)
               bucket = s3.Bucket(bucket_name)
               bucket.objects.all().delete()
@@ -613,9 +703,6 @@ Resources:
               bucket.objects.all().delete()
             except Exception as e:
               LOGGER.info("Unable to purge artifact bucket while deleting stack: {e}".format(e=e))
-              send_response(event, context, "FAILED", {"Message": "Unexpected event received from CloudFormation"})
-            else:
-              send_response(event, context, "SUCCESS", {"Message": "Resource creation successful!"})
 
 
           def send_response(event, context, response_status, response_data):
@@ -660,7 +747,7 @@ Resources:
     Properties:
       LogGroupName: !Join ['/', ['/aws/lambda', !Ref BucketRemovalHelper]]
       RetentionInDays: 30
-  
+
   BucketNameHelperLogGroup:
     Type: AWS::Logs::LogGroup
     Metadata:
@@ -686,7 +773,7 @@ Resources:
               - sts:AssumeRole
       Path: /
       Policies:
-        - PolicyName: root
+        - PolicyName: !Sub "${AWS::StackName}-BucketNameHelperRole"
           PolicyDocument:
             Version: 2012-10-17
             Statement:
@@ -708,7 +795,7 @@ Resources:
       Tags:
         - Key: "Environment"
           Value: "amcufa"
- 
+
   BucketRemovalHelperRole:
     Type: AWS::IAM::Role
     Properties:
@@ -723,7 +810,7 @@ Resources:
               - sts:AssumeRole
       Path: /
       Policies:
-        - PolicyName: root
+        - PolicyName: !Sub "${AWS::StackName}-BucketRemovalHelperRole"
           PolicyDocument:
             Version: 2012-10-17
             Statement:
@@ -754,6 +841,14 @@ Resources:
                         "/*"
                     ]
                   ]
+                  - !Join [
+                    "",
+                    [
+                      "arn:aws:s3:::",
+                      Ref: ArtifactBucket,
+                      "/*"
+                    ]
+                  ]
               - Effect: Allow
                 Action:
                   - "s3:ListBucket"
@@ -762,10 +857,28 @@ Resources:
                       "",
                     [
                         "arn:aws:s3:::",
-                        Ref: ArtifactLogsBucket,
+                        Ref: ArtifactLogsBucket
                     ]
                   ]
-
+                  - !Join [
+                    "",
+                    [
+                      "arn:aws:s3:::",
+                      Ref: ArtifactBucket
+                    ]
+                  ]
+              - Effect: Allow
+                Action:
+                  - "s3:GetBucketPolicy"
+                  - "s3:PutBucketPolicy"
+                Resource:
+                  - !Join [
+                    "",
+                    [
+                      "arn:aws:s3:::",
+                      Ref: ArtifactBucket,
+                    ]
+                  ]
       Tags:
         - Key: "Environment"
           Value: "amcufa"
@@ -795,6 +908,12 @@ Resources:
     Properties:
       ServiceToken: !GetAtt BucketNameHelper.Arn
       FunctionKey: "get_lower_stackname"
+
+  ArtifactBucketManager:
+    Type: Custom::CustomResource
+    Properties:
+      ServiceToken: !GetAtt BucketRemovalHelper.Arn
+
 
   # Auth stack
 
@@ -849,7 +968,7 @@ Resources:
 
   # Web stack
 
-  WebStack4:
+  WebStack5:
     Type: "AWS::CloudFormation::Stack"
     Properties:
       TemplateURL: !Join
@@ -1090,7 +1209,7 @@ Resources:
     Properties:
       Application: !GetAtt Application.Id
       Resource:
-        !Ref WebStack4
+        !Ref WebStack5
       ResourceType: CFN_STACK
 
   AppRegistryApplicationStackAssociationNestedGlueStack:
@@ -1129,4 +1248,4 @@ Resources:
 
 Outputs:
   UserInterface:
-    Value: !GetAtt WebStack4.Outputs.CloudfrontUrl
+    Value: !GetAtt WebStack5.Outputs.CloudfrontUrl
