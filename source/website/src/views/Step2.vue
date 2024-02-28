@@ -90,16 +90,28 @@ SPDX-License-Identifier: Apache-2.0
                     class="mb-0"
                   >
                     <b-form-checkbox-group
-                      v-model="filterOn"
                       :aria-describedby="ariaDescribedby"
                       class="mt-1"
                     >
-                      <b-form-checkbox value="endpoint">
-                        Endpoint
-                      </b-form-checkbox>
-                      <b-form-checkbox value="tag_list">
-                        Tags
-                      </b-form-checkbox>
+                      
+                      <div class="custom-control custom-control-inline custom-checkbox">
+                        <input
+                          v-model="filterOn"
+                          id="filter_endpoint"
+                          class="custom-control-input"
+                          type="checkbox"
+                          value="endpoint" />
+                          <label class="custom-control-label" for="filter_endpoint">Endpoint</label>
+                      </div>
+                      <div class="custom-control custom-control-inline custom-checkbox">
+                        <input
+                          v-model="filterOn"
+                          id="filter_tag_list"
+                          class="custom-control-input"
+                          type="checkbox"
+                          value="tag_list" />
+                          <label class="custom-control-label" for="filter_tag_list">Tags</label>
+                      </div>
                     </b-form-checkbox-group>
                   </b-form-group>
                 </b-col>

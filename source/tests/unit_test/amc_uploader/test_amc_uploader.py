@@ -21,16 +21,16 @@ BASE64_ENCODED_AMC_ENDPOINT = "aHR0cHM6Ly9hYmNkZTEyMzQ1LmV4ZWN1dGUtYXBpLnVzLWVhc
 def test_configs():
     return {
         "s3_bucket": "fake_s3_bucket",
-        "s3_fact_key": "amc/dataset_id/PT1M/"
+        "s3_fact_key": "amc/dataset_id/US/PT1M/"
         + BASE64_ENCODED_AMC_ENDPOINT
         + "/etl_output_data.json-2022_01_06-09:01:00.gz",
-        "s3_fact_key2": "amc/dataset_id/PT1M/"
+        "s3_fact_key2": "amc/dataset_id/US/PT1M/"
         + BASE64_ENCODED_AMC_ENDPOINT
         + "/invalid_filename",
-        "s3_fact_key3": "amc/dataset_id/P1D/"
+        "s3_fact_key3": "amc/dataset_id/US/P1D/"
         + BASE64_ENCODED_AMC_ENDPOINT
         + "/etl_output_data.json-2022_01_06-09:01:00.gz",
-        "s3_dimension_key": "amc/dataset_id/dimension/"
+        "s3_dimension_key": "amc/dataset_id/US/dimension/"
         + BASE64_ENCODED_AMC_ENDPOINT
         + "/filename.gz",
     }
@@ -66,7 +66,7 @@ def test_is_timeseries():
 
     assert (
         _is_timeseries(
-            "amc/dataset_id/timeseries_partition_size/"
+            "amc/dataset_id/country_code/timeseries_partition_size/"
             + BASE64_ENCODED_AMC_ENDPOINT
             + "/filename"
         )
@@ -74,31 +74,31 @@ def test_is_timeseries():
     )
     assert (
         _is_timeseries(
-            "amc/dataset_id/PT1M/" + BASE64_ENCODED_AMC_ENDPOINT + "/filename"
+            "amc/dataset_id/US/PT1M/" + BASE64_ENCODED_AMC_ENDPOINT + "/filename"
         )
         is True
     )
     assert (
         _is_timeseries(
-            "amc/dataset_id/PT1H/" + BASE64_ENCODED_AMC_ENDPOINT + "/filename"
+            "amc/dataset_id/US/PT1H/" + BASE64_ENCODED_AMC_ENDPOINT + "/filename"
         )
         is True
     )
     assert (
         _is_timeseries(
-            "amc/dataset_id/P1D/" + BASE64_ENCODED_AMC_ENDPOINT + "/filename"
+            "amc/dataset_id/US/P1D/" + BASE64_ENCODED_AMC_ENDPOINT + "/filename"
         )
         is True
     )
     assert (
         _is_timeseries(
-            "amc/dataset_id/P7D/" + BASE64_ENCODED_AMC_ENDPOINT + "/filename"
+            "amc/dataset_id/US/P7D/" + BASE64_ENCODED_AMC_ENDPOINT + "/filename"
         )
         is True
     )
     assert (
         _is_timeseries(
-            "amc/dataset_id/P7D/"
+            "amc/dataset_id/US/P7D/"
             + BASE64_ENCODED_AMC_ENDPOINT
             + "/etl_output_data.json-2022_01_06-09:01:00"
         )
@@ -106,7 +106,7 @@ def test_is_timeseries():
     )
     assert (
         _is_timeseries(
-            "amc/dataset_id/"
+            "amc/dataset_id/US/"
             + BASE64_ENCODED_AMC_ENDPOINT
             + "etl_output_data.json-2022_01_06-09:01:00"
         )

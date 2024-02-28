@@ -941,7 +941,7 @@ Resources:
 
   # Glue ETL stack
 
-  GlueStack4:
+  GlueStack5:
     Type: "AWS::CloudFormation::Stack"
     Properties:
       TemplateURL: !Join
@@ -968,7 +968,7 @@ Resources:
 
   # Web stack
 
-  WebStack5:
+  WebStack6:
     Type: "AWS::CloudFormation::Stack"
     Properties:
       TemplateURL: !Join
@@ -1088,7 +1088,7 @@ Resources:
         ArtifactBucket: !Ref ArtifactBucket
         DataBucketName: !Ref DataBucketName
         AmcApiRoleArn: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-AmcApiAccessRole'
-        AmcGlueJobName: !GetAtt GlueStack4.Outputs.AmcGlueJobName
+        AmcGlueJobName: !GetAtt GlueStack5.Outputs.AmcGlueJobName
         TracingConfigMode: "Active"
         CustomerManagedKey: !Ref CustomerManagedKey
         LambdaLayer: !Ref LambdaLayer
@@ -1209,7 +1209,7 @@ Resources:
     Properties:
       Application: !GetAtt Application.Id
       Resource:
-        !Ref WebStack5
+        !Ref WebStack6
       ResourceType: CFN_STACK
 
   AppRegistryApplicationStackAssociationNestedGlueStack:
@@ -1217,7 +1217,7 @@ Resources:
     Properties:
       Application: !GetAtt Application.Id
       Resource:
-        !Ref GlueStack4
+        !Ref GlueStack5
       ResourceType: CFN_STACK
 
   AppRegistryApplicationStackAssociationNestedAuthStack:
@@ -1248,4 +1248,4 @@ Resources:
 
 Outputs:
   UserInterface:
-    Value: !GetAtt WebStack5.Outputs.CloudfrontUrl
+    Value: !GetAtt WebStack6.Outputs.CloudfrontUrl

@@ -1,7 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import Vue from 'vue'
+console.warn = () => {}
+
+import { createApp } from 'vue'
 import { BootstrapVue, BIconClipboard, BIconQuestionCircleFill, BIconXCircle, BIconPlusSquare, BIconExclamationTriangleFill } from 'bootstrap-vue'
 import 'bootstrap/dist/css/bootstrap.css'
 import 'bootstrap-vue/dist/bootstrap-vue.css'
@@ -41,15 +43,25 @@ getRuntimeConfig().then(function(json) {
       ]
     }
   };
+
   console.log("Runtime config: " + JSON.stringify(json));
   Amplify.configure(awsconfig);
-  Vue.config.productionTip = false;
-  Vue.component('BIconClipboard', BIconClipboard)
-  Vue.component('BIconQuestionCircleFill', BIconQuestionCircleFill)
-  Vue.component('BIconXCircle', BIconXCircle)
-  Vue.component('BIconPlusSquare', BIconPlusSquare)
-  Vue.component('BIconExclamationTriangleFill', BIconExclamationTriangleFill)
-  Vue.mixin({
+
+  const app = createApp({
+    router,
+    ...App
+  })
+
+  app.use(AmplifyPlugin, AmplifyModules)
+  app.use(BootstrapVue);
+  app.use(store);
+  app.component('BIconClipboard', BIconClipboard)
+  app.component('BIconQuestionCircleFill', BIconQuestionCircleFill)
+  app.component('BIconXCircle', BIconXCircle)
+  app.component('BIconPlusSquare', BIconPlusSquare)
+  app.component('BIconExclamationTriangleFill', BIconExclamationTriangleFill)
+
+  app.mixin({
     data() {
       return {
         // Distribute runtime configs into every Vue component
@@ -62,12 +74,21 @@ getRuntimeConfig().then(function(json) {
     },
   });
 
-  Vue.use(AmplifyPlugin, AmplifyModules);
-  Vue.use(BootstrapVue);
+  router.beforeResolve(async (to, from, next) => {
+    if (to.matched.some(record => record.meta.requiresAuth)) {
+      try {
+        await app.prototype.$Amplify.Auth.currentAuthenticatedUser();
+        next();
+      } catch (e) {
+        console.log(e);
+        next({
+          path: "/login",
+        });
+      }
+    }
+    console.log(next);
+    next();
+  });
 
-  new Vue({
-    router,
-    store,
-    render: h => h(App),
-  }).$mount('#app')
+  app.mount('#app')
 });

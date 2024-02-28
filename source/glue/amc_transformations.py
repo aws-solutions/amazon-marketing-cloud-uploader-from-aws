@@ -96,7 +96,7 @@ def check_params(required: list, optional: list) -> dict:
         sys.exit(1)
     if args["country_code"] not in (
         "US",
-        "UK",
+        "GB",
         "JP",
         "IN",
         "IT",

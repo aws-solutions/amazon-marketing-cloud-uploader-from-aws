@@ -129,7 +129,7 @@ SPDX-License-Identifier: Apache-2.0
                   <b-button id="import_button" type="button" variant="outline-secondary" class="mb-2" @click="onImport">
                     Import
                   </b-button> &nbsp;
-                  <b-form-file id="importFile" v-model="importFilename" style="display:none;" accept="application/json" @input="importFile"></b-form-file>
+                  <input type="file" class="form-control" id="importFile" @input="importFile" style="display:none;">
                   <b-button id="export_button" type="button" variant="outline-secondary" class="mb-2" :disabled="!isValidForm" @click="onExport">
                     Export
                   </b-button>
@@ -242,7 +242,11 @@ SPDX-License-Identifier: Apache-2.0
         this.showImportError = false
         document.getElementById('importFile').click()
       },
-      importFile() {
+      importFile(e) {
+        let files = e.target.files || e.dataTransfer.files
+        if (!files.length)
+          return;
+        this.importFilename = files[0]
         if (!this.importFilename) {
           return;
         }

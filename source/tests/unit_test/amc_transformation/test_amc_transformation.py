@@ -180,7 +180,7 @@ class NormalizationTest:
 def test_amc_transformations(countries=None):
     countries = countries or [
         "us",
-        "uk",
+        "gb",
         "jp",
         "in",
         "it",
@@ -346,7 +346,7 @@ def test_save_dimension_output(mock_write_to_s3):
         + "amc"
         + "/"
         + "test"
-        + "/dimension/"
+        + "/US/dimension/"
         + "sample_endpoint.execute-api.us-east-1.amazonaws.com"
         + "/"
         + "test"
@@ -417,32 +417,32 @@ def test_save_fact_output(mock_write_to_s3):
     expected_arguments = [
         {
             "df": ANY,
-            "filepath": "s3://test/amc/test/P1D/sample_endpoint1.execute-api.us-east-1.amazonaws.com/test-2020_04_12-00:00:00.gz",
+            "filepath": "s3://test/amc/test/US/P1D/sample_endpoint1.execute-api.us-east-1.amazonaws.com/test-2020_04_12-00:00:00.gz",
             "file_format": "test",
         },
         {
             "df": ANY,
-            "filepath": "s3://test/amc/test/P1D/sample_endpoint2.execute-api.us-east-1.amazonaws.com/test-2020_04_12-00:00:00.gz",
+            "filepath": "s3://test/amc/test/US/P1D/sample_endpoint2.execute-api.us-east-1.amazonaws.com/test-2020_04_12-00:00:00.gz",
             "file_format": "test",
         },
         {
             "df": ANY,
-            "filepath": "s3://test/amc/test/P1D/sample_endpoint1.execute-api.us-east-1.amazonaws.com/test-2020_04_11-00:00:00.gz",
+            "filepath": "s3://test/amc/test/US/P1D/sample_endpoint1.execute-api.us-east-1.amazonaws.com/test-2020_04_11-00:00:00.gz",
             "file_format": "test",
         },
         {
             "df": ANY,
-            "filepath": "s3://test/amc/test/P1D/sample_endpoint2.execute-api.us-east-1.amazonaws.com/test-2020_04_11-00:00:00.gz",
+            "filepath": "s3://test/amc/test/US/P1D/sample_endpoint2.execute-api.us-east-1.amazonaws.com/test-2020_04_11-00:00:00.gz",
             "content_type": "test",
         },
         {
             "df": ANY,
-            "filepath": "s3://test/amc/test/P1D/sample_endpoint1.execute-api.us-east-1.amazonaws.com/test-2020_04_10-00:00:00.gz",
+            "filepath": "s3://test/amc/test/US/P1D/sample_endpoint1.execute-api.us-east-1.amazonaws.com/test-2020_04_10-00:00:00.gz",
             "file_format": "test",
         },
         {
             "df": ANY,
-            "filepath": "s3://test/amc/test/P1D/invalid_sample_endpoint2.execute-api.us-east-1.amazonaws.com/test-2020_04_10-00:00:00.gz",
+            "filepath": "s3://test/amc/test/US/P1D/invalid_sample_endpoint2.execute-api.us-east-1.amazonaws.com/test-2020_04_10-00:00:00.gz",
             "file_format": "test",
         },
     ]

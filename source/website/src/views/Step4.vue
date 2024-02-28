@@ -127,12 +127,9 @@ SPDX-License-Identifier: Apache-2.0
                   </b-form-select>
                 </template>
                 <template #cell(nullable)="data">
-                  <b-form-checkbox
-                    v-model="data.item.nullable"
-                    :disabled="data.item.column_type === 'PII'"
-                    @change="changeNullable()"
-                  >
-                  </b-form-checkbox>
+                  <div class="custom-control custom-checkbox">
+                    <input type="checkbox" class="largerCheckbox" :value="data.item.column_type" v-model="data.item.nullable" @change="changeNullable()"/>
+                  </div>
                 </template>
                 <template #cell(column_type)="data">
                   <b-form-select
@@ -161,16 +158,16 @@ SPDX-License-Identifier: Apache-2.0
                 </template>
               </b-table>
               <b-row>
-                <b-col text-align="left">
-                  <b-button id="import_button" type="button" variant="outline-secondary" class="mb-2" @click="onImport">
-                    Import
-                  </b-button> &nbsp;
-                  <b-form-file id="importFile" v-model="importFilename" style="display:none;" accept="application/json" @input="importFile"></b-form-file>
+                <b-col cols="10">
+                    <b-button id="import_button" type="button" variant="outline-secondary" class="mb-2" @click="onImport">
+                      Import
+                    </b-button> &nbsp;
+                    <input type="file" class="form-control" id="importFile" @input="importFile" style="display:none;">
                   <b-button id="export_button" type="button" variant="outline-secondary" class="mb-2" @click="onExport">
                     Export
                   </b-button>
                 </b-col>
-                <b-col text-align="right">
+                <b-col cols="2">
                   <b-button id="reset_button" type="reset" variant="outline-secondary" class="mb-2" @click="onReset">
                     Reset
                   </b-button>
@@ -456,7 +453,11 @@ SPDX-License-Identifier: Apache-2.0
         this.showImportError = false
         document.getElementById('importFile').click()
       },
-      importFile() {
+      importFile(e) {
+        let files = e.target.files || e.dataTransfer.files
+        if (!files.length)
+          return;
+        this.importFilename = files[0]
         if (!this.importFilename) {
           return;
         }
@@ -675,6 +676,7 @@ SPDX-License-Identifier: Apache-2.0
         this.$store.commit('saveStep3FormInput', this.items)
       },
       changeNullable() {
+        console.log("asdf")
         this.$store.commit('saveStep3FormInput', this.items)
       },
       changeColumnType(value, index) {
@@ -827,7 +829,6 @@ SPDX-License-Identifier: Apache-2.0
           }
 
           // read schema for externalUserIdType fields
-          console.log("iantest")
           this.selected_dataset_items = this.selected_dataset_items.concat(
             response.columns.filter(x => "externalUserIdType" in x).map(x => ({
               "name": x.name,
@@ -858,3 +859,12 @@ SPDX-License-Identifier: Apache-2.0
   }
 }
 </script>
+
+<style>
+input.largerCheckbox {
+  width: 1rem;
+  height: 1.25rem;
+  position: absolute;
+  left: 0;
+}
+</style>
