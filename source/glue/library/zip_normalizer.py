@@ -11,7 +11,7 @@ class ZipNormalizer:
             self.zip_length = 6
             self.regex = re.compile(r"^([A-Za-z]\d){3}$")
         # UK Zip, A11AA A111AA AA11AA AA111AA | A1A1AA AA1A1AA
-        elif country_code == "UK":
+        elif country_code == "GB":
             self.normalize_regex = r"[^0-9A-Za-z]"
             self.zip_length = 7
             self.regex = re.compile(

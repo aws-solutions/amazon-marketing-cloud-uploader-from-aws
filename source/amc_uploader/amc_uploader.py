@@ -77,9 +77,9 @@ def _is_timeseries(key):
         "P7D",
     )
     # Time series datasets will have the following s3key pattern:
-    #   amc/[dataset_id]/[timeseries_partition_size]/[destination_endpoint][filename]
-    return (len(key.split("/")) == 5) and (
-        key.split("/")[2].endswith(supported_time_partitions)
+    #   amc/[dataset_id]/[country_code]/[timeseries_partition_size]/[destination_endpoint][filename]
+    return (len(key.split("/")) == 6) and (
+        key.split("/")[3].endswith(supported_time_partitions)
     )
 
 
@@ -87,11 +87,10 @@ def _start_fact_upload(bucket, key):
     try:
         logger.info("Uploading FACT dataset")
         # Key parsing assume s3Key is in the following format:
-        #   amc/[datasetId]/[amc time resolution code]/[destination_endpoint]/[datafile].gz
-        dataset_id = key.split("/")[1]
-        time_partition = key.split("/")[2]
-        destination_endpoint = "https://" + key.split("/")[3] + "/prod"
-        filename = urllib.parse.unquote(key.split("/")[-1])
+        #   amc/[dataset_id]/[country_code]/[amc time resolution code]/[destination_endpoint]/[datafile].gz
+        _, dataset_id, country_code, time_partition, destination_endpoint, filename_quoted = key.split('/')
+        destination_endpoint_url = "https://" + destination_endpoint + "/prod"
+        filename = urllib.parse.unquote(filename_quoted)
         # Parse the filename to get the time window for that data.
         # Filenames should look like this, "etl_output_data.json-2022_01_06-09:01:00.gz"
         dt_str = (
@@ -110,6 +109,7 @@ def _start_fact_upload(bucket, key):
 
         logger.info("key: " + key)
         logger.info("dataset_id " + dataset_id)
+        logger.info("country_code " + country_code)
         logger.info("time_partition " + time_partition)
         logger.info("time_window_start " + time_window_start.isoformat() + "Z")
         logger.info("time_window_end " + time_window_end.isoformat() + "Z")
@@ -120,7 +120,7 @@ def _start_fact_upload(bucket, key):
         path = "/dataSets/" + dataset_id
         logger.info("Validating dataset time period.")
         dataset_definition = json.loads(
-            sigv4.get(destination_endpoint, path).text
+            sigv4.get(destination_endpoint_url, path).text
         )
         if dataset_definition["period"] != time_partition:
             logger.info(
@@ -133,10 +133,10 @@ def _start_fact_upload(bucket, key):
             logger.info("PUT " + path + " " + json.dumps(dataset_definition))
             # Send request to update time period:
             sigv4.put(
-                destination_endpoint, path, json.dumps(dataset_definition)
+                destination_endpoint_url, path, json.dumps(dataset_definition)
             )
             dataset_definition = json.loads(
-                sigv4.get(destination_endpoint, path).text
+                sigv4.get(destination_endpoint_url, path).text
             )
             # Validate updated time period:
             if dataset_definition["period"] != time_partition:
@@ -152,18 +152,19 @@ def _start_fact_upload(bucket, key):
         data = {
             "sourceS3Bucket": bucket,
             "sourceFileS3Key": key,
+            "countryCode": country_code,
             "timeWindowStart": time_window_start.isoformat() + "Z",
             "timeWindowEnd": time_window_end.isoformat() + "Z",
         }
         path = "/data/" + dataset_id + "/uploads"
         logger.info("POST " + path + " " + json.dumps(data))
-        response = sigv4.post(destination_endpoint, path, json.dumps(data))
+        response = sigv4.post(destination_endpoint_url, path, json.dumps(data))
         logger.info(f"Response code: {response.status_code}\n")
         logger.info("Response: " + response.text)
         # Record error message if upload failed.
         dynamo_resource = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"])
         upload_failures_table = dynamo_resource.Table(UPLOAD_FAILURES_TABLE_NAME)
-        item_key = {"dataset_id": dataset_id, "destination_endpoint": destination_endpoint}
+        item_key = {"dataset_id": dataset_id, "destination_endpoint": destination_endpoint_url}
         try:
             upload_failures_table.delete_item(Key=item_key)
         except dynamo_resource.meta.client.exceptions.ConditionalCheckFailedException:
@@ -183,18 +184,25 @@ def _start_dimension_upload(bucket, key):
     try:
         logger.info("Uploading DIMENSION dataset")
         # Key parsing assume s3Key is in the following format:
-        #   amc/[datasetId]/dimension/destination_endpoint/[datafile].gz
+        #   amc/[dataset_id]/[country_code]/dimension/destination_endpoint/[datafile].gz
+        _, dataset_id, country_code, dimension_constant, destination_endpoint, filename_quoted = key.split('/')
         dataset_id = key.split("/")[1]
-        destination_endpoint = "https://" + key.split("/")[3] + "/prod"
-        filename = urllib.parse.unquote(key.split("/")[-1])
+        country_code = key.split("/")[2]
+        destination_endpoint_url = "https://" + destination_endpoint + "/prod"
+        filename = urllib.parse.unquote(filename_quoted)
         logger.info("key: " + key)
         logger.info("dataset_id " + dataset_id)
+        logger.info("country_code " + country_code)
         logger.info("filename " + filename)
         logger.info("Uploading s3://" + bucket + "/" + key)
-        data = {"sourceS3Bucket": bucket, "sourceFileS3Key": key}
+        data = {
+            "sourceS3Bucket": bucket,
+            "sourceFileS3Key": key,
+            "countryCode": country_code
+        }
         path = "/data/" + dataset_id + "/uploads"
         logger.info("POST " + path + " " + json.dumps(data))
-        response = sigv4.post(destination_endpoint, path, json.dumps(data))
+        response = sigv4.post(destination_endpoint_url, path, json.dumps(data))
         return response.text
     except Exception as ex:
         logger.error(ex)

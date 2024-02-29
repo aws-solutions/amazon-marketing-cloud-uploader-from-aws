@@ -1,8 +1,7 @@
 ---
 id: SO0222 # Solution Id
 name: amazon-marketing-cloud-uploader-from-aws # trademarked name
-version: v2.2.2 # current version of the solution. Used to verify template headers
-regions: us-east-1, eu-west-1
+version: v2.3.0 # current version of the solution. Used to verify template headers
 cloudformation_templates: # This list should match with AWS CloudFormation templates section of IG
   - template: amazon-marketing-cloud-uploader-from-aws.template
     main_template: true

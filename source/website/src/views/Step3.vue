@@ -46,7 +46,7 @@ SPDX-License-Identifier: Apache-2.0
           <p>The file format for input data, CSV or JSON.</p>
         </b-modal>
         <b-modal id="modal-country" title="Country" ok-only>
-          <p><strong>One country per file:</strong> If uploaded data contains hashed identifiers, it is recommended to separate upload data by country. For example, if you have data with both CA and US records, these records should be split into different files as the tool will apply country-specific normalization rules for fields such as phone number and address.</p>
+          <p><strong>One country per file:</strong> Identities will be resolved and addresses normalized according to the rules of this country. If uploaded data contains hashed identifiers, then separate upload data by country. For example, if you have data with both CA and US records, these records should be split into different files as the tool will apply country-specific identity resolution rules for fields such as phone number and address.</p>
         </b-modal>
         <b-row style="text-align: left">
           <b-col cols="2">
@@ -58,12 +58,38 @@ SPDX-License-Identifier: Apache-2.0
             <br>
             <br>
             <div>
-              <b-form-radio-group
-                v-model="dataset_mode"
-                :options="dataset_mode_options"
-                class="mb-3"
-                @change="updateDatasetMode"
-              ></b-form-radio-group>
+              <div
+                class="bv-no-focus-ring mb-3"
+                role="radiogroup"
+                tabindex="-1"
+              >
+                <div class="custom-control custom-control-inline custom-radio">
+                  <input
+                    class="custom-control-input"
+                    type="radio"
+                    value="CREATE"
+                    id="step3_create_new_dataset_radio"
+                    name="step3_dataset_mode"
+                    @change="updateDatasetMode"
+                    v-model="dataset_mode"
+                  /><label class="custom-control-label" for="step3_create_new_dataset_radio"
+                    ><span>Create new dataset</span></label
+                  >
+                </div>
+                <div class="custom-control custom-control-inline custom-radio">
+                  <input
+                    class="custom-control-input"
+                    type="radio"
+                    value="JOIN"
+                    id="step3_append_dataset_radio"
+                    name="step3_dataset_mode"
+                    @change="updateDatasetMode"
+                    v-model="dataset_mode"
+                  /><label class="custom-control-label" for="step3_append_dataset_radio"
+                    ><span>Add to existing dataset</span></label
+                  >
+                </div>
+              </div>
               <div v-if="dataset_mode === 'JOIN'">
                 Select a dataset:&nbsp;
                 <b-spinner
@@ -72,19 +98,13 @@ SPDX-License-Identifier: Apache-2.0
                   small
                 >
                 </b-spinner>
-                <b-form-select
-                  v-else
-                  v-model="new_selected_dataset"
-                  :options="datasets"
-                  class="w-50"
-                >
-                  <template #first>
-                    <b-form-select-option :value="null" disabled>
-                      -- Choose one --
-                    </b-form-select-option>
-                  </template>
-                </b-form-select>
-                <br>
+                <div v-else class="w-50">
+                  <select class="custom-select" v-model="new_selected_dataset">
+                    <option disabled :value="null">&#45;&#45; Choose one &#45;&#45;</option>
+                    <option v-for="item in datasets" :key="item.dataSetId">
+                      {{ item }}</option>
+                  </select>
+                </div>
                 <br>
               </div>
               <div v-if="dataset_mode === 'CREATE'">
@@ -120,55 +140,158 @@ SPDX-License-Identifier: Apache-2.0
                 </b-form-group>
                 <b-row>
                   <b-col sm="2">
-                    <b-form-group v-slot="{ ariaDescribedby }">
+                    <b-form-group>
                       <slot name="label">
                         Dataset Type:
                         <b-link v-b-modal.modal-dataset-type>
                           <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
                         </b-link>
                       </slot>
-                      <b-form-radio-group
-                        v-model="dataset_type"
-                        :options="dataset_type_options"
-                        :aria-describedby="ariaDescribedby"
-                        name="dataset-type-radios"
-                        stacked
-                      ></b-form-radio-group>
+                      <div class="bv-no-focus-ring" role="radiogroup" tabindex="-1">
+                        <div class="custom-control custom-radio">
+                          <input
+                            class="custom-control-input"
+                            type="radio"
+                            name="dataset-type-radios"
+                            value="FACT"
+                            id="step_3_dataset_type_radio_fact"
+                            v-model="dataset_type"
+                          /><label class="custom-control-label" for="step_3_dataset_type_radio_fact"
+                            ><span>FACT</span></label
+                          >
+                        </div>
+                        <div class="custom-control custom-radio">
+                          <input
+                            class="custom-control-input"
+                            type="radio"
+                            name="dataset-type-radios"
+                            value="DIMENSION"
+                            id="step_3_dataset_type_radio_dimension"
+                            v-model="dataset_type"
+                          /><label class="custom-control-label" for="step_3_dataset_type_radio_dimension"
+                            ><span>DIMENSION</span></label
+                          >
+                        </div>
+                      </div>
+
                     </b-form-group>
                   </b-col>
                   <b-col v-if="dataset_type==='FACT'" sm="2">
-                    <b-form-group v-slot="{ ariaDescribedby }">
+                    <b-form-group>
                       <slot name="label">
                         Dataset Period:
                         <b-link v-b-modal.modal-dataset-period>
                           <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
                         </b-link>
                       </slot>
-                      <b-form-radio-group
+                      <div
+                        class="bv-no-focus-ring"
                         id="time_period_options"
-                        v-model="time_period"
-                        :options="time_period_options"
-                        :aria-describedby="ariaDescribedby"
-                        name="time-period-radios"
-                        stacked
-                      ></b-form-radio-group>
+                        role="radiogroup"
+                        tabindex="-1"
+                      >
+                        <div class="custom-control custom-radio">
+                          <input
+                            v-model="time_period"
+                            class="custom-control-input"
+                            id="time_period_options_BV_option_0"
+                            type="radio"
+                            name="time-period-radios"
+                            disabled=""
+                            value="autodetect"
+                          /><label class="custom-control-label" for="time_period_options_BV_option_0"
+                            ><span>Autodetect</span></label
+                          >
+                        </div>
+                        <div class="custom-control custom-radio">
+                          <input
+                            v-model="time_period"
+                            class="custom-control-input"
+                            id="time_period_options_BV_option_1"
+                            type="radio"
+                            name="time-period-radios"
+                            disabled=""
+                            value="PT1M"
+                          /><label class="custom-control-label" for="time_period_options_BV_option_1"
+                            ><span>PT1M (minutely)</span></label
+                          >
+                        </div>
+                        <div class="custom-control custom-radio">
+                          <input
+                            v-model="time_period"
+                            class="custom-control-input"
+                            id="time_period_options_BV_option_2"
+                            type="radio"
+                            name="time-period-radios"
+                            value="PT1H"
+                          /><label class="custom-control-label" for="time_period_options_BV_option_2"
+                            ><span>PT1H (hourly)</span></label
+                          >
+                        </div>
+                        <div class="custom-control custom-radio">
+                          <input
+                            v-model="time_period"
+                            class="custom-control-input"
+                            id="time_period_options_BV_option_3"
+                            type="radio"
+                            name="time-period-radios"
+                            value="P1D"
+                          /><label class="custom-control-label" for="time_period_options_BV_option_3"
+                            ><span>P1D (daily)</span></label
+                          >
+                        </div>
+                        <div class="custom-control custom-radio">
+                          <input
+                            v-model="time_period"
+                            class="custom-control-input"
+                            id="time_period_options_BV_option_4"
+                            type="radio"
+                            name="time-period-radios"
+                            value="P7D"
+                          /><label class="custom-control-label" for="time_period_options_BV_option_4"
+                            ><span>P7D (weekly)</span></label
+                          >
+                        </div>
+                      </div>
+
                     </b-form-group>
                   </b-col>
                   <b-col sm="2">
-                    <b-form-group v-slot="{ ariaDescribedby }">
+                    <b-form-group>
                       <slot name="label">
                         File Format:
                         <b-link v-b-modal.modal-file-format>
                           <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
                         </b-link>
                       </slot>
-                      <b-form-radio-group
-                          v-model="file_format"
-                          :options="file_format_options"
-                          :aria-describedby="ariaDescribedby"
-                          name="file-format-radios"
-                          stacked
-                      ></b-form-radio-group>
+                      <div class="bv-no-focus-ring" role="radiogroup" tabindex="-1">
+                        <div class="custom-control custom-radio">
+                          <input
+                            v-model="file_format"
+                            class="custom-control-input"
+                            type="radio"
+                            name="file-format-radios"
+                            value="CSV"
+                            id="file_format_radios_option_1"
+                          />
+                          <label class="custom-control-label" for="file_format_radios_option_1">
+                            <span>CSV</span>
+                          </label>
+                        </div>
+                        <div class="custom-control custom-radio">
+                          <input
+                            v-model="file_format"
+                            class="custom-control-input"
+                            type="radio"
+                            name="file-format-radios"
+                            value="JSON"
+                            id="file_format_radios_option_2"
+                          />
+                          <label class="custom-control-label" for="file_format_radios_option_2">
+                            <span>JSON</span>
+                          </label>
+                        </div>
+                      </div>
                     </b-form-group>
                   </b-col>
                   <b-col sm="2">
@@ -186,21 +309,40 @@ SPDX-License-Identifier: Apache-2.0
               <div>
                 <b-row v-if="dataset_mode === 'JOIN'">
                   <b-col sm="2">
-                    <b-form-group v-slot="{ ariaDescribedby }">
-                      <slot name="label">
-                        File Format:
-                        <b-link v-b-modal.modal-file-format>
-                          <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
-                        </b-link>
-                      </slot>
-                      <b-form-radio-group
-                          v-model="file_format"
-                          :options="file_format_options"
-                          :aria-describedby="ariaDescribedby"
-                          name="file-format-radios"
-                          stacked
-                      ></b-form-radio-group>
-                    </b-form-group>
+                    <slot name="label">
+                      File Format:
+                      <b-link v-b-modal.modal-file-format>
+                        <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
+                      </b-link>
+                    </slot>
+                      <div class="bv-no-focus-ring" role="radiogroup" tabindex="-1">
+                        <div class="custom-control custom-radio">
+                          <input
+                              v-model="file_format"
+                              class="custom-control-input"
+                              type="radio"
+                              name="file-format-radios"
+                              value="CSV"
+                              id="file_format_radios_option_1"
+                          />
+                          <label class="custom-control-label" for="file_format_radios_option_1">
+                            <span>CSV</span>
+                          </label>
+                        </div>
+                        <div class="custom-control custom-radio">
+                          <input
+                              v-model="file_format"
+                              class="custom-control-input"
+                              type="radio"
+                              name="file-format-radios"
+                              value="JSON"
+                              id="file_format_radios_option_2"
+                          />
+                          <label class="custom-control-label" for="file_format_radios_option_2">
+                            <span>JSON</span>
+                          </label>
+                        </div>
+                      </div>
                   </b-col>
                   <b-col sm="2">
                     Encryption Mode:
@@ -225,37 +367,20 @@ SPDX-License-Identifier: Apache-2.0
                 </b-col>
                 <b-col sm="5">
                   <b-form-group
-                    description="This tool applies country-specific normalization to each input file."
+                    description="The country indicating where the data for this audience was collected."
                   >
-                    <b-form-select id="country-code-dropdown" v-model="country_code">
-                      <b-form-select-option value="CA">
-                        Canada
-                      </b-form-select-option>
-                      <b-form-select-option value="FR">
-                        France
-                      </b-form-select-option>
-                      <b-form-select-option value="DE">
-                        Germany
-                      </b-form-select-option>
-                      <b-form-select-option value="IN">
-                        India
-                      </b-form-select-option>
-                      <b-form-select-option value="IT">
-                        Italy
-                      </b-form-select-option>
-                      <b-form-select-option value="JP">
-                        Japan
-                      </b-form-select-option>
-                      <b-form-select-option value="ES">
-                        Spain
-                      </b-form-select-option>
-                      <b-form-select-option value="UK">
-                        United Kingdom
-                      </b-form-select-option>
-                      <b-form-select-option value="US">
-                        United States
-                      </b-form-select-option>
-                    </b-form-select>
+                  <div>
+                    <select class="custom-select" id="country-code-dropdown" v-model="country_code">
+                      <option value="CA">Canada</option>
+                      <option value="FR">France</option>
+                      <option value="DE">Germany</option>
+                      <option value="IN">India</option>
+                      <option value="IT">Italy</option>
+                      <option value="JP">Japan</option>
+                      <option value="ES">Spain</option>
+                      <option value="GB">United Kingdom</option>
+                      <option value="US">United States</option></select>
+                  </div>
                   </b-form-group>
                 </b-col>
               </b-row>

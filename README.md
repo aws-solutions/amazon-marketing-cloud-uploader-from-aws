@@ -43,8 +43,8 @@ The following Cloudformation templates will deploy the application.
 
 Region| Launch
 ------|-----
-US East (N. Virginia) | [![Launch in us-east-1](docs/images/launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?stackName=amcufa&templateURL=https://solutions-reference.s3.amazonaws.com/amazon-marketing-cloud-uploader-from-aws/v2.2.2/amazon-marketing-cloud-uploader-from-aws.template)
-EU West (Ireland) | [![Launch in eu-west-1](docs/images/launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=eu-west-1#/stacks/new?stackName=amcufa&templateURL=https://solutions-reference.s3.amazonaws.com/amazon-marketing-cloud-uploader-from-aws/v2.2.2/amazon-marketing-cloud-uploader-from-aws.template)
+US East (N. Virginia) | [![Launch in us-east-1](docs/images/launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?stackName=amcufa&templateURL=https://solutions-reference.s3.amazonaws.com/amazon-marketing-cloud-uploader-from-aws/v2.3.0/amazon-marketing-cloud-uploader-from-aws.template)
+EU West (Ireland) | [![Launch in eu-west-1](docs/images/launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=eu-west-1#/stacks/new?stackName=amcufa&templateURL=https://solutions-reference.s3.amazonaws.com/amazon-marketing-cloud-uploader-from-aws/v2.3.0/amazon-marketing-cloud-uploader-from-aws.template)
 
 Once the Cloud Formation stack has been created, open the URL shown in the `UserInterface` output of the base stack. You can also get this URL with the following AWS CLI command:
 
@@ -333,7 +333,7 @@ Example body for uploading to an existing dimension dataset with deleted fields:
 Example body for uploading to a new fact autodetect dataset with deleted fields:
 ```JSON
 {
-	"countryCode": "UK",
+	"countryCode": "GB",
 	"datasetId": "test-dataset3",
 	"deletedFields": "[\"product_quantity\",\"product_name\"]",
 	"outputBucket": "myStack-etl-artifacts",

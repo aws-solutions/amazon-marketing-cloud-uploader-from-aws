@@ -177,6 +177,8 @@ class FactDataset(DataFile):
             + "/"
             + self.dataset_id
             + "/"
+            + self.country_code
+            + "/"
             + self.timeseries_partition_size
             + "/"
             + destination_endpoint_base_url
@@ -404,6 +406,8 @@ class DimensionDataset(DataFile):
                 + AMC_STR
                 + "/"
                 + self.dataset_id
+                + "/"
+                + self.country_code
                 + "/dimension/"
                 + destination_endpoint_base_url
                 + "/"

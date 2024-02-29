@@ -250,7 +250,7 @@ class AddressNormalizer:
         elif country_code == "CA":
             self.street_word_maps.extend(DefaultStreetSuffixes)
 
-        elif country_code == "UK":
+        elif country_code == "GB":
             self.street_word_maps.extend(UKOrganizationSuffixes)
             self.street_word_maps.extend(UKStreetSuffixes)
             self.street_word_maps.extend(UKSubBuildingDesignator)

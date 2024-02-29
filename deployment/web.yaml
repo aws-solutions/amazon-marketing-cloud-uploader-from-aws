@@ -107,7 +107,7 @@ Resources:
 
   WebsiteBucket:
     Type: AWS::S3::Bucket
-    DeletionPolicy: "Delete"
+    DeletionPolicy: "Retain"
     Properties:
       AccessControl: LogDeliveryWrite
       BucketName: !GetAtt GetWebsiteBucketName.Data
