@@ -213,12 +213,42 @@ if [ $? -ne 0 ]; then
   echo "ERROR: Lambda layer build script failed."
   exit 1
 fi
-rm -rf lambda_layer_python-3.10/
+rm -rf lambda_layer_python-3.12/
 echo "Lambda layer build script completed.";
-mv lambda_layer_python3.10.zip "$regional_dist_dir"
+mv lambda_layer_python3.12.zip "$regional_dist_dir"
 echo "Lambda layer file:"
-ls $regional_dist_dir/lambda_layer_python3.10.zip
+ls $regional_dist_dir/lambda_layer_python3.12.zip
 cd "$build_dir" || exit 1
+
+echo "------------------------------------------------------------------------------"
+echo "CloudFormation Templates"
+echo "------------------------------------------------------------------------------"
+echo ""
+echo "Preparing template files:"
+cp "$build_dir/amazon-marketing-cloud-uploader-from-aws.yaml" "$global_dist_dir/amazon-marketing-cloud-uploader-from-aws.template"
+cp "$build_dir/glue.yaml" "$global_dist_dir/glue.template"
+cp "$build_dir/auth.yaml" "$global_dist_dir/auth.template"
+cp "$build_dir/web.yaml" "$global_dist_dir/web.template"
+find "$global_dist_dir"
+echo "Updating template source bucket in template files with '$global_bucket'"
+echo "Updating code source bucket in template files with '$regional_bucket'"
+echo "Updating solution version in template files with '$version'"
+new_global_bucket="s/%%GLOBAL_BUCKET_NAME%%/$global_bucket/g"
+new_regional_bucket="s/%%REGIONAL_BUCKET_NAME%%/$regional_bucket/g"
+new_version="s/%%VERSION%%/$version/g"
+new_solution="s/%%SOLUTION_NAME%%/$solution_name/g"
+sed -i -e "$new_global_bucket" "$global_dist_dir/amazon-marketing-cloud-uploader-from-aws.template"
+sed -i -e "$new_regional_bucket" "$global_dist_dir/amazon-marketing-cloud-uploader-from-aws.template"
+sed -i -e "$new_version" "$global_dist_dir/amazon-marketing-cloud-uploader-from-aws.template"
+sed -i -e "$new_solution" "$global_dist_dir/amazon-marketing-cloud-uploader-from-aws.template"
+sed -i -e "$new_global_bucket" "$global_dist_dir/glue.template"
+sed -i -e "$new_regional_bucket" "$global_dist_dir/glue.template"
+sed -i -e "$new_version" "$global_dist_dir/glue.template"
+sed -i -e "$new_solution" "$global_dist_dir/glue.template"
+sed -i -e "$new_global_bucket" "$global_dist_dir/web.template"
+sed -i -e "$new_regional_bucket" "$global_dist_dir/web.template"
+sed -i -e "$new_version" "$global_dist_dir/web.template"
+sed -i -e "$new_solution" "$global_dist_dir/web.template"
 
 echo "------------------------------------------------------------------------------"
 echo "API Stack"
@@ -278,21 +308,20 @@ new_global_bucket="s/%%GLOBAL_BUCKET_NAME%%/$global_bucket/g"
 new_regional_bucket="s/%%REGIONAL_BUCKET_NAME%%/$regional_bucket/g"
 new_version="s/%%VERSION%%/$version/g"
 new_solution="s/%%SOLUTION_NAME%%/$solution_name/g"
-# Update templates in place. Copy originals to [filename].orig
-sed -i.orig -e "$new_global_bucket" "$global_dist_dir/amazon-marketing-cloud-uploader-from-aws.template"
-sed -i.orig -e "$new_regional_bucket" "$global_dist_dir/amazon-marketing-cloud-uploader-from-aws.template"
-sed -i.orig -e "$new_version" "$global_dist_dir/amazon-marketing-cloud-uploader-from-aws.template"
-sed -i.orig -e "$new_solution" "$global_dist_dir/amazon-marketing-cloud-uploader-from-aws.template"
-sed -i.orig -e "$new_global_bucket" "$global_dist_dir/glue.template"
-sed -i.orig -e "$new_regional_bucket" "$global_dist_dir/glue.template"
-sed -i.orig -e "$new_version" "$global_dist_dir/glue.template"
-sed -i.orig -e "$new_solution" "$global_dist_dir/glue.template"
-sed -i.orig -e "$new_global_bucket" "$global_dist_dir/web.template"
-sed -i.orig -e "$new_regional_bucket" "$global_dist_dir/web.template"
-sed -i.orig -e "$new_version" "$global_dist_dir/web.template"
-sed -i.orig -e "$new_solution" "$global_dist_dir/web.template"
-sed -i.orig -e "$new_version" "$global_dist_dir/api.template"
-sed -i.orig -e "$new_version" "$global_dist_dir/auth.template"
+sed -i -e "$new_global_bucket" "$global_dist_dir/amazon-marketing-cloud-uploader-from-aws.template"
+sed -i -e "$new_regional_bucket" "$global_dist_dir/amazon-marketing-cloud-uploader-from-aws.template"
+sed -i -e "$new_version" "$global_dist_dir/amazon-marketing-cloud-uploader-from-aws.template"
+sed -i -e "$new_solution" "$global_dist_dir/amazon-marketing-cloud-uploader-from-aws.template"
+sed -i -e "$new_global_bucket" "$global_dist_dir/glue.template"
+sed -i -e "$new_regional_bucket" "$global_dist_dir/glue.template"
+sed -i -e "$new_version" "$global_dist_dir/glue.template"
+sed -i -e "$new_solution" "$global_dist_dir/glue.template"
+sed -i -e "$new_global_bucket" "$global_dist_dir/web.template"
+sed -i -e "$new_regional_bucket" "$global_dist_dir/web.template"
+sed -i -e "$new_version" "$global_dist_dir/web.template"
+sed -i -e "$new_solution" "$global_dist_dir/web.template"
+sed -i -e "$new_version" "$global_dist_dir/api.template"
+sed -i -e "$new_version" "$global_dist_dir/auth.template"
 
 echo "------------------------------------------------------------------------------"
 echo "Glue ETL"
@@ -316,7 +345,7 @@ npm install
 echo "Compiling the vue app"
 npm run build
 echo "Finished building website"
-cp -r ./dist/* "$regional_dist_dir"/website/
+cp -r ./dist/* ./dist/.well-known "$regional_dist_dir"/website/
 rm -rf ./dist
 
 echo "------------------------------------------------------------------------------"
@@ -347,7 +376,7 @@ echo "Building website helper function"
 cd "$source_dir/helper" || exit 1
 [ -e dist ] && rm -r dist
 mkdir -p dist
-zip -q -g ./dist/websitehelper.zip ./website_helper.py webapp-manifest.json
+zip -q -g ./dist/websitehelper.zip ./website_helper.py ./config_helper.py ./cf_helper.py webapp-manifest.json
 cp "./dist/websitehelper.zip" "$regional_dist_dir/websitehelper.zip"
 
 echo "------------------------------------------------------------------------------"
@@ -373,7 +402,7 @@ pip3 install --quiet -r ../requirements.txt --target .
 zip -q -r9 ../dist/amc_uploader.zip .
 popd || exit 1
 zip -q -g ./dist/amc_uploader.zip ./amc_uploader.py
-zip -q -g ./dist/amc_uploader.zip ./lib/sigv4.py
+zip -q -g ./dist/amc_uploader.zip ./lib/tasks.py
 cd dist
 echo "amc_uploader.zip share/* -x **/__pycache__/*"
 zip -r amc_uploader.zip share/* -x "**/__pycache__/*"
@@ -410,6 +439,38 @@ popd || exit 1
 zip -q -g ./dist/anonymous_data_logger.zip ./anonymous_data_logger.py
 cp "./dist/anonymous_data_logger.zip" "$regional_dist_dir/anonymous_data_logger.zip"
 # Finished building anonymous data logger
+rm -rf ./dist ./package
+
+echo "------------------------------------------------------------------------------"
+echo "Creating deployment package for cognito hosted ui customization"
+echo "------------------------------------------------------------------------------"
+
+echo "Building cognito hosted ui customization"
+cd "$source_dir/cognito_hosted_ui_resource" || exit 1
+[ -e dist ] && rm -rf dist
+mkdir -p dist
+[ -e package ] && rm -rf package
+mkdir -p package
+echo "create requirements for lambda"
+# Make lambda package
+pushd package || exit 1
+echo "create lambda package"
+# Handle distutils install errors
+touch ./setup.cfg
+echo "[install]" > ./setup.cfg
+echo "prefix= " >> ./setup.cfg
+pip3 install --quiet -r ../requirements.txt --target .
+cp -R ../amcufa-logo.png .
+cp -R ../login.css .
+if ! [ -d ../dist/cognito_hosted_ui_resource.zip ]; then
+  zip -q -r9 ../dist/cognito_hosted_ui_resource.zip .
+elif [ -d ../dist/cognito_hosted_ui_resource.zip ]; then
+  echo "Package already present"
+fi
+popd || exit 1
+zip -q -g ./dist/cognito_hosted_ui_resource.zip ./cognito_hosted_ui_resource.py
+cp "./dist/cognito_hosted_ui_resource.zip" "$regional_dist_dir/cognito_hosted_ui_resource.zip"
+# Finished building cognito hosted ui customization.
 rm -rf ./dist ./package
 
 # Skip copy dist to S3 if building for solution builder because
@@ -466,7 +527,7 @@ if [ $use_solution_builder_pipeline = false ]; then
   echo "---"
 
   set -x
-  aws s3 sync $global_dist_dir s3://$global_bucket/$solution_name/$version/ --exclude '*.orig' $(if [ ! -z $profile ]; then echo "--profile $profile"; fi)
+  aws s3 sync $global_dist_dir s3://$global_bucket/$solution_name/$version/ $(if [ ! -z $profile ]; then echo "--profile $profile"; fi)
   aws s3 sync $regional_dist_dir s3://${regional_bucket}-${region}/$solution_name/$version/ $(if [ ! -z $profile ]; then echo "--profile $profile"; fi)
   set +x
 

@@ -53,23 +53,14 @@ def load_address_map_helper():
 address_map = load_address_map_helper()
 
 NumberIndicators = address_map["NumberIndicators"]
-
 DirectionalWords = address_map["DirectionalWords"]
-
 DefaultStreetSuffixes = address_map["DefaultStreetSuffixes"]
-
 USStreetSuffixes = address_map["USStreetSuffixes"]
-
 USSubBuildingDesignator = address_map["USSubBuildingDesignator"]
-
 ITStreetPrefixes = address_map["ITStreetPrefixes"]
-
 FRStreetDesignator = address_map["FRStreetDesignator"]
-
 ESStreetPrefixes = address_map["ESStreetPrefixes"]
-
 UKOrganizationSuffixes = address_map["UKOrganizationSuffixes"]
-
 UKStreetSuffixes = address_map["UKStreetSuffixes"]
 UKSubBuildingDesignator = address_map["UKSubBuildingDesignator"]
 
@@ -96,6 +87,7 @@ class Delimiter:
         self.del_type = del_type
 
     def parse(self, text, start=None):
+        print("Running parse")
         if start is None:
             start = 0
         delimiters = []
@@ -110,6 +102,7 @@ class Delimiter:
         return delimiters
 
     def find_delimiters(self, text, start, delimiters, del_type):
+        print("Running find_delimiters")
         result = []
         text_start = start
         delimiters_1 = delimiters

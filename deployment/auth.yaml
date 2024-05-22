@@ -14,6 +14,15 @@ Parameters:
   RestApiId:
     Description: REST API ID
     Type: String
+  CognitoUISubdomain:
+    Description: Prefix for Cognito hosted UI
+    Type: String
+  CognitoCallbackURL:
+    Description: Redirect URL after successful sign-in
+    Type: String
+  CognitoLogoutURL:
+    Description: Redirect URL after successful logout
+    Type: String
 
 Resources:
   UserPool:
@@ -28,13 +37,26 @@ Resources:
         AllowAdminCreateUserOnly: True
         InviteMessageTemplate:
           EmailMessage: !Join ["", [
-            "Your username is {username} and temporary password is {####}<br>Stack name: ",
-            !Ref ParentStackName
+            "<p>Please use the credentials below to login to the AMC Uploader console.</p>",
+            "<p>Console: <strong>",
+            !Ref CognitoCallbackURL,
+            "</strong></p>",
+            "<p>Username: <strong>{username}</strong></p>",
+            "<p>Password: <strong>{####}</strong></p>",
+            "<p>Stack name: <strong>",
+            !Ref ParentStackName,
+            "</strong></p>"
           ]]
           EmailSubject: "Welcome to Amazon Marketing Cloud uploader from AWS"
       EmailConfiguration:
         EmailSendingAccount: 'COGNITO_DEFAULT'
       AutoVerifiedAttributes: ['email']
+
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Ref CognitoUISubdomain
+      UserPoolId: !Ref UserPool
 
   UserPoolRiskConfiguration:
     Type: AWS::Cognito::UserPoolRiskConfigurationAttachment
@@ -56,7 +78,19 @@ Resources:
   WebAppClient:
     Type: AWS::Cognito::UserPoolClient
     Properties:
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+        - openid
+        - profile
       UserPoolId: !Ref UserPool
+      CallbackURLs:
+        - !Ref CognitoCallbackURL
+      LogoutURLs:
+        - !Ref CognitoLogoutURL
+      SupportedIdentityProviders:
+        - COGNITO
 
     # Service - cognito / security infrastructure
 
@@ -66,45 +100,45 @@ Resources:
     # https://stackoverflow.com/questions/53131052/aws-cloudformation-can-not-create-stack-when-awscognitoidentitypoolroleattac
 
   CognitoRoleMappingTransformer:
-      Type: AWS::Lambda::Function
-      Metadata:
-        cfn_nag:
-          rules_to_suppress:
-            - id: W58
-              reason: "The role includes permission to write to CloudWatch Logs"
-            - id: W89
-              reason: "This resource does not need to access any other resource provisioned within a VPC."
-            - id: W92
-              reason: "This function does not performance optimization, so the default concurrency limits suffice."
-      Properties:
-        Code:
-          ZipFile: |
-            import json
-            import cfnresponse
-
-            def handler(event, context):
-                print("Event: %s" % json.dumps(event))
-                resourceProperties = event["ResourceProperties"]
-                responseData = {
-                    "RoleMapping": {
-                        resourceProperties["IdentityProvider"]: {
-                            "Type": resourceProperties["Type"]
-                        }
-                    }
-                }
-                if resourceProperties["AmbiguousRoleResolution"]:
-                    responseData["RoleMapping"][resourceProperties["IdentityProvider"]]["AmbiguousRoleResolution"] = \
-                    resourceProperties["AmbiguousRoleResolution"]
-
-                print(responseData)
-                cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
-        Handler: !Join
-          - ''
-          - - index
-            - .handler
-        Role: !GetAtt CognitoRoleMapperLambdaExecutionRole.Arn
-        Runtime: python3.10
-        Timeout: 30
+    Type: AWS::Lambda::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W58
+            reason: "The role includes permission to write to CloudWatch Logs"
+          - id: W89
+            reason: "This resource does not need to access any other resource provisioned within a VPC."
+          - id: W92
+            reason: "This function does not performance optimization, so the default concurrency limits suffice."
+    Properties:
+      Code:
+        ZipFile: |
+          import json
+          import cfnresponse
+          
+          def handler(event, context):
+              print("Event: %s" % json.dumps(event))
+              resourceProperties = event["ResourceProperties"]
+              responseData = {
+                  "RoleMapping": {
+                      resourceProperties["IdentityProvider"]: {
+                          "Type": resourceProperties["Type"]
+                      }
+                  }
+              }
+              if resourceProperties["AmbiguousRoleResolution"]:
+                  responseData["RoleMapping"][resourceProperties["IdentityProvider"]]["AmbiguousRoleResolution"] = \
+                  resourceProperties["AmbiguousRoleResolution"]
+          
+              print(responseData)
+              cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+      Handler: !Join
+        - ''
+        - - index
+          - .handler
+      Role: !GetAtt CognitoRoleMapperLambdaExecutionRole.Arn
+      Runtime: python3.12
+      Timeout: 30
 
   CognitoRoleMappingTransformerLogGroup:
     Type: AWS::Logs::LogGroup
@@ -115,31 +149,31 @@ Resources:
             reason: "The data generated via this role does not need to be encrypted."
     Properties:
       LogGroupName: !Join ['/', ['/aws/lambda', !Ref CognitoRoleMappingTransformer]]
-      RetentionInDays: 30
+      RetentionInDays: 3653
 
   CognitoRoleMapperLambdaExecutionRole:
-      Type: 'AWS::IAM::Role'
-      Properties:
-        AssumeRolePolicyDocument:
-          Version: 2012-10-17
-          Statement:
-            - Effect: Allow
-              Principal:
-                Service:
-                  - lambda.amazonaws.com
-              Action:
-                - 'sts:AssumeRole'
-        Path: /
-        Policies:
-          - PolicyName: root
-            PolicyDocument:
-              Version: 2012-10-17
-              Statement:
-                - Effect: Allow
-                  Action:
-                    - 'logs:CreateLogStream'
-                    - 'logs:PutLogEvents'
-                  Resource: 'arn:aws:logs:*:*:*'
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: 'arn:aws:logs:*:*:*'
 
   IdentityPool:
     Type: AWS::Cognito::IdentityPool
@@ -306,3 +340,5 @@ Outputs:
     Value: !Ref IdentityPool
   UserPoolClientId:
     Value: !Ref WebAppClient
+  HostedUIDomain:
+    Value: !Sub "${CognitoUISubdomain}.auth.${AWS::Region}.amazoncognito.com"

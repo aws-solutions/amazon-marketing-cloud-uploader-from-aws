@@ -8,15 +8,37 @@ SPDX-License-Identifier: Apache-2.0
     <div class="headerTextBackground">
       <Header />
       <b-container fluid>
+        <b-alert
+          v-if="handle_country_code()"
+          v-model="showCountryCodePIIWarning"
+          variant="warning"
+          dismissible
+        >
+          WARNING: PII columns will not resolve to identities because you did not specified a country code in Step 3.
+        </b-alert>
         <b-row style="text-align: left">
           <b-col cols="2">
             <Sidebar :is-step5-active="true" />
           </b-col>
           <b-col cols="10">
             <b-modal ok-only scrollable id="modal-lg" size="lg" title="Automate uploads to AMC with Amazon S3 Trigger">
-              <p>The following steps describe how to create an AWS Lambda function to automatically normalize and upload any new file matching the pattern <b>s3://{{ this.DATA_BUCKET_NAME }}/{{ prefix }}*{{ suffix }}</b> to AMC. Each file will upload into the (previously defined) dataset, <b>{{s3_trigger_dataset_id}}</b>, so be sure that dataset exists and every input file complies with the schema defined for that dataset. This procedure assumes you are using MacOS or Linux and have installed and configured the <a href="https://aws.amazon.com/cli/">AWS Command Line Interface</a> to interact with your AWS account.
+              <p>The following steps describe how to create an AWS Lambda function to automatically normalize and upload any new file matching the pattern <b>s3://{{ this.DATA_BUCKET_NAME }}/{{ prefix }}*{{ suffix }}</b> to AMC. Each file will upload into the (previously defined) dataset <b>{{s3_trigger_dataset_id}}</b>. This procedure assumes you are using MacOS or Linux and have installed and configured the <a href="https://aws.amazon.com/cli/">AWS Command Line Interface</a> to interact with your AWS account.
               </p>
               <ol>
+                <li>
+                  Prerequisites:
+                </li>
+                <ul>
+                  <li>
+                    Source bucket <b>{{ this.DATA_BUCKET_NAME }}</b> must be in region <b>{{ AWS_REGION }}</b>.
+                  </li>
+                  <li>
+                    Dataset <b>{{s3_trigger_dataset_id}}</b> must exist in AMC instances <b>{{ amc_instance_ids }}</b>.
+                  </li>
+                  <li>
+                    Every file you upload must match the dataset schema.
+                  </li>
+                </ul>
                 <li>
                   Verify the following configurations:
                   <table><!-- //NOSONAR -->
@@ -90,7 +112,7 @@ SPDX-License-Identifier: Apache-2.0
                       <b-button size="sm" variant="link" class="clipboard" v-b-tooltip.hover :title=clipboard_title @click="copyText('createFunction')" @mouseenter="clipboard_title='Copy to Clipboard'">
                         <b-icon-clipboard></b-icon-clipboard>
                       </b-button>
-                      <code id="createFunction">$ aws lambda create-function --function-name AmcUploaderS3Trigger --runtime python3.10 --role ${ROLE_ARN} --zip-file fileb://amc-uploader-s3-trigger.zip --handler lambda_function.lambda_handler --region
+                      <code id="createFunction">$ aws lambda create-function --function-name AmcUploaderS3Trigger --runtime python3.12 --role ${ROLE_ARN} --zip-file fileb://amc-uploader-s3-trigger.zip --handler lambda_function.lambda_handler --region
                         {{ AWS_REGION }}
                       </code>
                     </b-card-text>
@@ -183,23 +205,23 @@ SPDX-License-Identifier: Apache-2.0
                 <div v-else>
                   <br>
                 </div>
-                <h5>Destinations:</h5>
+                <h5>Instances:</h5>
                 <ul>
-                  <li v-for="endpoint in destination_endpoints" :key="endpoint">
-                    <div v-if="endpoint_request(endpoint).is_busy">
-                      {{ endpoint }} <b-spinner small></b-spinner>
+                  <li v-for="(instance, index) in amc_instances_selected" :key="index">
+                    <div v-if="instance_id_request(instance).is_busy">
+                      {{ instance.instance_id }} <b-spinner small></b-spinner>
                     </div>
                     <div v-else>
-                      <div v-if="!endpoint_request(endpoint).status">
-                        {{ endpoint }} {{ endpoint_request(endpoint).status }}
+                      <div v-if="!instance_id_request(instance).status">
+                        {{ instance.instance_id }} {{ instance_id_request(instance).status }}
                       </div>
-                      <div v-else-if="endpoint_request(endpoint).status.toLowerCase().includes('error')">
-                        {{ endpoint }} <p class="text-danger" style="display:inline">
-                          <br>{{ endpoint_request(endpoint).status }}
+                      <div v-else-if="instance_id_request(instance).status.ERROR">
+                        {{ instance.instance_id }} <p class="text-danger" style="display:inline">
+                          <br>{{ instance_id_request(instance).status.ERROR }}
                         </p>
                       </div>
-                      <div v-else-if="JSON.stringify(endpoint_request(endpoint).status).length > 0">
-                        {{ endpoint }} (<b-link variant="link" @click="onClickMonitor(endpoint)">
+                      <div v-else-if="instance_id_request(instance).status.GOOD">
+                        {{ instance.instance_id }} (<b-link variant="link" @click="onClickMonitor(instance)">
                           monitor
                         </b-link>)
                       </div>
@@ -252,9 +274,10 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script>
-  import Header from '@/components/Header.vue'
-  import Sidebar from '@/components/Sidebar.vue'
-  import {mapState} from "vuex";
+  import Header from '@/components/Header.vue';
+  import Sidebar from '@/components/Sidebar.vue';
+  import { API } from 'aws-amplify';
+  import { mapState } from "vuex";
 
   export default {
     name: "Step5",
@@ -269,25 +292,31 @@ SPDX-License-Identifier: Apache-2.0
         clipboard_title: "Copy to Clipboard",
         disable_submit: false,
         destination_fields: [
-          {key: 'endpoint', label: 'AMC Endpoint', sortable: true},
+          {key: 'instance_id', label: 'AMC InstanceID', sortable: true},
           {key: 'actions', label: 'Actions'},
         ],
-        column_fields: ['name', 'description', 'dataType', 'columnType', 'nullable', 'isMainUserId', 'isMainUserIdType', 'isMainUserId', 'externalUserIdType.type','externalUserIdType.identifierType','isMainEventTime'],
+        column_fields: ['name', 'description', 'dataType', 'columnType', 'nullable', 'isMainUserId', 'isMainUserIdType', 'isMainUserId', 'externalUserIdType.externalIdentity','externalUserIdType.hashedPii','isMainEventTime'],
         dataset_fields: [{key: '0', label: 'Name'}, {key: '1', label: 'Value'}],
-        endpoint_request_state: [],
+        instance_id_request_state: [],
         isStep5Active: true,
         response: '',
-        apiName: 'amcufa-api'
+        apiName: 'amcufa-api',
+        userId: null,
+        new_s3key: null,
+        showCountryCodePIIWarning: false,
       }
     },
     computed: {
-      ...mapState(['deleted_columns', 'dataset_definition', 's3key', 'selected_dataset', 'destination_endpoints']),
+      ...mapState(['deleted_columns', 'dataset_definition', 's3key', 'selected_dataset', 'amc_instances_selected']),
+      amc_instance_ids() {
+        return this.amc_instances_selected.map(x => x.instance_id)
+      },
       isBusy() {
-        // if any endpoint is busy then return true
-        return this.endpoint_request_state.filter(x => x.is_busy === true).length > 0
+        // if any instance_id is busy then return true
+        return this.instance_id_request_state.filter(x => x.is_busy === true).length > 0
       },
       isValid() {
-        return !(this.s3key === '' || this.destination_endpoints.length === 0 || !this.dataset.columns || this.dataset.columns.length === 0)
+        return !(this.s3key === '' || this.amc_instances_selected.length === 0 || !this.dataset.columns || this.dataset.columns.length === 0)
       },
       encryption_key() {
         if (this.CUSTOMER_MANAGED_KEY === "") {
@@ -297,23 +326,21 @@ SPDX-License-Identifier: Apache-2.0
         }
       },
       pii_fields() {
-         return (this.dataset.columns.filter(x => x.externalUserIdType && x.externalUserIdType.identifierType).map(x => (new Object( {'column_name':x.name, 'pii_type': x.externalUserIdType.identifierType}))))
+         return (this.dataset.columns.filter(x => x.externalUserIdType && x.externalUserIdType.hashedPii).map(x => (new Object( {'column_name':x.name, 'pii_type': x.externalUserIdType.hashedPii}))))
       },
       timestamp_column_name() {
         const timestamp_column = this.dataset.columns.filter(x => x.isMainEventTime).map(x => x.name)
-        // The Glue ETL job requires timestamp_column_name to be an empty string
-        // for all DIMENSION datasets.
-        const dataset_type = this.dataset_definition['dataSetType']
-        if (dataset_type === 'FACT' && timestamp_column && timestamp_column.length > 0)
+        const period = this.dataset_definition['period']
+        if (period !== "DIMENSION" && timestamp_column && timestamp_column.length > 0){
           return timestamp_column[0]
-        else
-          return ''
+        }
+        return ''
       },
       dataset() {
         let {columns, ...other_attributes} = this.dataset_definition
         other_attributes['encryption_mode'] = this.ENCRYPTION_MODE
         return {"columns": columns, "other_attributes": Object.entries(other_attributes)}
-      }
+      },
     },
     deactivated: function () {
       console.log('deactivated');
@@ -323,38 +350,61 @@ SPDX-License-Identifier: Apache-2.0
     },
     created: function () {
       console.log('created')
-      this.endpoint_request_state = this.destination_endpoints.map(x => ({
-        "endpoint": x,
+      this.instance_id_request_state = this.amc_instances_selected.map(x => ({
+        "instance_id": x.instance_id,
+        "marketplace_id": x.marketplace_id,
+        "advertiser_id": x.advertiser_id,
         "status": null,
         "is_busy": false
       }))
       this.s3_trigger_dataset_id = this.dataset_definition.dataSetId
     },
+    mounted: function () {
+      this.userId = this.USER_POOL_ID
+      this.new_s3key = this.s3key
+      this.showCountryCodePIIWarning = this.handle_country_code()
+    },
     methods: {
+      handle_country_code(){
+        return (
+          this.dataset_definition.countryCode === "Not Applicable" ||
+          this.dataset_definition.countryCode === null ||
+          this.dataset_definition.countryCode.length === 0 ||
+          !this.dataset_definition.countryCode
+        ) && this.dataset_definition.PIISelected
+      },
       copyText(elementId) {
         const element = document.getElementById(elementId);
         navigator.clipboard.writeText(element.textContent.replace('$ ', '').replaceAll('$ ', '\n'));
         this.clipboard_title = "Copied!"
       },
-      onClickMonitor(endpoint) {
-        this.$store.commit('updateAmcMonitor', endpoint)
+      onClickMonitor(instance) {
+        this.$store.commit('updateAmcMonitor', instance)
         this.$router.push({path: '/step6'})
       },
-      endpoint_request(endpoint) {
-        const i =  this.endpoint_request_state.findIndex(x => x.endpoint === endpoint)
+      instance_id_request(instance) {
+        const i =  this.instance_id_request_state.findIndex(x => x.instance_id === instance.instance_id)
         if (i !== null) {
-          return this.endpoint_request_state[i]
+          return this.instance_id_request_state[i]
         }
       },
       onSubmit() {
         this.disable_submit = true
-        // Send a request to create datasets to each endpoint in parallel.
+        // If user selected "Not Applicable" then set it to null for the api.
+        if (this.dataset_definition.countryCode === "Not Applicable"){
+          this.dataset_definition['countryCode'] = null
+        }
+        if (this.dataset_definition.countryCode !== "Not Applicable" && !this.dataset_definition.PIISelected){
+          this.dataset_definition['countryCode'] = null
+        }
+        // Send a request to create datasets to each instance_id in parallel.
         if (this.selected_dataset === null) {
-          this.create_datasets(this.destination_endpoints)
+          this.create_datasets(this.amc_instances_selected)
         } else {
-          this.check_dataset_exists(this.destination_endpoints, this.selected_dataset)
+          this.check_dataset_exists(this.amc_instances_selected, this.selected_dataset)
         }
         console.log("Finished defining datasets.")
+        
         // Wait for all those requests to complete, then start the glue job.
         this.start_amc_transformation('POST', 'start_amc_transformation', {
           'sourceBucket': this.DATA_BUCKET_NAME,
@@ -364,53 +414,89 @@ SPDX-License-Identifier: Apache-2.0
           'deletedFields': JSON.stringify(this.deleted_columns),
           'timestampColumn': this.timestamp_column_name,
           'datasetId': this.dataset_definition.dataSetId,
-          'period': this.dataset_definition.period,
+          'period': this.handle_dataset_period(this.dataset_definition.period),
           'countryCode': this.dataset_definition.countryCode,
           'fileFormat': this.dataset_definition.fileFormat,
-          'destination_endpoints': JSON.stringify(this.destination_endpoints)
+          'amc_instances': JSON.stringify(this.amc_instances_selected),
+          "user_id": this.userId,
+          'updateStrategy': this.dataset_definition.updateStrategy
         })
       },
-      check_dataset_exists(destination_endpoints, dataset_id) {
-        // set busy status to show spinner for each endpoint
-        this.endpoint_request_state = this.destination_endpoints.map(x => ({
-          "endpoint": x,
+      handle_dimension_dataset_payload(dataset_definition){
+        if(dataset_definition.period === "DIMENSION"){
+            const dimension_dataset_definition = {}
+            Object.assign(dimension_dataset_definition, dataset_definition);
+            delete dimension_dataset_definition["period"]
+            return dimension_dataset_definition
+          }
+          return dataset_definition
+      },
+      handle_dataset_period(period) {
+        if(period === "DIMENSION"){
+          period = ""
+        }
+        return period
+      },
+      check_dataset_exists(amc_instances_selected, dataset_id) {
+        // set busy status to show spinner for each instance_id
+        this.instance_id_request_state = this.amc_instances_selected.map(x => ({
+          "instance_id": x.instance_id,
+          "marketplace_id": x.marketplace_id,
+          "advertiser_id": x.advertiser_id,
           "status": "",
           "is_busy": true
         }))
-        destination_endpoints.forEach(endpoint => {
+        amc_instances_selected.forEach(instance => {
           this.send_request('POST', 'describe_dataset', {
-            'body': this.dataset_definition,
+            'body': this.handle_dimension_dataset_payload(this.dataset_definition),
             'dataSetId': dataset_id,
-            'destination_endpoint': endpoint
+            "instance_id": instance.instance_id,
+            "marketplace_id": instance.marketplace_id,
+            "advertiser_id": instance.advertiser_id,
+            "user_id": this.userId
           }).then(result => {
-            console.log("describe_dataset() result for " + endpoint + ":")
+            console.log("describe_dataset() result for " + instance.instance_id + ":")
             console.log(JSON.stringify(result))
-            const j = this.endpoint_request_state.findIndex(x => x.endpoint === endpoint)
+            const j = this.instance_id_request_state.findIndex(x => x.instance_id === instance.instance_id)
             if (j != null) {
-              this.endpoint_request_state[j].is_busy = false
-              this.endpoint_request_state[j].status = JSON.stringify(result)
+              this.instance_id_request_state[j].is_busy = false
+              if (result.dataSet.columns.length > 0){
+                this.instance_id_request_state[j].status = {"GOOD": result}
+              }else{
+                this.instance_id_request_state[j].status = {"ERROR": result}
+              }
             }
           })
         })
       },
-      create_datasets(destination_endpoints) {
-        // set busy status to show spinner for each endpoint
-        this.endpoint_request_state = this.destination_endpoints.map(x => ({
-          "endpoint": x,
+      create_datasets(amc_instances_selected) {
+        this.$store.commit('updateSelectedAmcInstances', amc_instances_selected)
+        // set busy status to show spinner for each instance_id
+        this.instance_id_request_state = this.amc_instances_selected.map(x => ({
+          "instance_id": x.instance_id,
+          "marketplace_id": x.marketplace_id,
+          "advertiser_id": x.advertiser_id,
           "status": "",
           "is_busy": true
         }))
-        destination_endpoints.forEach(endpoint => {
+        amc_instances_selected.forEach(instance => {
           this.send_request('POST', 'create_dataset', {
-            'body': this.dataset_definition,
-            'destination_endpoint': endpoint
+            'body': {"dataSet": this.handle_dimension_dataset_payload(this.dataset_definition)},
+            "instance_id": instance.instance_id,
+            "marketplace_id": instance.marketplace_id,
+            "advertiser_id": instance.advertiser_id,
+            "user_id": this.userId
           }).then(result => {
-            console.log("create_dataset() result for " + endpoint + ":")
+            console.log("create_dataset() result for " + instance.instance_id + ":")
             console.log(JSON.stringify(result))
-            const j = this.endpoint_request_state.findIndex(x => x.endpoint === endpoint)
+            const j = this.instance_id_request_state.findIndex(x => x.instance_id === instance.instance_id)
             if (j != null) {
-              this.endpoint_request_state[j].is_busy = false
-              this.endpoint_request_state[j].status = JSON.stringify(result)
+              this.instance_id_request_state[j].is_busy = false
+              if (JSON.stringify(result) === "{\"dataSetId\":\"" + this.dataset_definition.dataSetId  + "\",\"instanceId\":\"" + instance.instance_id + "\"}"){
+                this.instance_id_request_state[j].status = {"GOOD": result}
+              }else{
+                this.instance_id_request_state[j].status = {"ERROR": result}
+              }
             }
           })
         })
@@ -424,10 +510,19 @@ SPDX-License-Identifier: Apache-2.0
           body: data
         };
         try {
-          return await this.$Amplify.API.post(this.apiName, resource, requestOpts)
+          const result = await API.post(this.apiName, resource, requestOpts)
+          if (result.authorize_url){
+            this.process_redirect(result)
+          }
+          return result
         } catch (e) {
-          console.log(e.toString())
-          return e.toString()
+          let error_response = e.toString()
+          if (e.response && e.response.data && e.response.data.details) {
+            // Return details from Amplify's error response if available.
+            error_response = e.response.data.details
+          }
+          console.log(error_response)
+          return error_response
         }
       },
       async start_amc_transformation(method, resource, data) {
@@ -442,13 +537,31 @@ SPDX-License-Identifier: Apache-2.0
               body: data
             };
             console.log("POST " + resource + " " + JSON.stringify(requestOpts))
-            this.response = await this.$Amplify.API.post(this.apiName, resource, requestOpts);
+            this.response = await API.post(this.apiName, resource, requestOpts);
+            if (this.response.authorize_url){
+              this.process_redirect(this.response)
+            }
             console.log("Started Glue ETL job")
             console.log(JSON.stringify(this.response))
           }
         } catch (e) {
           console.log(e.toString())
         }
+      },
+      process_redirect(response){
+        const current_page = "step5"
+        const state_key = current_page + this.userId + Date.now()
+        const b64_state_key = btoa(current_page + this.userId + Date.now())
+        let state_vars = {
+          "amc_instances_selected": this.amc_instances_selected,
+          "s3key": this.new_s3key,
+          "dataset_definition": this.dataset_definition,
+          "selected_dataset": this.selected_dataset,
+          "deleted_columns": this.deleted_columns,
+          "current_page": current_page
+        }
+        localStorage.setItem(state_key, JSON.stringify(state_vars))
+        window.location.href = response.authorize_url + "&state=" + b64_state_key
       },
       savePermissionsPolicy() {
         const account_id = "*"
@@ -563,7 +676,8 @@ SPDX-License-Identifier: Apache-2.0
             "    endpoint = '" + this.API_ENDPOINT + "start_amc_transformation'\n" +
             "    # POST requests use a content type header.\n" +
             "    content_type = 'application/json'\n" + 
-            "    source_key = event['Records'][0]['s3']['object']['key']\n" + 
+            "    origin = os.environ.get('AWS_LAMBDA_FUNCTION_NAME')\n" +
+            "    source_key = event['Records'][0]['s3']['object']['key']\n" +
             "    \n" +
             "    # POST data\n" +
             "    body_data = '{' + \\\n" +
@@ -572,11 +686,13 @@ SPDX-License-Identifier: Apache-2.0
             "    '\"piiFields\": \"" + JSON.stringify(this.pii_fields).replace(/"/g, '\\\\"') + "\",' + \\\n" +
             "    '\"deletedFields\": \"" + JSON.stringify(this.deleted_columns).replace(/"/g, '\\\\"') + "\",' + \\\n" +
             "    '\"timestampColumn\": \"" + this.timestamp_column_name + "\",' + \\\n" +
+            "    '\"period\": \"" + this.handle_dataset_period(this.dataset_definition.period) + "\",' + \\\n" +
             "    '\"datasetId\": \"" + this.s3_trigger_dataset_id + "\",' + \\\n" +
-            "    '\"period\": \"" + this.dataset_definition.period + "\",' + \\\n" +
             "    '\"fileFormat\": \"" + this.dataset_definition.fileFormat + "\",' + \\\n" +
+            "    '\"updateStrategy\": \"" + this.dataset_definition.updateStrategy + "\",' + \\\n" +
             "    '\"countryCode\": \"" + this.dataset_definition.countryCode + "\",' + \\\n" +
-            "    '\"destination_endpoints\": \"" + JSON.stringify(this.destination_endpoints).replace(/"/g, '\\\\"') + "\",' + \\\n" +
+            "    '\"amc_instances\": \"" + JSON.stringify(this.amc_instances_selected).replace(/"/g, '\\\\"') + "\",' + \\\n" +
+            "    '\"user_id\": \"" + this.userId + "\",' + \\\n" +
             "    '\"sourceKey\": \"' + source_key + '\"}'\n" +
             "    \n" +
             "    # Read AWS access key from env. variables or configuration file. Best practice is NOT\n" +
@@ -653,7 +769,7 @@ SPDX-License-Identifier: Apache-2.0
             "    # be included in the canonical_headers and signed_headers, as noted\n" +
             "    # earlier. Order here is not significant.\n" +
             "    # Python note: The 'host' header is added automatically by the Python 'requests' library.\n" +
-            "    headers = {'Authorization': authorization_header, 'x-amz-date': amzdate, 'x-amz-security-token': session_token, 'content-type': content_type}\n" +
+            "    headers = {'Authorization': authorization_header, 'x-amz-date': amzdate, 'x-amz-security-token': session_token, 'content-type': content_type, 'origin': origin}\n" +
             "    \n" +
             "    # ************* SEND THE REQUEST *************\n" +
             "    print('\\nBEGIN REQUEST++++++++++++++++++++++++++++++++++++')\n" +

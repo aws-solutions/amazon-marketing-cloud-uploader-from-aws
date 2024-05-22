@@ -1,5 +1,5 @@
 {
-  "Description": "(SO0222api) - Amazon Marketing Cloud Uploader from AWS %%VERSION%%. This AWS CloudFormation template defines resources for the REST API.",
+  "Description": "(SO0222api) - Amazon Marketing Cloud Uploader from AWS. This AWS CloudFormation template defines resources for the REST API. %%VERSION%%.",
   "Parameters": {
     "botoConfig": {
       "Type": "String",
@@ -57,6 +57,14 @@
       "Type": "String",
       "Description": "ID of the stack KMS Key"
     },
+    "StackName": {
+      "Type": "String",
+      "Description": "CF Stack Name"
+    },
+    "AccountId": {
+      "Type": "String",
+      "Description": "Aws Account ID"
+    },
     "LambdaLayer": {
       "Type": "String",
       "Description": "Arn of the custom Lambda layer"
@@ -89,7 +97,6 @@
   "Resources": {
     "ApiHandlerRole": {
       "Type": "AWS::IAM::Role",
-      "Description": "This role is used by the api lambda when invoked by API Gateway",
       "Metadata": {
         "cfn_nag": {
           "rules_to_suppress": [
@@ -101,6 +108,7 @@
         }
       },
       "Properties": {
+        "Description": "This role is used by the api lambda when invoked by API Gateway",
         "AssumeRolePolicyDocument": {
           "Version": "2012-10-17",
           "Statement": [
@@ -249,6 +257,26 @@
                   "Resource": {
                     "Fn::Sub": "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/${SystemKmsKeyId}"
                   }
+                },
+                {
+                  "Action": [
+                    "secretsmanager:CreateSecret",
+                    "secretsmanager:GetSecretValue",
+                    "secretsmanager:UpdateSecret"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": {
+                    "Fn::Sub": "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${StackName}-${AWS::Region}_*"
+                  }
+                },
+                {
+                  "Action": [
+                    "cognito-idp:Describe*"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": {
+                    "Fn::Sub": "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*"
+                  }
                 }
               ]
             },
@@ -273,7 +301,7 @@
         }
       },
       "Properties": {
-        "Runtime": "python3.10",
+        "Runtime": "python3.12",
         "Environment": {
           "Variables": {
             "botoConfig": {
@@ -302,6 +330,12 @@
             },
             "CUSTOMER_MANAGED_KEY": {
               "Ref": "CustomerManagedKey"
+            },
+            "STACK_NAME": {
+              "Ref": "StackName"
+            },
+            "ACCOUNT_ID": {
+              "Ref": "AccountId"
             }
           }
         },
@@ -310,7 +344,7 @@
             "Ref": "LambdaLayer"
           },
           {
-            "Fn::Sub": "arn:aws:lambda:${AWS::Region}:336392948345:layer:AWSSDKPandas-Python310:3"
+            "Fn::Sub": "arn:aws:lambda:${AWS::Region}:336392948345:layer:AWSSDKPandas-Python312:6"
           }
         ],
         "Tracing": {

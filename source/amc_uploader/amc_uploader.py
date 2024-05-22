@@ -11,10 +11,8 @@
 #   transformed data files are saved.
 #
 # REQUIREMENTS:
-#   Input files should be in a location like this:
-#     s3://[bucket_name]/[dataset_id]/[timeseries_partition_size]/[destination_endpoint]/[filename]
-#   Such as,
-#     s3://my_etl_artifacts/myDataset123/P1D/aHR0cHM6Ly9hYmNkZTEyMzQ1LmV4ZWN1dGUtYXBpLnVzLWVhc3QtMS5hbWF6b25hd3MuY29tL3Byb2Q=/amc-data-mid.json-2014_03_12-19:06:00.gz
+#   Input files are expected to be in the following s3 key pattern:
+#     s3://[bucket_name]/amc/[dataset_id]/[update_strategy]/[file_format]/[country_code]/[instance_id|user_id]/[datafile]
 ###############################################################################
 
 import json
@@ -23,12 +21,13 @@ import os
 import urllib.parse
 from datetime import datetime
 
+import boto3
+
 # Patch libraries to instrument downstream calls
 from aws_xray_sdk.core import patch_all
+from boto3.dynamodb.conditions import Key
 from botocore import config
-import boto3
-from dateutil.relativedelta import relativedelta
-from lib.sigv4 import sigv4
+from lib.tasks import tasks
 
 patch_all()
 
@@ -36,6 +35,7 @@ patch_all()
 solution_config = json.loads(os.environ["botoConfig"])
 config = config.Config(**solution_config)
 UPLOAD_FAILURES_TABLE_NAME = os.environ["UPLOAD_FAILURES_TABLE_NAME"]
+SYSTEM_TABLE_NAME = os.environ["SYSTEM_TABLE_NAME"]
 
 # format log messages like this:
 formatter = logging.Formatter(
@@ -57,90 +57,98 @@ def lambda_handler(event, context):
     logger.info("event:\n {s}".format(s=event))
     logger.info("context:\n {s}".format(s=context))
     bucket = event["Records"][0]["s3"]["bucket"]["name"]
-    key = urllib.parse.unquote(event["Records"][0]["s3"]["object"]["key"])
+    key = urllib.parse.unquote_plus(event["Records"][0]["s3"]["object"]["key"])
     if _is_dataset(key):
-        if _is_timeseries(key):
-            _start_fact_upload(bucket=bucket, key=key)
-        else:
-            _start_dimension_upload(bucket=bucket, key=key)
+        upload_res_info = _start_upload(bucket=bucket, key=key)
+        logger.debug(upload_res_info)
 
 
 def _is_dataset(key):
     return key.endswith(".gz")
 
 
-def _is_timeseries(key):
-    supported_time_partitions = (
-        "PT1M",
-        "PT1H",
-        "P1D",
-        "P7D",
+def get_dynamo_table(table_name):
+    dynamo_resource = boto3.resource(
+        "dynamodb", region_name=os.environ["AWS_REGION"]
     )
-    # Time series datasets will have the following s3key pattern:
-    #   amc/[dataset_id]/[country_code]/[timeseries_partition_size]/[destination_endpoint][filename]
-    return (len(key.split("/")) == 6) and (
-        key.split("/")[3].endswith(supported_time_partitions)
-    )
+    return dynamo_resource.Table(table_name), dynamo_resource
 
 
-def _start_fact_upload(bucket, key):
+def get_amc_instance(instance_id):
+    system_table, _ = get_dynamo_table(SYSTEM_TABLE_NAME)
+    response = system_table.query(
+        KeyConditionExpression=Key("Name").eq("AmcInstances")
+    )
+
+    for item in response["Items"]:
+        for instance in item["Value"]:
+            if instance.get("instance_id") == instance_id:
+                if not (instance.get("marketplace_id") and instance.get("advertiser_id")):
+                    raise ValueError(
+                        f"AMC instances: marketplace_id and advertiser_id required for {instance_id}."
+                    )
+                return instance
+    raise ValueError(f"AMC instances: {instance_id} not found.")
+
+
+def verify_amc_request(**kwargs):
+    # Verify AMC requests
+    ads_kwargs = tasks.get_ads_token(**kwargs, redirect_uri="None")
+    if ads_kwargs.get("authorize_url"):
+        raise RuntimeError("Unauthorized AMC request.")
+    return ads_kwargs
+
+
+def update_upload_failures_table(response, dataset_id, instance_id):
+    logger.info(f"Response code: {response.status_code}\n")
+    logger.info("Response: " + response.text)
+    upload_failures_table, dynamo_resource = get_dynamo_table(
+        UPLOAD_FAILURES_TABLE_NAME
+    )
+    item_key = {"dataset_id": dataset_id, "instance_id": instance_id}
+    # Clear previously recorded failure item.
     try:
-        logger.info("Uploading FACT dataset")
-        # Key parsing assume s3Key is in the following format:
-        #   amc/[dataset_id]/[country_code]/[amc time resolution code]/[destination_endpoint]/[datafile].gz
-        _, dataset_id, country_code, time_partition, destination_endpoint, filename_quoted = key.split('/')
-        destination_endpoint_url = "https://" + destination_endpoint + "/prod"
-        filename = urllib.parse.unquote(filename_quoted)
-        # Parse the filename to get the time window for that data.
-        # Filenames should look like this, "etl_output_data.json-2022_01_06-09:01:00.gz"
-        dt_str = (
-            filename.split(".")[-2].replace("csv-", "").replace("json-", "")
-        )
-        time_window_start = datetime.strptime(dt_str, "%Y_%m_%d-%H:%M:%S")
-        # Format the time window like, "2022-01-06T09:01:00Z"
-        if time_partition == "PT1M":
-            time_window_end = time_window_start + relativedelta(minutes=1)
-        if time_partition == "PT1H":
-            time_window_end = time_window_start + relativedelta(hours=1)
-        if time_partition == "P1D":
-            time_window_end = time_window_start + relativedelta(days=1)
-        if time_partition == "P7D":
-            time_window_end = time_window_start + relativedelta(days=7)
+        upload_failures_table.delete_item(Key=item_key)
+    except dynamo_resource.meta.client.exceptions.ConditionalCheckFailedException:
+        pass
+    # If this upload failed then record that failure.
+    if response.status_code != 200:
+        item = item_key
+        item["Value"] = response.text
+        upload_failures_table.put_item(Item=item)
+
+def safe_json_loads(val):
+    try:
+        return json.loads(val)
+    except Exception:
+        return val
+
+
+def _start_upload(**kwargs):
+    try:
+        logger.info("Uploading dataset")
+        bucket = kwargs["bucket"]
+        key = kwargs["key"]
+
+        # s3Key must be in the following format:
+        #   amc/[dataset_id]/[update_strategy]/[country_code]/[instance_id|user_id]/[datafile].gz
+
+        _, dataset_id, update_strategy, file_format, country_code, instance_id_user_id, filename_quoted = key.split('/')
+        instance_id, user_id = instance_id_user_id.split("|")
+        filename = urllib.parse.unquote_plus(filename_quoted)
+        ads_kwargs = verify_amc_request(**kwargs, user_id=user_id)
+        amc_instance = get_amc_instance(instance_id=instance_id)
+        kwargs["marketplace_id"] = amc_instance["marketplace_id"]
+        kwargs["advertiser_id"] = amc_instance["advertiser_id"]
+        kwargs["instance_id"] = instance_id
+        kwargs["user_id"] = user_id
 
         logger.info("key: " + key)
-        logger.info("dataset_id " + dataset_id)
-        logger.info("country_code " + country_code)
-        logger.info("time_partition " + time_partition)
-        logger.info("time_window_start " + time_window_start.isoformat() + "Z")
-        logger.info("time_window_end " + time_window_end.isoformat() + "Z")
-        logger.info("filename " + filename)
-        # Datasets are defined with a default time period of P1D.
-        # Here we update the dataset definition if the Glue ETL job
-        # detected a different time period.
-        path = "/dataSets/" + dataset_id
-        logger.info("Validating dataset time period.")
-        dataset_definition = json.loads(
-            sigv4.get(destination_endpoint_url, path).text
-        )
-        if dataset_definition["period"] != time_partition:
-            logger.info(
-                "Changing dataset time period from "
-                + dataset_definition["period"]
-                + " to "
-                + time_partition
-            )
-            dataset_definition["period"] = time_partition
-            logger.info("PUT " + path + " " + json.dumps(dataset_definition))
-            # Send request to update time period:
-            sigv4.put(
-                destination_endpoint_url, path, json.dumps(dataset_definition)
-            )
-            dataset_definition = json.loads(
-                sigv4.get(destination_endpoint_url, path).text
-            )
-            # Validate updated time period:
-            if dataset_definition["period"] != time_partition:
-                raise AssertionError("Failed to update dataset time period.")
+        logger.info("dataset_id: " + dataset_id)
+        logger.info("update_strategy: " + update_strategy)
+        logger.info("country_code: " + country_code)
+        logger.info("filename: " + filename)
+        logger.info("instance_id: " + instance_id)
         logger.info(
             "Uploading s3://"
             + bucket
@@ -149,61 +157,42 @@ def _start_fact_upload(bucket, key):
             + " to dataSetId "
             + dataset_id
         )
+        # the glue script will always output a GZIP-compressed file
         data = {
-            "sourceS3Bucket": bucket,
-            "sourceFileS3Key": key,
-            "countryCode": country_code,
-            "timeWindowStart": time_window_start.isoformat() + "Z",
-            "timeWindowEnd": time_window_end.isoformat() + "Z",
+            "countryCode": safe_json_loads(country_code),
+            "updateStrategy": update_strategy,
+            "compressionFormat": "GZIP",
+            "dataSource": {
+                "sourceS3Bucket": bucket,
+                "sourceFileS3Key": key,
+            },
+            "fileFormat": {
+                "jsonDataFormat": "LINES"
+            }
         }
-        path = "/data/" + dataset_id + "/uploads"
-        logger.info("POST " + path + " " + json.dumps(data))
-        response = sigv4.post(destination_endpoint_url, path, json.dumps(data))
-        logger.info(f"Response code: {response.status_code}\n")
-        logger.info("Response: " + response.text)
-        # Record error message if upload failed.
-        dynamo_resource = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"])
-        upload_failures_table = dynamo_resource.Table(UPLOAD_FAILURES_TABLE_NAME)
-        item_key = {"dataset_id": dataset_id, "destination_endpoint": destination_endpoint_url}
-        try:
-            upload_failures_table.delete_item(Key=item_key)
-        except dynamo_resource.meta.client.exceptions.ConditionalCheckFailedException:
-            pass
-        if response.status_code != 200:
-            error_message = json.loads(response.text)["message"]
-            item = item_key
-            item["Value"] = error_message
-            upload_failures_table.put_item(Item=item)
+        if file_format == "CSV":
+            data["fileFormat"] = {
+                "csvDataFormat": {
+                    "fieldDelimiter": ","
+                }
+            }
+        elif file_format == "JSON":
+            data["fileFormat"] = {
+                "jsonDataFormat": "LINES"
+            }
+
+        path = f"/uploads/{dataset_id}"
+        amc_request = tasks.AMCRequests(
+            amc_path=path,
+            http_method="POST",
+            payload=json.dumps(data)
+        )
+        response = amc_request.process_request(**kwargs, **ads_kwargs)
+        update_upload_failures_table(response, dataset_id, instance_id)
         return response.text
+
     except Exception as ex:
         logger.error(ex)
         return {"Status": "Error", "Message": ex}
 
 
-def _start_dimension_upload(bucket, key):
-    try:
-        logger.info("Uploading DIMENSION dataset")
-        # Key parsing assume s3Key is in the following format:
-        #   amc/[dataset_id]/[country_code]/dimension/destination_endpoint/[datafile].gz
-        _, dataset_id, country_code, dimension_constant, destination_endpoint, filename_quoted = key.split('/')
-        dataset_id = key.split("/")[1]
-        country_code = key.split("/")[2]
-        destination_endpoint_url = "https://" + destination_endpoint + "/prod"
-        filename = urllib.parse.unquote(filename_quoted)
-        logger.info("key: " + key)
-        logger.info("dataset_id " + dataset_id)
-        logger.info("country_code " + country_code)
-        logger.info("filename " + filename)
-        logger.info("Uploading s3://" + bucket + "/" + key)
-        data = {
-            "sourceS3Bucket": bucket,
-            "sourceFileS3Key": key,
-            "countryCode": country_code
-        }
-        path = "/data/" + dataset_id + "/uploads"
-        logger.info("POST " + path + " " + json.dumps(data))
-        response = sigv4.post(destination_endpoint_url, path, json.dumps(data))
-        return response.text
-    except Exception as ex:
-        logger.error(ex)
-        return {"Status": "Error", "Message": ex}

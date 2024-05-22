@@ -3,7 +3,6 @@
 
 import Vue from 'vue'
 import VueRouter from 'vue-router'
-import Login from '@/views/Login.vue'
 import Step1 from '@/views/Step1.vue'
 import Step2 from '@/views/Step2.vue'
 import Step3 from '@/views/Step3.vue'
@@ -11,6 +10,7 @@ import Step4 from '@/views/Step4.vue'
 import Step5 from '@/views/Step5.vue'
 import Step6 from '@/views/Step6.vue'
 import Settings from '@/views/Settings.vue'
+import Redirect from '@/views/Redirect.vue'
 
 Vue.use(VueRouter);
 
@@ -62,10 +62,10 @@ const router = new VueRouter({
       meta: {requiresAuth: true}
     },
     {
-      path: "/login",
-      name: "Login",
-      component: Login,
-      meta: { requiresAuth: false }
+      path: "/redirect",
+      name: "Redirect",
+      component: Redirect,
+      meta: {requiresAuth: true}
     }
   ]
 });

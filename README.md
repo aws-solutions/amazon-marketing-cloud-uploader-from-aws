@@ -43,8 +43,8 @@ The following Cloudformation templates will deploy the application.
 
 Region| Launch
 ------|-----
-US East (N. Virginia) | [![Launch in us-east-1](docs/images/launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?stackName=amcufa&templateURL=https://solutions-reference.s3.amazonaws.com/amazon-marketing-cloud-uploader-from-aws/v2.3.1/amazon-marketing-cloud-uploader-from-aws.template)
-EU West (Ireland) | [![Launch in eu-west-1](docs/images/launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=eu-west-1#/stacks/new?stackName=amcufa&templateURL=https://solutions-reference.s3.amazonaws.com/amazon-marketing-cloud-uploader-from-aws/v2.3.1/amazon-marketing-cloud-uploader-from-aws.template)
+US East (N. Virginia) | [![Launch in us-east-1](docs/images/launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?stackName=amcufa&templateURL=https://solutions-reference.s3.amazonaws.com/amazon-marketing-cloud-uploader-from-aws/v3.0.0/amazon-marketing-cloud-uploader-from-aws.template)
+EU West (Ireland) | [![Launch in eu-west-1](docs/images/launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=eu-west-1#/stacks/new?stackName=amcufa&templateURL=https://solutions-reference.s3.amazonaws.com/amazon-marketing-cloud-uploader-from-aws/v3.0.0/amazon-marketing-cloud-uploader-from-aws.template)
 
 Once the Cloud Formation stack has been created, open the URL shown in the `UserInterface` output of the base stack. You can also get this URL with the following AWS CLI command:
 
@@ -56,7 +56,7 @@ For more installation options, see the [Advanced Installation](#advanced-install
 
 ## INPUT
 
-* *Stack name:* Required by AWS CloudFormation, this must be all lowercase. 
+* *Stack name:* Required by AWS CloudFormation, this must be all lowercase.
 * *AdminEmail:* Email address of the administrator
 * *DataBucketName:* Name of the S3 bucket from which source data will be uploaded.
 * *CustomerManagedKey:* (Optional) Customer Managed Key to be used for decrypting source data, encrypting ETL results, and encrypting the corresponding datasets in AMC
@@ -103,6 +103,11 @@ PROFILE=[AWS profile for the AWS account that is connected to your AMC instance]
 
 aws cloudformation create-stack --stack-name $STACK_NAME --template-url $TEMPLATE --region $REGION --parameters ParameterKey=AdminEmail,ParameterValue=$EMAIL ParameterKey=DataBucketName,ParameterValue=$SOURCE_BUCKET ParameterKey=CustomerManagedKey,ParameterValue=$CUSTOMER_MANAGED_KEY --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --profile $PROFILE --disable-rollback
 ```
+
+#### Post-Deployment
+* Add cloudfront url to *Allowed Return URL* in Login with Amazon configurations portal for the security profile used with the AMCUFA solution.[ref](https://advertising.amazon.com/API/docs/en-us/getting-started/create-authorization-grant#allow-a-return-url)
+  - e.g https://d2ty0xw5zpuwck.cloudfront.net/redirect
+    - '/redirect' is important.
 
 # User Authentication
 
@@ -177,7 +182,7 @@ The `start_amc_transformation` API endpoint starts an AWS Glue Job with the argu
 
 ### Inputs
 
-- `countryCode`: string
+- `countryCode`: string [optional]
 	- The country code to be used for different country-specific normalizations to apply to all rows in the dataset
 	- 2-digit ISO country code
   - The full list of supported country codes can be found in the solution's Implementation Guide
@@ -195,22 +200,17 @@ The `start_amc_transformation` API endpoint starts an AWS Glue Job with the argu
 	- Can be an empty array string if no data needs to be deleted
 	- Ex: `"deletedFields": "[]"`
 
-- `destination_endpoints`: string (array)
-	- The list of AMC endpoints to receive uploads
-	- Ex: `destination_endpoints: "[\" https://rrhcd93zj3.execute-api.us-east-1.amazonaws.com/prod\"]"`
+- `amc_instances`: string (array)
+	- The list of AMC instance ID's to receive uploads
+	- Ex: `amc_instances: "[\" amcyzzz123456\"]"`
+
+- `user_id`: string (array)
+	- The cognito user id.
+	- Ex: `user_id: "us-east-1_zzzz123456"`
 
 - `outputBucket`: string
 	- The name of the ETL artifact S3 bucket where the normalized output data will be written to
 	- Ex: `"outputBucket": "myTestStack-etl-artifacts"`,
-
-- `period`: string
-  - _Required_ for a `fact` data set
-  - _Not used_ and should be omitted for a `dimension` data set
-  - The time period of the data set
-  - If a fact type data set, `autodetect` or a specific period can be selected
-    - Ex: `"period": "autodetect"`
-    - Ex: `"period": "PT1H"`
-  - Options:  One of `["autodetect","PT1M","PT1H","P1D","P7D"]`
 
 - `piiFields`: string (array)
 	- A JSON formatted list of the names of PII columns to be normalized and hashed
@@ -330,14 +330,13 @@ Example body for uploading to an existing dimension dataset with deleted fields:
 }
 ```
 
-Example body for uploading to a new fact autodetect dataset with deleted fields:
+Example body for uploading to a new PT1H, P1D, or P1M dataset with deleted fields:
 ```JSON
 {
 	"countryCode": "GB",
 	"datasetId": "test-dataset3",
 	"deletedFields": "[\"product_quantity\",\"product_name\"]",
 	"outputBucket": "myStack-etl-artifacts",
-	"period": "autodetect",
 	"piiFields": "[{\"column_name\":\"first_name\",\"pii_type\":\"FIRST_NAME\"},{\"column_name\":\"last_name\",\"pii_type\":\"LAST_NAME\"},{\"column_name\":\"email\",\"pii_type\":\"EMAIL\"}]",
 	"sourceBucket": "myBucket",
 	"sourceKey": "amc-data-4.json",

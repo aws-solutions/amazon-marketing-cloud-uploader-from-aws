@@ -15,4 +15,4 @@ import importlib
 import sys
 
 sys.path.insert(0, "..")
-sigv4 = importlib.import_module("share.sigv4")
+tasks = importlib.import_module("share.tasks")

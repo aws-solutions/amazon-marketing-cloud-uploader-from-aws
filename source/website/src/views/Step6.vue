@@ -88,8 +88,8 @@ SPDX-License-Identifier: Apache-2.0
                           :aria-describedby="ariaDescribedby"
                           class="mt-1"
                         >
-                          <b-form-checkbox value="endpoint">
-                            Endpoint
+                          <b-form-checkbox value="instance_id">
+                            Instance ID
                           </b-form-checkbox>
                           <b-form-checkbox value="tag_list">
                             Tags
@@ -117,10 +117,10 @@ SPDX-License-Identifier: Apache-2.0
                       </div>
                     </template>
                     <template #cell(actions)="row">
-                      <b-button v-if="selected_endpoint !== row.item.endpoint" size="sm" class="mr-1" @click="selectEndpoint(row.item.endpoint)">
+                      <b-button v-if="selected_instance_id !== row.item.instance_id" size="sm" class="mr-1" @click="selectEndpoint(row.item)">
                         Select
                       </b-button>
-                      <b-button v-if="selected_endpoint === row.item.endpoint" size="sm" class="mr-1" @click="unselectEndpoint()">
+                      <b-button v-if="selected_instance_id === row.item.instance_id" size="sm" class="mr-1" @click="unselectEndpoint()">
                         Unselect
                       </b-button>
                     </template>
@@ -136,7 +136,7 @@ SPDX-License-Identifier: Apache-2.0
                 </b-card-body>
               </b-collapse>
             </b-card>
-            <div v-if="selected_endpoint === '' && isBusy4 === false">
+            <div v-if="selected_instance_id === '' && isBusy4 === false">
               <p class="text-danger">
                 Choose an AMC endpoint from the table shown above.
               </p>
@@ -147,7 +147,7 @@ SPDX-License-Identifier: Apache-2.0
                 <b-col cols="10">
                   <h3>Datasets</h3>
                   <p v-if="!showAmcApiError" class="text-secondary">
-                    Showing datasets from AMC endpoint <em>{{ selected_endpoint === '' ? "none" : selected_endpoint }}</em>
+                    Showing datasets from AMC Instance ID <em>{{ selected_instance_id === '' ? "none" : selected_instance_id }}</em>
                   </p>
                 </b-col>
                 <b-col align="right">
@@ -157,8 +157,11 @@ SPDX-License-Identifier: Apache-2.0
                 </b-col>
               </b-row>
               <div v-if="showAmcApiError">
-                <p class="text-danger">
-                  Error listing datasets from endpoint <em>{{ selected_endpoint }}</em>
+                <p class="text-danger" v-if="amcErrorMessage">
+                    ERROR. {{ amcErrorMessage }}
+                </p>
+                <p class="text-danger" v-else>
+                    Error listing datasets from AMC Instance ID <em>{{ selected_instance_id }}</em>
                 </p>
               </div>
               <div v-else>
@@ -173,19 +176,11 @@ SPDX-License-Identifier: Apache-2.0
                   :busy="isBusy1"
                   :per-page="perPage1"
                   :current-page="currentPage1"
-                  sort-by="updatedTime"
-                  :sort-desc="true"
                   show-empty
                   @row-selected="onDatasetSelected"
                 >
                   <template #empty="scope">
                     {{ scope.emptyText }}
-                  </template>
-                  <template #cell(createdtime)="data">
-                    {{ new Date(data.item.createdTime).toLocaleString() }}
-                  </template>
-                  <template #cell(updatedtime)="data">
-                    {{ new Date(data.item.updatedTime).toLocaleString() }}
                   </template>
                   <template #cell(Actions)="data">
                     <b-link
@@ -252,8 +247,6 @@ SPDX-License-Identifier: Apache-2.0
                   :busy="isBusy3 || isBusy5"
                   :per-page="perPage2"
                   :current-page="currentPage2"
-                  sort-by="dateCreated"
-                  :sort-desc="true"
                   show-empty
                   small
                   responsive="sm"
@@ -270,11 +263,8 @@ SPDX-License-Identifier: Apache-2.0
                       <strong>&nbsp;&nbsp;Loading...</strong>
                     </div>
                   </template>
-                  <template #cell(dateCreated)="row">
-                    {{ new Date(row.item.dateCreated).toLocaleString() }}
-                  </template>
                   <template #cell(sourceFileS3Key)="row">
-                    {{ row.item.sourceFileS3Key.split('/').slice(-1)[0] }}
+                    {{ row.item.dataSource.sourceFileS3Key.split('/').slice(-1)[0] }}
                   </template>
                   <template #cell(show_details)="row">
                     <b-form-checkbox @change="row.toggleDetails">
@@ -379,9 +369,10 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script>
-  import Header from '@/components/Header.vue'
-  import Sidebar from '@/components/Sidebar.vue'
-  import {mapState} from "vuex";
+import Header from '@/components/Header.vue';
+import Sidebar from '@/components/Sidebar.vue';
+import { API } from 'aws-amplify';
+import { mapState } from "vuex";
 
   export default {
     name: "Step6",
@@ -391,12 +382,14 @@ SPDX-License-Identifier: Apache-2.0
     data() {
       return {
         amc_selector_visible: true,
-        available_amc_instances: [{"endpoint": "","data_upload_account_id": "", "tags": []}],
+        available_amc_instances: [{"tags": [], "instance_id": "", "advertiser_id": "", "marketplace_id": "", "data_upload_account_id": ""}],
         filtered_amc_instances: [],
         available_amc_instances_fields: [
           {key: 'actions', label: 'Actions' },
-          {key: 'endpoint', label: 'AMC Endpoint', sortable: true, thStyle: { width: '50%'}},
-          {key: 'tag_list', label: 'Tags', sortable: false},
+          {key: 'instance_id', label: 'Instance ID'},
+          {key: 'advertiser_id', label: 'Advertiser ID'},
+          {key: 'marketplace_id', label: 'MarketPlace ID'},
+          {key: 'tag_list', label: 'Tags', sortable: false}
         ],
         totalRows: 1,
         currentPage: 1,
@@ -412,17 +405,16 @@ SPDX-License-Identifier: Apache-2.0
         perPage1: 5,
         currentPageAmcInstances: 1,
         perPageAmcInstances: 5,
-        selected_endpoint: '',
+        selected_instance_id: '',
+        selected_instance: '',
         datasets: [],
         selected_dataset: '',
         dataset_fields: [
           {key: 'selected'},
           {key: 'dataSetId', sortable:true},
           {key: 'description'},
-          {key: 'dataSetType', sortable:true},
-          {key: 'fileFormat', sortable:true},
-          {key: 'createdTime', sortable:true},
-          {key: 'updatedTime', sortable:true},
+          {key: 'period', sortable:true},
+          {key: 'countryCode', sortable:true},
           {key: 'Actions'}
         ],
         etl_jobs: [],
@@ -437,13 +429,9 @@ SPDX-License-Identifier: Apache-2.0
         uploads: [],
         upload_failure: "",
         upload_fields: [
-          {key: "dateCreated", label: "Date Created", sortable: true},
-          {key: "totalFileCount", label: "Total Files", sortable: true},
-          {key: "errorFileCount", label: "Bad Files", sortable: true},
-          {key: "rowsAcceptedTotal", label: "Rows Accepted", sortable: true},
-          {key: "rowsDroppedTotal", label: "Rows Dropped", sortable: true},
-          {key: "rowsWithResolvedIdentity", label: "Identities Resolved", sortable: true},
+          {key: "createdAt", label: "Created At", sortable: true},
           {key: "sourceFileS3Key", label: "Source File", sortable: true},
+          {key: "countryCode", label: "Country Code", sortable: true},
           {key: "status", label: "Status", sortable: true},
           {key: "show_details", label: "Show Details"}
         ],
@@ -454,7 +442,9 @@ SPDX-License-Identifier: Apache-2.0
         isBusy5: false,
         showAmcApiError: false,
         showServerError: false,
+        amcErrorMessage: '',
         isStep6Active: true,
+        userId: null
       }
     },
     computed: {
@@ -462,7 +452,7 @@ SPDX-License-Identifier: Apache-2.0
       formattedItems () {
         if (!this.available_amc_instances) return []
         return this.available_amc_instances.map(item => {
-          if (item.endpoint === this.selected_endpoint) {
+          if (item.instance_id === this.selected_instance_id) {
             item._rowVariant = "info"
           }
           else {
@@ -471,7 +461,6 @@ SPDX-License-Identifier: Apache-2.0
           return item
         })
       },
-
       rows1() {
         return this.datasets.length
       },
@@ -484,9 +473,9 @@ SPDX-License-Identifier: Apache-2.0
     },
     watch: {
       //  whenever the endpoint selection changes this function will run
-      selected_endpoint() {
+      selected_instance_id() {
         this.datasets = []
-        if (this.selected_endpoint !== '') this.list_datasets()
+        if (this.selected_instance_id !== '') this.list_datasets()
       }
     },
     deactivated: function () {
@@ -500,10 +489,12 @@ SPDX-License-Identifier: Apache-2.0
       this.get_etl_jobs()
     },
     mounted: function() {
+      this.userId = this.USER_POOL_ID
       this.read_system_configuration('GET', 'system/configuration')
       // Set the initial number of items
       this.totalRows = this.available_amc_instances.length
-      this.selected_endpoint = this.amc_monitor
+      this.selected_instance = this.amc_monitor
+      this.selected_instance_id = this.selected_instance.instance_id || ''
       this.amc_selector_visible = this.amc_selector_visible_state
     },
     methods: {
@@ -524,14 +515,18 @@ SPDX-License-Identifier: Apache-2.0
         this.totalRows = filteredItems.length
         this.currentPage = 1
       },
-      selectEndpoint(endpoint) {
-        this.selected_endpoint = endpoint
+      selectEndpoint(item) {
+        this.selected_instance_id = item.instance_id
+        this.selected_instance = item
         this.selected_dataset = ''
-        this.$store.commit('updateAmcMonitor', this.selected_endpoint)
+        // Reset dataset list pagination when user selects a new AMC instance.
+        this.currentPage1 = 1
+        this.$store.commit('updateAmcMonitor', this.selected_instance)
       },
       unselectEndpoint() {
-        this.selected_endpoint = ''
+        this.selected_instance_id = ''
         this.selected_dataset = ''
+        this.selected_instance = ''
       },
       onDatasetSelected(items) {
         if (items.length > 0) {
@@ -544,7 +539,14 @@ SPDX-License-Identifier: Apache-2.0
       },
       async deleteDataset(dataSetId) {
         this.datasets = this.datasets.filter(x => x.dataSetId !== dataSetId)
-        await this.delete_dataset({'dataSetId': dataSetId, 'destination_endpoint': this.selected_endpoint})
+        await this.delete_dataset(
+          {
+            'dataSetId': dataSetId,
+            'instance_id': this.selected_instance_id,
+            "marketplace_id": this.selected_instance.marketplace_id,
+            "advertiser_id": this.selected_instance.advertiser_id,
+            "user_id":  this.userId
+          })
       },
       async delete_dataset(data) {
         const apiName = 'amcufa-api'
@@ -556,7 +558,7 @@ SPDX-License-Identifier: Apache-2.0
             headers: {'Content-Type': 'application/json'},
             body: data
           };
-          await this.$Amplify.API.post(apiName, resource, requestOpts);
+          await API.post(apiName, resource, requestOpts);
         }
         catch (e) {
           console.log("ERROR: " + e)
@@ -566,8 +568,21 @@ SPDX-License-Identifier: Apache-2.0
       async listDatasetUploads(dataSetId) {
         this.selected_dataset = dataSetId
         this.upload_failure = ''
-        await this.list_uploads({'dataSetId': dataSetId, 'destination_endpoint': this.selected_endpoint})
-        await this.list_upload_failures({'dataset_id': dataSetId, 'destination_endpoint': this.selected_endpoint})
+        await this.list_uploads(
+          {
+            'dataSetId': dataSetId,
+            'instance_id': this.selected_instance_id,
+            "marketplace_id": this.selected_instance.marketplace_id,
+            "advertiser_id": this.selected_instance.advertiser_id,
+            "user_id":  this.userId
+        })
+        await this.list_upload_failures({
+            'dataSetId': dataSetId,
+            'instance_id': this.selected_instance_id,
+            "marketplace_id": this.selected_instance.marketplace_id,
+            "advertiser_id": this.selected_instance.advertiser_id,
+            "user_id":  this.userId
+          })
       },
       async list_uploads(data) {
         this.uploads = []
@@ -582,7 +597,10 @@ SPDX-License-Identifier: Apache-2.0
             body: data
           };
           do {
-            const response = await this.$Amplify.API.post(apiName, resource, requestOpts);
+            const response = await API.post(apiName, resource, requestOpts);
+            if (response.authorize_url){
+              this.process_redirect(response)
+            }
             this.uploads.push(...response.uploads);
             data.nextToken = response.nextToken;
             requestOpts.body = data;
@@ -607,7 +625,7 @@ SPDX-License-Identifier: Apache-2.0
             headers: {'Content-Type': 'application/json'},
             body: data
           };
-          const response = await this.$Amplify.API.post(apiName, resource, requestOpts);
+          const response = await API.post(apiName, resource, requestOpts);
           this.upload_failure = response
         }
         catch (e) {
@@ -621,7 +639,12 @@ SPDX-License-Identifier: Apache-2.0
         this.showAmcApiError = false
         const apiName = 'amcufa-api'
         const method = 'POST'
-        const data = {'destination_endpoint': this.selected_endpoint}
+        const data = {
+          'instance_id': this.selected_instance_id,
+          "marketplace_id": this.selected_instance.marketplace_id,
+          "advertiser_id": this.selected_instance.advertiser_id,
+          "user_id":  this.userId
+        }
         const resource = 'list_datasets'
         this.isBusy1 = true;
         try {
@@ -630,17 +653,23 @@ SPDX-License-Identifier: Apache-2.0
             headers: {'Content-Type': 'application/json'},
             body: data
           };
-          const response = await this.$Amplify.API.post(apiName, resource, requestOpts);
+          const response = await API.post(apiName, resource, requestOpts);
           if (response.Status === "Error") {
             this.showAmcApiError = true
-          } else {
+          }else if (response.authorize_url){
+            this.process_redirect(response)
+          }
+           else {
             this.datasets = response.dataSets
           }
         }
         catch (e) {
           console.log("ERROR: " + e)
-          this.showAmcApiError = true
-          if (e.response) console.log(e.response.data.message)
+          if (e.response) {
+            console.log(e.response.data.message)
+            this.amcErrorMessage = e.response.data.message
+            this.showAmcApiError = true
+          }
         } finally {
           this.isBusy1 = false;
         }
@@ -654,13 +683,15 @@ SPDX-License-Identifier: Apache-2.0
         const resource = 'get_etl_jobs'
         try {
           console.log("sending " + method + " " + resource)
-          response = await this.$Amplify.API.get(apiName, resource);
+          response = await API.get(apiName, resource);
           if ('JobRuns' in response) { //NOSONAR
             this.etl_jobs = response.JobRuns.map(x => { //NOSONAR
               x["filename"] = x.Arguments["--source_key"];
               if ("StartedOn" in x) x["StartedOn"] = new Date(x["StartedOn"]).toLocaleString()
               return x
             })
+          }else if (response.authorize_url){
+            this.process_redirect(response)
           }
         }
         catch (e) {
@@ -677,13 +708,14 @@ SPDX-License-Identifier: Apache-2.0
         let response = ""
         this.isBusy4 = true;
         try {
-          response = await this.$Amplify.API.get(apiName, resource);
+          response = await API.get(apiName, resource);
           if (Array.isArray(response) && response.length > 0 &&
             typeof response[0] == "object" && "Value" in response[0]) {
               this.available_amc_instances = response[0]["Value"]
               // If there is only one registered AMC Instance, then select that one by default:
               if (this.available_amc_instances.length === 1) {
-                this.selected_endpoint = this.available_amc_instances[0].endpoint
+                this.selected_instance_id = this.available_amc_instances[0].instance_id
+                this.selected_instance = this.available_amc_instances[0]
               }
           } else {
             this.$router.push({path: '/settings'})
@@ -695,6 +727,18 @@ SPDX-License-Identifier: Apache-2.0
         } finally {
           this.isBusy4 = false;
         }
+      },
+      process_redirect(response){
+        const current_page = "step6"
+        const state_key = current_page + this.userId + Date.now()
+        const b64_state_key = btoa(current_page + this.userId + Date.now())
+        let state_vars = {
+          "amc_monitor": this.selected_instance,
+          "amc_selector_visible_state": this.amc_selector_visible,
+          "current_page": current_page
+        }
+        localStorage.setItem(state_key, JSON.stringify(state_vars))
+        window.location.href = response.authorize_url + "&state=" + b64_state_key
       }
     }
   }
