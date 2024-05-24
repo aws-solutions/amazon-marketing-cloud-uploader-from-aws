@@ -275,8 +275,8 @@ SPDX-License-Identifier: Apache-2.0
         amcInstances: [this.defaultAmcInstances()],
         amcInstanceAttributes: [
           {key: 'instance_id', label: 'AMC Instance ID'},
-          {key: 'advertiser_id', label: 'Amazon Ads Advertiser ID'},
-          {key: 'marketplace_id', label: 'Amazon Ads MarketPlace ID'},
+          {key: 'advertiser_id', label: 'Amazon Ads Advertiser Entity ID'},
+          {key: 'marketplace_id', label: 'Amazon Ads Marketplace ID'},
           {key: 'data_upload_account_id', label: 'Data Upload Account ID'},
           {key: 'tags', label: 'Tags'},
         ],
