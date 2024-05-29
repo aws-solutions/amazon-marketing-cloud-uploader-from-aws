@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "(SO0222) - Amazon Marketing Cloud Uploader from AWS %%VERSION%%. This solution provides a mechanism to extract, transform, and load first party data from S3 to the Amazon Marketing Cloud."
+Description: "(SO0222) - Amazon Marketing Cloud Uploader from AWS. This solution provides a mechanism to extract, transform, and load first party data from S3 to the Amazon Marketing Cloud. %%VERSION%%"
 
 Parameters:
   AdminEmail:
@@ -16,8 +16,8 @@ Parameters:
     Default: ""
 
 Conditions:
-  EnableCmkEncryptionCondition: !Not [!Equals [!Ref CustomerManagedKey, ""]]
-  EnableAnonymousData: !Equals [ !FindInMap [AnonymizedData,SendAnonymizedData,Data], Yes]
+  EnableCmkEncryptionCondition: !Not [ !Equals [ !Ref CustomerManagedKey, "" ] ]
+  EnableAnonymousData: !Equals [ !FindInMap [ AnonymizedData,SendAnonymizedData,Data ], Yes ]
 
 Mappings:
   Application:
@@ -48,11 +48,47 @@ Resources:
       KeyPolicy:
         Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Sid: "Allow administration of the key"
+            Effect: Allow
             Principal:
               AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
-            Action: 'kms:*'
+            Action:
+              - 'kms:Create*'
+              - 'kms:Describe*'
+              - 'kms:Enable*'
+              - 'kms:List*'
+              - 'kms:Put*'
+              - 'kms:Update*'
+              - 'kms:Revoke*'
+              - 'kms:Disable*'
+              - 'kms:Get*'
+              - 'kms:Delete*'
+              - 'kms:ScheduleKeyDeletion'
+              - 'kms:CancelKeyDeletion'
             Resource: '*'
+          - Sid: "Allow IAM policies to allow resources (e.g. the API Handler) to decrypt with this key."
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action:
+              - 'kms:Decrypt'
+            Resource: '*'
+          - Sid: "Allow this KMS key to be used for requests that originate in Secrets Manager for secrets that belong to this stack."
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action:
+              - 'kms:Encrypt'
+              - 'kms:Decrypt'
+              - 'kms:GenerateDataKey*'
+              - 'kms:DescribeKey'
+            Resource: '*'
+            Condition:
+              StringEquals:
+                'kms:CallerAccount': !Ref 'AWS::AccountId'
+                'kms:ViaService': !Sub 'secretsmanager.${AWS::Region}.amazonaws.com'
+              StringLike:
+                'kms:EncryptionContext:SecretARN': !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${AWS::StackName}-*'
           - Effect: Allow
             Principal:
               Service: "s3.amazonaws.com"
@@ -79,6 +115,7 @@ Resources:
             Condition:
               StringEquals:
                 'aws:SourceAccount': !Ref 'AWS::AccountId'
+
 
   SystemKeyAlias:
     Type: 'AWS::KMS::Alias'
@@ -137,7 +174,7 @@ Resources:
               ]
             Condition:
               ArnLike:
-                aws:SourceArn: 
+                aws:SourceArn:
                   - !Join [
                     "",
                     [
@@ -152,6 +189,8 @@ Resources:
     Type: AWS::S3::Bucket
     DeletionPolicy: "Delete"
     Properties:
+      VersioningConfiguration:
+        Status: Enabled
       BucketName:
         'Fn::Join':
           - ""
@@ -162,11 +201,9 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault: !If
               - EnableCmkEncryptionCondition
-              -
-                SSEAlgorithm: "aws:kms"
+              - SSEAlgorithm: "aws:kms"
                 KMSMasterKeyID: !Ref CustomerManagedKey
-              -
-                SSEAlgorithm: "aws:kms"
+              - SSEAlgorithm: "aws:kms"
                 KMSMasterKeyID: !Ref SystemKeyAlias
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
@@ -197,7 +234,10 @@ Resources:
     DependsOn:
       - AmcUploadLambdaPermission
     DeletionPolicy: "Retain"
+    UpdateReplacePolicy: "Retain"
     Properties:
+      VersioningConfiguration:
+        Status: Enabled
       BucketName:
         'Fn::Join':
           - ""
@@ -208,8 +248,7 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault: !If
               - EnableCmkEncryptionCondition
-              -
-                SSEAlgorithm: "aws:kms"
+              - SSEAlgorithm: "aws:kms"
                 KMSMasterKeyID: !Ref CustomerManagedKey
               - SSEAlgorithm: "AES256"
       LoggingConfiguration:
@@ -276,15 +315,28 @@ Resources:
         KMSMasterKeyId: !Ref SystemKeyAlias
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
-        - AttributeName: destination_endpoint
+        - AttributeName: instance_id
           AttributeType: S
         - AttributeName: dataset_id
           AttributeType: S
       KeySchema:
-        - AttributeName: destination_endpoint
+        - AttributeName: instance_id
           KeyType: HASH
         - AttributeName: dataset_id
           KeyType: RANGE
+      Tags:
+        - Key: "Environment"
+          Value: "amcufa"
+
+  # Secrets Manager
+
+  OAuthSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${AWS::StackName}-${AuthStack.Outputs.UserPoolId}'
+      Description: "OAuth client id and secret for LwA authorization"
+      KmsKeyId: !Ref SystemKey
+      SecretString: '{}'
       Tags:
         - Key: "Environment"
           Value: "amcufa"
@@ -377,28 +429,58 @@ Resources:
                   - sts:AssumeRole
                 Resource:
                   !Sub "arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-AmcApiAccessRole"
+        - PolicyName: readSystemTable
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "dynamodb:GetItem"
+                  - "dynamodb:Query"
+                Resource:
+                  !GetAtt SystemTable.Arn
+        - PolicyName: secretClient
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "secretsmanager:CreateSecret"
+                  - "secretsmanager:GetSecretValue"
+                  - "secretsmanager:UpdateSecret"
+                Resource:
+                  !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${AWS::StackName}-${AWS::Region}_*"
+        - PolicyName: describeUserPool
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "cognito-idp:Describe*"
+                Resource:
+                  !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*"
 
   LambdaLayer:
     Type: "AWS::Lambda::LayerVersion"
     Properties:
       CompatibleRuntimes:
-        - python3.10
+        - python3.12
       Content:
-        S3Bucket: !Join ["-", [!FindInMap ["Application", "SourceCode", "RegionalS3Bucket"], Ref: "AWS::Region"]]
+        S3Bucket: !Join [ "-", [ !FindInMap [ "Application", "SourceCode", "RegionalS3Bucket" ], Ref: "AWS::Region" ] ]
         S3Key:
           !Join [
             "/",
             [
-              !FindInMap ["Application", "SourceCode", "CodeKeyPrefix"],
-              "lambda_layer_python3.10.zip",
+              !FindInMap [ "Application", "SourceCode", "CodeKeyPrefix" ],
+              "lambda_layer_python3.12.zip",
             ],
           ]
       Description:
         !Join [
           "",
           [
-            "Python 3.10 packages for ",
-            !FindInMap ["Application", "Solution", "Name"]
+            "Python 3.12 packages for ",
+            !FindInMap [ "Application", "Solution", "Name" ]
           ]
         ]
       LayerName:
@@ -406,7 +488,7 @@ Resources:
           "",
           [
             !FindInMap [ "Application", "Solution", "Name" ],
-            "-python310"
+            "-python312"
           ]
         ]
       LicenseInfo: Apache-2.0
@@ -427,7 +509,7 @@ Resources:
         S3Bucket: !Join [ "-", [ !FindInMap [ "Application", "SourceCode", "RegionalS3Bucket" ], Ref: "AWS::Region" ] ]
         S3Key:
           !Join [
-              "/",
+            "/",
             [
               !FindInMap [ "Application", "SourceCode", "CodeKeyPrefix" ],
               "amc_uploader.zip",
@@ -435,17 +517,20 @@ Resources:
           ]
       Handler: amc_uploader.lambda_handler
       Role: !GetAtt AmcUploadLambdaExecutionRole.Arn
-      Runtime: python3.10
+      Runtime: python3.12
       MemorySize: 256
-      Timeout: 60
+      Timeout: 600
       Layers:
         - !Ref "LambdaLayer"
       Environment:
         Variables:
           AMC_API_ROLE_ARN: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-AmcApiAccessRole'
-          SOLUTION_NAME: !FindInMap ["Application", "Solution", "Name"]
-          SOLUTION_VERSION: !FindInMap ["Application", "Solution", "Version"]
+          SOLUTION_NAME: !FindInMap [ "Application", "Solution", "Name" ]
+          SOLUTION_VERSION: !FindInMap [ "Application", "Solution", "Version" ]
           UPLOAD_FAILURES_TABLE_NAME: !Ref UploadFailuresTable
+          SYSTEM_TABLE_NAME: !Ref SystemTable
+          STACK_NAME: !Ref AWS::StackName
+          ACCOUNT_ID: !Ref "AWS::AccountId"
           botoConfig: !Join
             - ''
             - - '{"region_name": "'
@@ -472,8 +557,8 @@ Resources:
           - id: W84
             reason: "The data generated via this role does not need to be encrypted."
     Properties:
-      LogGroupName: !Join ['/', ['/aws/lambda', !Ref AmcUploadLambdaFunction]]
-      RetentionInDays: 30
+      LogGroupName: !Join [ '/', [ '/aws/lambda', !Ref AmcUploadLambdaFunction ] ]
+      RetentionInDays: 3653
 
   # Bucket Name Helper function
   # - Generates a UUID to use for uniquely naming for the ArtifactBucket and ArtifactLogsBucket
@@ -547,7 +632,7 @@ Resources:
             response = opener.open(request)
 
       Handler: index.handler
-      Runtime: python3.10
+      Runtime: python3.12
       Timeout: 900
       Role: !GetAtt BucketNameHelperRole.Arn
       Tags:
@@ -633,36 +718,36 @@ Resources:
                 f"arn:aws:s3:::{bucket_name}/library.zip"
               ]
             }
-        
+          
             # Get the current bucket policy
             s3 = boto3.client('s3')
             bucket_policy = s3.get_bucket_policy(Bucket=bucket_name)
             current_policy = json.loads(bucket_policy['Policy'])
-        
+          
             # Add the new statement to the existing policy.
             for statement in current_policy['Statement']:
               if statement.get("Sid") == new_statement.get("Sid"):
                 # Exit if bucket policy already contains new_statement.
                 return
             current_policy['Statement'].append(new_statement)
-        
+          
             # Update the bucket policy
             updated_policy = json.dumps(current_policy)
             s3.put_bucket_policy(Bucket=bucket_name, Policy=updated_policy)
             LOGGER.info("Updated bucket policy to deny DeleteObject")
-
-    
+          
+          
           def remove_statement_from_bucket_policy(bucket_name):
             # This function reinstates the ability to delete Glue ETL files
             # from the Artifact Bucket.
             s3 = boto3.client('s3')
-            
+          
             # Retrieve the current bucket policy
             bucket_policy = s3.get_bucket_policy(Bucket=bucket_name)
-            
+          
             # Parse the bucket policy
             policy_json = json.loads(bucket_policy['Policy'])
-            
+          
             # Check if the statement to remove exists
             statement_id_to_remove = 'prevent-accidental-etl-script-deletion-during-upgrades'
             found = False
@@ -672,22 +757,22 @@ Resources:
                 updated_statements.append(statement)
               else:
                 found = True
-            
+          
             # If the statement to remove was found, update the policy
             if found:
               LOGGER.info("Updating bucket policy to allow DeleteObject")
               policy_json['Statement'] = updated_statements
-              
+          
               # Convert the updated policy back to JSON string
               updated_policy = json.dumps(policy_json)
-              
+          
               # Update the bucket policy
               s3.put_bucket_policy(Bucket=bucket_name, Policy=updated_policy)
               LOGGER.info(f"Statement with ID '{statement_id_to_remove}' removed from bucket policy.")
             else:
               LOGGER.info(f"Statement with ID '{statement_id_to_remove}' not found in bucket policy.")
           
-
+          
           def purge_bucket(event, context):
             try:
               s3 = boto3.resource('s3')
@@ -730,7 +815,7 @@ Resources:
             response = opener.open(request)
 
       Handler: index.handler
-      Runtime: python3.10
+      Runtime: python3.12
       Timeout: 900
       Role: !GetAtt BucketRemovalHelperRole.Arn
       Tags:
@@ -745,8 +830,8 @@ Resources:
           - id: W84
             reason: "The data generated via this role does not need to be encrypted."
     Properties:
-      LogGroupName: !Join ['/', ['/aws/lambda', !Ref BucketRemovalHelper]]
-      RetentionInDays: 30
+      LogGroupName: !Join [ '/', [ '/aws/lambda', !Ref BucketRemovalHelper ] ]
+      RetentionInDays: 3653
 
   BucketNameHelperLogGroup:
     Type: AWS::Logs::LogGroup
@@ -756,8 +841,8 @@ Resources:
           - id: W84
             reason: "The data generated via this role does not need to be encrypted."
     Properties:
-      LogGroupName: !Join ['/', ['/aws/lambda', !Ref BucketNameHelper]]
-      RetentionInDays: 30
+      LogGroupName: !Join [ '/', [ '/aws/lambda', !Ref BucketNameHelper ] ]
+      RetentionInDays: 3653
 
   BucketNameHelperRole:
     Type: AWS::IAM::Role
@@ -783,13 +868,13 @@ Resources:
                   - logs:PutLogEvents
                 Resource:
                   - !Join [
-                      "",
+                    "",
                     [
-                        "arn:aws:logs:",
-                        Ref: "AWS::Region",
-                        ":",
-                        Ref: "AWS::AccountId",
-                        ":log-group:/aws/lambda/*",
+                      "arn:aws:logs:",
+                      Ref: "AWS::Region",
+                      ":",
+                      Ref: "AWS::AccountId",
+                      ":log-group:/aws/lambda/*",
                     ],
                   ]
       Tags:
@@ -820,13 +905,13 @@ Resources:
                   - logs:PutLogEvents
                 Resource:
                   - !Join [
-                      "",
+                    "",
                     [
-                        "arn:aws:logs:",
-                        Ref: "AWS::Region",
-                        ":",
-                        Ref: "AWS::AccountId",
-                        ":log-group:/aws/lambda/*",
+                      "arn:aws:logs:",
+                      Ref: "AWS::Region",
+                      ":",
+                      Ref: "AWS::AccountId",
+                      ":log-group:/aws/lambda/*",
                     ],
                   ]
               - Effect: Allow
@@ -834,11 +919,11 @@ Resources:
                   - "s3:DeleteObject"
                 Resource:
                   - !Join [
-                      "",
+                    "",
                     [
-                        "arn:aws:s3:::",
-                        Ref: ArtifactLogsBucket,
-                        "/*"
+                      "arn:aws:s3:::",
+                      Ref: ArtifactLogsBucket,
+                      "/*"
                     ]
                   ]
                   - !Join [
@@ -854,10 +939,10 @@ Resources:
                   - "s3:ListBucket"
                 Resource:
                   - !Join [
-                      "",
+                    "",
                     [
-                        "arn:aws:s3:::",
-                        Ref: ArtifactLogsBucket
+                      "arn:aws:s3:::",
+                      Ref: ArtifactLogsBucket
                     ]
                   ]
                   - !Join [
@@ -889,7 +974,7 @@ Resources:
       Action: 'lambda:InvokeFunction'
       FunctionName: !GetAtt BucketNameHelper.Arn
       Principal: 'cloudformation.amazonaws.com'
- 
+
   BucketRemovalHelperPermissions:
     Type: AWS::Lambda::Permission
     Properties:
@@ -938,6 +1023,9 @@ Resources:
         DataBucketName: !Ref DataBucketName
         RestApiId: !GetAtt ApiStack.Outputs.RestAPIId
         ParentStackName: !Ref AWS::StackName
+        CognitoUISubdomain: !Sub "ui${GetShortUUID2.Data}"
+        CognitoCallbackURL: !GetAtt WebStack6.Outputs.CloudfrontUrl
+        CognitoLogoutURL: !GetAtt WebStack6.Outputs.CloudfrontUrl
 
   # Glue ETL stack
 
@@ -961,7 +1049,7 @@ Resources:
         ArtifactBucketName: !Ref ArtifactBucket
         DataBucketName: !Ref DataBucketName
         CustomerManagedKey: !Ref CustomerManagedKey
-        EnableAnonymousData: !FindInMap [AnonymizedData,SendAnonymizedData,Data]
+        EnableAnonymousData: !FindInMap [ AnonymizedData,SendAnonymizedData,Data ]
         AnonymousDataLogger: !Ref AnonymousDataCustomResource
         SolutionId: !FindInMap [ "Application", "Solution", "Id" ]
         UUID: !GetAtt AnonymousDataUuid.UUID
@@ -985,14 +1073,9 @@ Resources:
             - TemplateKeyPrefix
           - "/web.template"
       Parameters:
-        DataBucketName: !Ref DataBucketName
-        ArtifactBucketName: !Ref ArtifactBucket
-        UserPoolId: !GetAtt AuthStack.Outputs.UserPoolId
-        IdentityPoolId: !GetAtt AuthStack.Outputs.IdentityPoolId
-        PoolClientId: !GetAtt AuthStack.Outputs.UserPoolClientId
-        ApiEndpoint: !GetAtt ApiStack.Outputs.EndpointURL
         RestAPIId: !GetAtt ApiStack.Outputs.RestAPIId
         CustomerManagedKey: !Ref CustomerManagedKey
+        HostedUIDomain: !Sub "ui${GetShortUUID2.Data}.auth.${AWS::Region}.amazoncognito.com"
 
   # API stack
 
@@ -1095,6 +1178,9 @@ Resources:
         SystemTableName: !Ref SystemTable
         UploadFailuresTableName: !Ref UploadFailuresTable
         SystemKmsKeyId: !Ref SystemKey
+        StackName: !Ref AWS::StackName
+        AccountId: !Ref "AWS::AccountId"
+
 
   # Resources for sending anonymous operational metrics to AWS
 
@@ -1104,8 +1190,7 @@ Resources:
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
-          -
-            Effect: Allow
+          - Effect: Allow
             Principal:
               Service:
                 - lambda.amazonaws.com
@@ -1113,24 +1198,21 @@ Resources:
               - sts:AssumeRole
       Path: "/"
       Policies:
-        -
-          PolicyName: !Sub "${AWS::StackName}-anonymous-data-logger"
+        - PolicyName: !Sub "${AWS::StackName}-anonymous-data-logger"
           PolicyDocument:
             Statement:
-              -
-                Effect: Allow
+              - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource:
-                  - !Join ["", ["arn:aws:logs:", Ref: "AWS::Region", ":", Ref: "AWS::AccountId", ":log-group:/aws/lambda/*"]]
-              -
-                Effect: Allow
+                  - !Join [ "", [ "arn:aws:logs:", Ref: "AWS::Region", ":", Ref: "AWS::AccountId", ":log-group:/aws/lambda/*" ] ]
+              - Effect: Allow
                 Action:
                   - ssm:PutParameter
                 Resource:
-                  - !Join ["", ["arn:aws:ssm:", Ref: "AWS::Region", ":", Ref: "AWS::AccountId", ":parameter/*"]]
+                  - !Join [ "", [ "arn:aws:ssm:", Ref: "AWS::Region", ":", Ref: "AWS::AccountId", ":parameter/*" ] ]
 
   AnonymousDataCustomResource:
     Type: AWS::Lambda::Function
@@ -1148,7 +1230,7 @@ Resources:
       Code:
         S3Bucket: !Join [ "-", [ !FindInMap [ "Application", "SourceCode", "RegionalS3Bucket" ], Ref: "AWS::Region" ] ]
         S3Key: !Join [ "/", [ !FindInMap [ "Application", "SourceCode", "CodeKeyPrefix" ], "anonymous_data_logger.zip" ] ]
-      Runtime:  python3.10
+      Runtime: python3.12
       Timeout: 180
 
   # SendAnonymousData
@@ -1164,9 +1246,61 @@ Resources:
     Properties:
       ServiceToken: !GetAtt AnonymousDataCustomResource.Arn
       Resource: AnonymousMetric
-      SolutionId: !FindInMap ["Application", "Solution", "Id"]
+      SolutionId: !FindInMap [ "Application", "Solution", "Id" ]
       UUID: !GetAtt AnonymousDataUuid.UUID
-      Version: !FindInMap ["Application", "Solution", "Version"]
+      Version: !FindInMap [ "Application", "Solution", "Version" ]
+
+  # Cognito Hosted UI
+  CognitoHostedUIResourceUpdateCustomResourceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: "/"
+      Policies:
+        - PolicyName: !Sub "${AWS::StackName}-cognito-hosted-ui"
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cognito-idp:SetUICustomization
+                Resource:
+                  - !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${AuthStack.Outputs.UserPoolId}"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Join [ "", [ "arn:aws:logs:", Ref: "AWS::Region", ":", Ref: "AWS::AccountId", ":log-group:/aws/lambda/*" ] ]
+  
+  CognitoHostedUIResourceUpdateCustomResource:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Used to update Cognito Hosted UI Customization.
+      Handler: cognito_hosted_ui_resource.handler
+      Role: !GetAtt CognitoHostedUIResourceUpdateCustomResourceRole.Arn
+      Code:
+        S3Bucket: !Join [ "-", [ !FindInMap [ "Application", "SourceCode", "RegionalS3Bucket" ], Ref: "AWS::Region" ] ]
+        S3Key: !Join [ "/", [ !FindInMap [ "Application", "SourceCode", "CodeKeyPrefix" ], "cognito_hosted_ui_resource.zip" ] ]
+      Runtime: python3.12
+      Timeout: 180
+      Environment:
+        Variables:
+          USER_POOL_ID: !GetAtt AuthStack.Outputs.UserPoolId
+
+  CognitoHostedUIResourceUpdateCustomResourceInvoke:
+    Type: "Custom::CognitoHostedUIResourceUpdateCustomResourceInvoke"
+    Properties:
+      ServiceToken: !GetAtt CognitoHostedUIResourceUpdateCustomResource.Arn
 
   # App Registry
 
@@ -1176,17 +1310,17 @@ Resources:
       Description: Service Catalog application to track and manage all your resources for the solution Amazon Marketing Cloud uploader from AWS
       Name:
         !Join
-            - "-"
-            - - !FindInMap [Application, Solution, "AppRegistryApplicationName"]
-              - !Ref AWS::Region
-              - !Ref AWS::AccountId
-              - !Ref AWS::StackName
+        - "-"
+        - - !FindInMap [ Application, Solution, "AppRegistryApplicationName" ]
+          - !Ref AWS::Region
+          - !Ref AWS::AccountId
+          - !Ref AWS::StackName
       Tags: {
-        'Solutions:SolutionID': !FindInMap [Application, Solution, "Id"],
-        'Solutions:SolutionVersion': !FindInMap [Application, Solution, "Version"],
-        'Solutions:SolutionName': !FindInMap [Application, Solution, "Name"],
-        'Solutions:ApplicationType': !FindInMap [Application, Solution, "ApplicationType"],
-        }
+        'Solutions:SolutionID': !FindInMap [ Application, Solution, "Id" ],
+        'Solutions:SolutionVersion': !FindInMap [ Application, Solution, "Version" ],
+        'Solutions:SolutionName': !FindInMap [ Application, Solution, "Name" ],
+        'Solutions:ApplicationType': !FindInMap [ Application, Solution, "ApplicationType" ],
+      }
 
   AppRegistryApplicationStackAssociation:
     Type: AWS::ServiceCatalogAppRegistry::ResourceAssociation
@@ -1231,20 +1365,110 @@ Resources:
   DefaultApplicationAttributes:
     Type: AWS::ServiceCatalogAppRegistry::AttributeGroup
     Properties:
-      Name: !Join ['-', [!Ref 'AWS::Region', !Ref 'AWS::StackName']]
+      Name: !Join [ '-', [ !Ref 'AWS::Region', !Ref 'AWS::StackName' ] ]
       Description: Attribute group for solution information.
       Attributes: {
-        "ApplicationType" : !FindInMap [Application, Solution, "ApplicationType"],
-        "Version": !FindInMap [Application, Solution, "Version"],
-        "SolutionID": !FindInMap [Application, Solution, "Id"],
-        "SolutionName": !FindInMap [Application, Solution, "Name"]
-        }
+        "ApplicationType": !FindInMap [ Application, Solution, "ApplicationType" ],
+        "Version": !FindInMap [ Application, Solution, "Version" ],
+        "SolutionID": !FindInMap [ Application, Solution, "Id" ],
+        "SolutionName": !FindInMap [ Application, Solution, "Name" ]
+      }
 
   AppRegistryApplicationAttributeAssociation:
     Type: AWS::ServiceCatalogAppRegistry::AttributeGroupAssociation
     Properties:
       Application: !GetAtt Application.Id
       AttributeGroup: !GetAtt DefaultApplicationAttributes.Id
+
+  ConfigHelperRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "Config helper Lambda requires write/delete access to the website bucket"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: !Sub "${AWS::StackName}-ConfigHelperS3Access"
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "s3:PutObject"
+                  - "s3:DeleteObject"
+                Resource:
+                  - !Sub ${WebStack6.Outputs.WebsiteBucketArn}/runtimeConfig.json
+              - Effect: Allow
+                Action:
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*"
+
+  ConfigHelperFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W58
+            reason: "The role includes permission to write to CloudWatch Logs"
+          - id: W89
+            reason: "This resource does not need to access any other resource provisioned within a VPC."
+          - id: W92
+            reason: "This function does not require performance optimization, so the default concurrency limits suffice."
+    Properties:
+      Code:
+        S3Bucket:  !Join ["-", [!FindInMap ["Application", "SourceCode", "RegionalS3Bucket"], Ref: "AWS::Region"]]
+        S3Key:
+          !Join [
+              "/",
+            [
+              !FindInMap ["Application", "SourceCode", "CodeKeyPrefix"],
+              "websitehelper.zip",
+            ],
+          ]
+      Handler: config_helper.handler
+      MemorySize: 256
+      Role: !GetAtt ConfigHelperRole.Arn
+      Runtime: python3.10
+      Timeout: 60
+
+  ConfigHelperLogGroup:
+    Type: AWS::Logs::LogGroup
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W84
+            reason: "The data generated via this role does not need to be encrypted."
+    Properties:
+      LogGroupName: !Join ['/', ['/aws/lambda', !Ref ConfigHelperFunction]]
+      RetentionInDays: 3653
+
+  ConfigHelperCustomResource:
+    Type: Custom::WebSiteConfiguration
+    Properties:
+      ServiceToken: !GetAtt ConfigHelperFunction.Arn
+      API_ENDPOINT: !GetAtt ApiStack.Outputs.EndpointURL
+      AWS_REGION: !Ref "AWS::Region"
+      USER_POOL_ID: !GetAtt AuthStack.Outputs.UserPoolId
+      USER_POOL_CLIENT_ID: !GetAtt AuthStack.Outputs.UserPoolClientId
+      IDENTITY_POOL_ID: !GetAtt AuthStack.Outputs.IdentityPoolId
+      DATA_BUCKET_NAME: !Ref DataBucketName
+      ARTIFACT_BUCKET_NAME: !Ref ArtifactBucket
+      ENCRYPTION_MODE: !GetAtt WebStack6.Outputs.EncryptionMode
+      HOSTED_UI_DOMAIN: !GetAtt AuthStack.Outputs.HostedUIDomain
+      COGNITO_CALLBACK_URL: !GetAtt WebStack6.Outputs.CloudfrontUrl
+      COGNITO_LOGOUT_URL: !GetAtt WebStack6.Outputs.CloudfrontUrl
+      WEBSITE_BUCKET: !GetAtt WebStack6.Outputs.WebsiteBucketName
 
 Outputs:
   UserInterface:

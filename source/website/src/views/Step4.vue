@@ -45,20 +45,20 @@ SPDX-License-Identifier: Apache-2.0
           {{ incompleteFields.errorType }} is missing for fields {{ incompleteFields.errorItems }}
         </b-alert>
         <b-alert
-          v-if="mainEventTimeSelected && dataset_definition.dataSetType === 'FACT'"
-          v-model="showIncompleteTimeFieldError"
-          variant="danger"
-          dismissible
+	           v-if="mainEventTimeSelected === false && new_dataset_definition.period !== 'DIMENSION'"
+	           v-model="showIncompleteTimeFieldError"
+	           variant="danger"
+	           dismissible
         >
-          FACT datasets must include a MainEventTime field.
+          Partition Scheme datasets must include a MainEventTime field.
         </b-alert>
         <b-alert
-          v-if="mainEventTimeSelected && dataset_definition.dataSetType === 'DIMENSION'"
+          v-if="mainEventTimeSelected && new_dataset_definition.period === 'DIMENSION'"
           v-model="showUnexpectedTimeFieldError"
           variant="danger"
           dismissible
         >
-          DIMENSION datasets must not include a MainEventTime field.
+          Non-Partition Scheme datasets must not include a MainEventTime field.
         </b-alert>
         <b-alert
           :show="showImportError"
@@ -286,9 +286,10 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script>
-  import Header from '@/components/Header.vue'
-  import Sidebar from '@/components/Sidebar.vue'
-  import {mapState} from "vuex";
+  import Header from '@/components/Header.vue';
+  import Sidebar from '@/components/Sidebar.vue';
+  import { API } from 'aws-amplify';
+  import { mapState } from "vuex";
 
   export default {
     name: "Step4",
@@ -315,7 +316,6 @@ SPDX-License-Identifier: Apache-2.0
         selected_dataset_items: [],
         selected_dataset_description: "",
         selected_dataset_period: "",
-        selected_dataset_type: "",
         columns: [],
         selected_dataset_fields: [
           { key: 'name', sortable: true },
@@ -352,6 +352,16 @@ SPDX-License-Identifier: Apache-2.0
           { value: 'LiveRamp ID', text: 'LiveRamp ID', disabled: false},
           { value: 'Android Mobile Ad ID', text: 'Mobile Ad ID (Android)', disabled: false},
           { value: 'iOS Mobile Ad ID', text: 'Mobile Ad ID (iOS)', disabled: false},
+          { value: 'Mobile Ad ID', text: 'Mobile Ad ID', disabled: false},
+          { value: 'Experian ID', text: 'Experian ID', disabled: false},
+        ],
+        data_types_column_type_options: [
+          {column_type: 'Experian ID', value: "STRING"},
+          {column_type: 'LiveRamp ID', value: "STRING"},
+          {column_type: 'Android Mobile Ad ID', value: "STRING"},
+          {column_type: 'iOS Mobile Ad ID', value: "STRING"},
+          {column_type: 'Mobile Ad ID', value: "STRING"},
+          {column_type: 'isMainEventTime', value: "TIMESTAMP"},
         ],
         pii_type_options: [
           { value: 'EMAIL', text: 'EMAIL', disabled: false},
@@ -364,11 +374,13 @@ SPDX-License-Identifier: Apache-2.0
           { value: 'STATE', text: 'STATE', disabled: false}
         ],
         results: {},
-        isStep4Active: true
+        isStep4Active: true,
+        userId: null,
+        new_s3key: null
       }
     },
     computed: {
-      ...mapState(['deleted_columns','dataset_definition', 's3key', 'step3_form_input', 'selected_dataset', 'destination_endpoints']),
+      ...mapState(['deleted_columns','dataset_definition', 's3key', 'step3_form_input', 'selected_dataset', 'amc_instances_selected']),
       extra_columns() {
         const dataset_columns = this.selected_dataset_items.map(x => x.name)
         const file_columns = this.items.map(x => x.name)
@@ -386,7 +398,10 @@ SPDX-License-Identifier: Apache-2.0
         return this.items.filter(x => (x.column_type === 'LiveRamp ID')).length > 0
       },
       contains_maid() {
-        return this.items.filter(x => (x.column_type === 'Android Mobile Ad ID')).length > 0 || this.items.filter(x => (x.column_type === 'iOS Mobile Ad ID')).length > 0
+        return this.items.filter(x => (x.column_type === 'Android Mobile Ad ID')).length > 0 || this.items.filter(x => (x.column_type === 'iOS Mobile Ad ID')).length > 0 || this.items.filter(x => (x.column_type === 'Mobile Ad ID')).length > 0
+      },
+      contains_experian_id() {
+        return this.items.filter(x => (x.column_type === 'Experian ID')).length > 0
       },
       incompleteFields() {
         // check PII type
@@ -412,6 +427,9 @@ SPDX-License-Identifier: Apache-2.0
       mainEventTimeSelected() {
         return this.items.filter(x => (x.column_type === 'isMainEventTime')).length > 0
       },
+      PIISelected() {
+        return this.items.filter(x => (x.column_type === 'PII')).length > 0
+      },
     },
     activated: function () {
       console.log('activated')
@@ -423,6 +441,8 @@ SPDX-License-Identifier: Apache-2.0
       console.log('created')
     },
     mounted: function() {
+      this.userId = this.USER_POOL_ID
+      this.new_s3key = this.s3key
       this.new_dataset_definition = this.dataset_definition
       if (this.selected_dataset !== null) {
         // If the user opted to join to an existing dataset, then load that dataset's
@@ -517,16 +537,16 @@ SPDX-License-Identifier: Apache-2.0
         } else {
           this.showIncompleteFieldsError = false
         }
-        // FACT datasets must have a field designated as the main event time.
-        if (this.new_dataset_definition.dataSetType === 'FACT'
+        // Partition Scheme datasets must have a field designated as the main event time.
+        if (this.new_dataset_definition.period !== 'DIMENSION'
             && this.mainEventTimeSelected === false) {
           this.showIncompleteTimeFieldError = true
           return false
         } else {
           this.showIncompleteTimeFieldError = false
         }
-        // DIMENSION datasets must not have a field designated as the main event time.
-        if (this.new_dataset_definition.dataSetType === 'DIMENSION'
+        // Non-Partition Scheme datasets must not have a field designated as the main event time.
+        if (this.new_dataset_definition.period === 'DIMENSION'
             && this.mainEventTimeSelected === true) {
           this.showUnexpectedTimeFieldError = true
           return false
@@ -541,7 +561,6 @@ SPDX-License-Identifier: Apache-2.0
           this.items = this.selected_dataset_items
           this.new_dataset_definition.dataSetId = this.selected_dataset
           this.new_dataset_definition.description = this.selected_dataset_description
-          this.new_dataset_definition.dataSetType = this.selected_dataset_type
           this.new_dataset_definition.period = this.selected_dataset_period
         }
         if (!this.validateForm()) {console.log(this.validateForm())
@@ -554,10 +573,11 @@ SPDX-License-Identifier: Apache-2.0
         // ------- Save form ------- //
         //
         // If hashed identifiers are present, then add user_id and user_type columns
-        if (this.contains_hashed_identifier || this.contains_liveramp_id || this.contains_maid) {
+        if (this.contains_hashed_identifier || this.contains_liveramp_id || this.contains_maid || this.contains_experian_id) {
           this.columns.push({
             "name": "user_id",
             "description": "The customer resolved id",
+            "columnType": "DIMENSION",
             "dataType": "STRING",
             "nullable": true,
             "isMainUserId": true
@@ -565,6 +585,7 @@ SPDX-License-Identifier: Apache-2.0
           this.columns.push({
             "name": "user_type",
             "description": "The customer resolved type",
+            "columnType": "DIMENSION",
             "dataType": "STRING",
             "nullable": true,
             "isMainUserIdType": true
@@ -576,10 +597,10 @@ SPDX-License-Identifier: Apache-2.0
             const column_definition = {
               "name": x.name,
               "description": "hashed " + x.description,
+              "columnType": "DIMENSION",
               "dataType": x.data_type,
               "externalUserIdType": {
-                "type": "HashedIdentifier",
-                "identifierType": x.pii_type
+                "hashedPii": x.pii_type
               }
             }
             if (x.nullable === true) column_definition.nullable = true
@@ -593,37 +614,54 @@ SPDX-License-Identifier: Apache-2.0
               "name": x.name,
               "description": x.description,
               "dataType": x.data_type,
+              "columnType": "DIMENSION",
               "externalUserIdType": {
-                "type": "LiveRamp"
+                "externalIdentity": "LIVERAMP"
               }
             }
             if (x.nullable === true) column_definition.nullable = true
             this.columns.push(column_definition)
           })
         // add Mobile Ad identifier
-        this.items.filter(x => x.column_type === 'Android Mobile Ad ID')
+        this.items.filter(x => (x.column_type === 'Android Mobile Ad ID' || x.column_type === 'iOS Mobile Ad ID'))
           .forEach(x => {
             const column_definition = {
               "name": x.name,
               "description": x.description,
               "dataType": x.data_type,
+              "columnType": "DIMENSION",
               "externalUserIdType": {
-                "type": "IDFA",
-                "idfaType": "android-idfa"
+                "externalIdentity": "IDFA"
               }
             }
             if (x.nullable === true) column_definition.nullable = true
             this.columns.push(column_definition)
           })
-        this.items.filter(x => x.column_type === 'iOS Mobile Ad ID')
+         // add MAID
+         this.items.filter(x => x.column_type === 'Mobile Ad ID')
           .forEach(x => {
             const column_definition = {
               "name": x.name,
               "description": x.description,
               "dataType": x.data_type,
+              "columnType": "DIMENSION",
               "externalUserIdType": {
-                "type": "IDFA",
-                "idfaType": "ios-idfa"
+                "externalIdentity": "MAID"
+              }
+            }
+            if (x.nullable === true) column_definition.nullable = true
+            this.columns.push(column_definition)
+          })
+        // add Experian
+        this.items.filter(x => x.column_type === 'Experian ID')
+          .forEach(x => {
+            const column_definition = {
+              "name": x.name,
+              "description": x.description,
+              "dataType": x.data_type,
+              "columnType": "DIMENSION",
+              "externalUserIdType": {
+                "externalIdentity": "EXPERIAN"
               }
             }
             if (x.nullable === true) column_definition.nullable = true
@@ -635,6 +673,7 @@ SPDX-License-Identifier: Apache-2.0
             const column_definition = {
               "name": x.name,
               "description": x.description,
+              "columnType": "DIMENSION",
               "dataType": "TIMESTAMP",
               "isMainEventTime": true
             }
@@ -643,7 +682,14 @@ SPDX-License-Identifier: Apache-2.0
           })
 
         // add identifiers for non-PII columns
-        this.items.filter(x => (x.pii_type === "" && (x.column_type !== 'isMainEventTime' && x.column_type !== 'LiveRamp ID' && x.column_type !== 'Android Mobile Ad ID' && x.column_type !== 'iOS Mobile Ad ID')))
+        this.items.filter(x => (x.pii_type === "" && (
+            x.column_type !== 'isMainEventTime' &&
+            x.column_type !== 'LiveRamp ID' &&
+            x.column_type !== 'Android Mobile Ad ID' &&
+            x.column_type !== 'iOS Mobile Ad ID' &&
+            x.column_type !== 'Mobile Ad ID' &&
+            x.column_type !== 'Experian ID'
+          )))
           .forEach(x => {
             const column_definition = {
               "name": x.name,
@@ -664,6 +710,7 @@ SPDX-License-Identifier: Apache-2.0
           console.log("ERROR: unrecognized content_type, " + this.content_type)
           this.showServerError = true;
 
+        this.new_dataset_definition["PIISelected"] = this.PIISelected
         this.$store.commit('updateDatasetDefinition', this.new_dataset_definition)
         this.$router.push({path: '/step5'})
       },
@@ -676,54 +723,25 @@ SPDX-License-Identifier: Apache-2.0
         this.$store.commit('saveStep3FormInput', this.items)
       },
       changeNullable() {
-        console.log("asdf")
         this.$store.commit('saveStep3FormInput', this.items)
       },
+      disable_column_type_options(column_type, disable){
+        if (column_type !== 'PII' && column_type !== null && column_type.length > 0){
+          let idx = this.column_type_options.findIndex((x => x.value === column_type))
+          this.column_type_options[idx].disabled = disable
+        }
+      },
       changeColumnType(value, index) {
-        // enable timestamp option if that was just deselected
-        if (this.items[index].column_type === 'isMainEventTime') {
-          let idx = this.column_type_options.findIndex((x => x.value === 'isMainEventTime'))
-          this.column_type_options[idx].disabled = false
-        }
-        // enable live ramp option if that was just deselected
-        if (this.items[index].column_type === 'LiveRamp ID') {
-          let idx = this.column_type_options.findIndex((x => x.value === 'LiveRamp ID'))
-          this.column_type_options[idx].disabled = false
-        }
-        // enable maid option if that was just deselected
-        if (this.items[index].column_type === 'Android Mobile Ad ID') {
-          let idx = this.column_type_options.findIndex((x => x.value === 'Android Mobile Ad ID'))
-          this.column_type_options[idx].disabled = false
-        }
-        if (this.items[index].column_type === 'iOS Mobile Ad ID') {
-          let idx = this.column_type_options.findIndex((x => x.value === 'iOS Mobile Ad ID'))
-          this.column_type_options[idx].disabled = false
-        }
-        // disable timestamp option if that was just selected
-        if (value === 'isMainEventTime') {
-          let idx = this.column_type_options.findIndex((x => x.value === 'isMainEventTime'))
-          this.column_type_options[idx].disabled = true
-          // automatically set data type to timestamp if column type is MainEventTime
-          this.items[index].data_type = "TIMESTAMP"
-        }
-        if (value === 'LiveRamp ID') {
-          let idx = this.column_type_options.findIndex((x => x.value === 'LiveRamp ID'))
-          this.column_type_options[idx].disabled = true
-           // automatically set data type to string if column type is LiveRamp ID
-          this.items[index].data_type = "STRING"
-        }
-        if (value === 'Android Mobile Ad ID') {
-          let idx = this.column_type_options.findIndex((x => x.value === 'Android Mobile Ad ID'))
-          this.column_type_options[idx].disabled = true
-           // automatically set data type to string if column type is Android Mobile Ad ID
-          this.items[index].data_type = "STRING"
-        }
-        if (value === 'iOS Mobile Ad ID') {
-          let idx = this.column_type_options.findIndex((x => x.value === 'iOS Mobile Ad ID'))
-          this.column_type_options[idx].disabled = true
-           // automatically set data type to string if column type is iOS Mobile Ad ID
-          this.items[index].data_type = "STRING"
-        }
+        // enable all column_type_options
+        this.disable_column_type_options(this.items[index].column_type, false)
+        // disable column_type option if that was just selected
+        this.data_types_column_type_options.filter(x => {
+          if (x.column_type === value){
+            // automatically set data type.
+            this.disable_column_type_options(value, true)
+            this.items[index].data_type = x.value
+          }
+        })
         // if changing from PII column to another, the PII Type and Nullable columns should be reset
         if (value !== 'PII' && this.items[index].column_type === 'PII') {
           // re-enable the previous PII Type value when unselecting the PII Column type
@@ -753,7 +771,14 @@ SPDX-License-Identifier: Apache-2.0
         this.$store.commit('saveStep3FormInput', this.items)
       },
       async get_datafile_columns(method, resource, data) {
-        data['destination_endpoint'] = this.destination_endpoints[0]
+        // This function gets the list of columns that are in the file that the user
+        // is trying to upload. Those columns need to be the same as the columns defined
+        // in the dataset, so this function will check that and show a warning in the
+        // front-end if the dataset and files have different columns.
+        data["instance_id"] = this.amc_instances_selected[0].instance_id
+        data["marketplace_id"] = this.amc_instances_selected[0].marketplace_id
+        data["advertiser_id"] = this.amc_instances_selected[0].advertiser_id
+        data["user_id"] = this.userId
         console.log("sending " + method + " " + resource + " " + JSON.stringify(data))
         this.items = []
         this.$store.commit('updateDeletedColumns', [])
@@ -766,7 +791,7 @@ SPDX-License-Identifier: Apache-2.0
               headers: {'Content-Type': 'application/json'},
               body: data
             };
-            response = await this.$Amplify.API.post(apiName, resource, requestOpts);
+            response = await API.post(apiName, resource, requestOpts);
           }
           this.items = response.columns.map(x => {return {
             "name": x,
@@ -776,7 +801,8 @@ SPDX-License-Identifier: Apache-2.0
             "pii_type": ""}
           }).filter(x => !this.deleted_columns.includes(x.name) )
 
-          // warn if table contains hashed identifiers and user_id or user_type columns
+          // The names "user_id" and "user_type" are reserved for columns that AMC generates.
+          // If the upload file contains columns with those names, then show a warning.
           const idx = this.items.findIndex((x => x.name === "user_id"))
           if (idx >= 0) {
             this.items[idx]._rowVariant = 'danger'
@@ -790,12 +816,12 @@ SPDX-License-Identifier: Apache-2.0
           this.content_type = response.content_type
         }
         catch (e) {
-          if(e.response.status === 400) this.showBadRequestError = true;
+          if (e.response?.status === 400) this.showBadRequestError = true;
           else this.showServerError = true;
 
-          console.log("ERROR: " + e.response.data.Message)
+          console.log("ERROR: " + e.response?.data.Message)
           this.busy_getting_datafile_columns = false;
-          this.results = e.response.data.Message
+          this.results = e.response?.data.Message
         }
         this.busy_getting_datafile_columns = false;
       },
@@ -805,7 +831,13 @@ SPDX-License-Identifier: Apache-2.0
         let response = ""
         const method = 'POST'
         const resource = 'describe_dataset'
-        const data = {'dataSetId': this.selected_dataset, 'destination_endpoint': this.destination_endpoints[0]}
+        const data = {
+          'dataSetId': this.selected_dataset,
+          'instance_id': this.amc_instances_selected[0].instance_id,
+          "marketplace_id": this.amc_instances_selected[0].marketplace_id,
+          "advertiser_id": this.amc_instances_selected[0].advertiser_id,
+          "user_id": this.userId
+        }
         this.busy_getting_dataset_definition = true;
         try {
           console.log("sending " + method + " " + resource + " " + JSON.stringify(data))
@@ -813,46 +845,50 @@ SPDX-License-Identifier: Apache-2.0
             headers: {'Content-Type': 'application/json'},
             body: data
           };
-          response = await this.$Amplify.API.post(apiName, resource, requestOpts);
-          this.selected_dataset_type = response.dataSetType
-          this.selected_dataset_description = response.description
-          this.selected_dataset_period = response.period
-
-          // resolveType is used to map the externalUserType property from the
-          // dataset definition to one of the column type options used in the web
-          // form.
-          const resolveType = {
-            "android-idfa": "Android Mobile Ad ID",
-            "ios-idfa": "iOS Mobile Ad ID",
-            "LiveRamp": "LiveRamp ID",
-            "HashedIdentifier": "PII"
+          response = await API.post(apiName, resource, requestOpts);
+          if (response.authorize_url){
+            const current_page = "step4"
+            const state_key = current_page + this.userId + Date.now()
+            const b64_state_key = btoa(current_page + this.userId + Date.now())
+            let state_vars = {
+              "amc_instances_selected": this.amc_instances_selected,
+              "s3key": this.new_s3key,
+              "dataset_definition": this.new_dataset_definition,
+              "selected_dataset": this.selected_dataset,
+              "deleted_columns": this.deleted_columns,
+              "step3_form_input": this.items,
+              "current_page": current_page
+            }
+            localStorage.setItem(state_key, JSON.stringify(state_vars))
+            window.location.href = response.authorize_url + "&state=" + b64_state_key
           }
+          this.selected_dataset_description = response.description
+          // if no dataset period exists, set to DIMENSION so that it matches the 'CREATE' workflow
+          this.selected_dataset_period = response.dataSet.period ? response.dataSet.period : 'DIMENSION'
 
           // read schema for externalUserIdType fields
           this.selected_dataset_items = this.selected_dataset_items.concat(
-            response.columns.filter(x => "externalUserIdType" in x).map(x => ({
+            response.dataSet.columns.filter(x => "externalUserIdType" in x).map(x => ({
               "name": x.name,
               "description": x.description,
               "data_type": x.dataType,
-              "column_type": (Object.prototype.hasOwnProperty.call(x.externalUserIdType,"idfaType") ?
-                  resolveType[x.externalUserIdType.idfaType] :
-                  resolveType[x.externalUserIdType.type]),
+              "column_type": "DIMENSION",
               "nullable": x.isNullable,
-              "pii_type": x.externalUserIdType.identifierType
+              "pii_type": x.externalUserIdType.hashedPii
             }))
           )
-          console.log(JSON.stringify(this.selected_dataset_items))
 
           // read schema for Timestamp field
-          this.selected_dataset_items = this.selected_dataset_items.concat(response.columns.filter(x => x.isMainEventTime === true).map(x => ({"name": x.name, "description": x.description, "data_type": x.dataType, "column_type": "isMainEventTime", "pii_type":""})))
+          this.selected_dataset_items = this.selected_dataset_items.concat(response.dataSet.columns.filter(x => x.isMainEventTime === true).map(x => ({"name": x.name, "description": x.description, "data_type": x.dataType, "column_type": "isMainEventTime", "pii_type":""})))
           // read schema for Dimension fields
-          this.selected_dataset_items = this.selected_dataset_items.concat(response.columns.filter(x => x.columnType === "DIMENSION").map(x => ({"name": x.name, "description": x.description, "data_type": x.dataType, "column_type": x.columnType, "pii_type":"", "nullable": x.isNullable})))
+          this.selected_dataset_items = this.selected_dataset_items.concat(response.dataSet.columns.filter(x => x.columnType === "DIMENSION").map(x => ({"name": x.name, "description": x.description, "data_type": x.dataType, "column_type": x.columnType, "pii_type":"", "nullable": x.isNullable})).filter(x => x.name !== "user_id" && x.name !== "user_type"))
           // read schema for Metric fields
-          this.selected_dataset_items = this.selected_dataset_items.concat(response.columns.filter(x => x.columnType === "METRIC").map(x => ({"name": x.name, "description": x.description, "data_type": x.dataType, "column_type": x.columnType, "pii_type":"", "nullable": x.isNullable})))
+          this.selected_dataset_items = this.selected_dataset_items.concat(response.dataSet.columns.filter(x => x.columnType === "METRIC").map(x => ({"name": x.name, "description": x.description, "data_type": x.dataType, "column_type": x.columnType, "pii_type":"", "nullable": x.isNullable})))
+
         }
         catch (e) {
-          console.log("ERROR: " + e.response.data.message)
-          this.response = e.response.data.message
+          console.log("ERROR: " + e)
+          this.response = e
         }
         this.busy_getting_dataset_definition = false;
       },

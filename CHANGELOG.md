@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2024-05-29
+
+### Added
+
+- Added a link to the front-end URL to the welcome email.
+
+### Changed
+
+- Migrated all AMC requests to use OAuth and the AMC API provided by Amazon Ads instead of instance-level APIs. 
+- Migrated the front-end to align with the AMC API provided by Amazon Ads.
+- Migrated the front-end to use the Amazon Cognito hosted user interface for login instead of AWS Amplify.
+- Replaced time-series based file partitioning (which the AMC API no longer requires) with a strategy based on file size so that pseudonymized files will not exceed 500MB (compressed).
+
+### Security
+
+- Updated npm dependencies
+
 ## [2.3.1] - 2024-03-28
 
 ### Security

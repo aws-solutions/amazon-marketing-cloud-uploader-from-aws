@@ -3,5 +3,5 @@ pandas==2.0.2
 phonenumbers==8.13.14
 regex==2023.6.3
 requests_aws4auth==1.2.3
-selenium==4.10.0
+selenium==4.20.0
 webdriver-manager==3.8.6

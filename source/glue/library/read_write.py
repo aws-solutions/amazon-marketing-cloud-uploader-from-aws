@@ -4,10 +4,12 @@ import json
 import re
 import sys
 from datetime import datetime
-
+import math
 import awswrangler as wr
 import boto3
 import pandas as pd
+import numpy as np
+import os
 
 ###############################
 # CONSTANTS
@@ -18,6 +20,22 @@ WRITING = "Writing "
 ROWS_TO = " rows to "
 AMC_STR = "amc"
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+S3_PREFIX = "s3://"
+
+pandas_options_to_write_json = {
+    "compression": "gzip",
+    "lines": True,
+    "orient": "records",
+}
+
+pandas_options_to_write_csv = {
+    "compression": "gzip",
+    "header": True,
+    "index": False,
+}
+
+GZIPPED_OUTPUT_FILE_SIZE_IN_BYTES = 500.0 * 1000000
+
 
 ###############################
 # HELPER FUNCTIONS
@@ -29,17 +47,13 @@ def write_to_s3(df: pd.DataFrame, filepath: str, file_format: str) -> None:
         wr.s3.to_json(
             df=df,
             path=filepath,
-            compression="gzip",
-            lines=True,
-            orient="records",
+            **pandas_options_to_write_json
         )
     elif file_format == "CSV":
         wr.s3.to_csv(
             df=df,
             path=filepath,
-            compression="gzip",
-            header=True,
-            index=False,
+            **pandas_options_to_write_csv
         )
 
 
@@ -65,17 +79,28 @@ class DataFile:
         self.pii_fields = list(json.loads(args["pii_fields"]))
         self.deleted_fields = list(json.loads(args["deleted_fields"]))
         self.dataset_id = args["dataset_id"]
-        self.country_code = args["country_code"]
-        self.destination_endpoints = list(
-            json.loads(args["destination_endpoints"])
-        )
+        self.amc_instances = list(json.loads(args["amc_instances"]))
+        self.user_id = args["user_id"]
         self.file_format = args["file_format"]
+        self.update_strategy = args["update_strategy"]
 
         # other attributes
         self.data = pd.DataFrame()
         self.filename = self.key.split("/")[-1]
         self.num_rows = 0
-        self.dataset_type = ""
+        self.num_bytes = 0
+        self.partition_identifier = ""
+
+        # optional params
+        resolve_optional_params = [
+            "timestamp_column",
+            "country_code"
+        ]
+
+        for optional_param in resolve_optional_params:
+            setattr(self, optional_param, None)
+            if optional_param in args.keys():
+                setattr(self, optional_param, args[optional_param])
 
     def read_bucket(self) -> None:
         s3 = boto3.client("s3")
@@ -96,14 +121,14 @@ class DataFile:
 
         if self.file_format == "JSON":
             df_chunks = wr.s3.read_json(
-                path=["s3://" + self.source_bucket + "/" + self.key],
+                path=[S3_PREFIX + self.source_bucket + "/" + self.key],
                 chunksize=chunksize,
                 lines=True,
                 dtype=pii_column_names,
             )
         elif self.file_format == "CSV":
             df_chunks = wr.s3.read_csv(
-                path=["s3://" + self.source_bucket + "/" + self.key],
+                path=[S3_PREFIX + self.source_bucket + "/" + self.key],
                 chunksize=chunksize,
                 dtype=pii_column_names,
             )
@@ -115,15 +140,13 @@ class DataFile:
             # Save each chunk
             df = pd.concat([chunk, df])
 
+        print(f"DATAFRAME ROWS: {len(df)}")
         self.data = df
 
     def remove_deleted_fields(self) -> None:
-        df = self.data
         # Delete the columns that were indicated by the user to be deleted.
         for column_name in self.deleted_fields:
-            df.drop(column_name, axis=1, inplace=True)
-
-        self.data = df
+            self.data.drop(column_name, axis=1, inplace=True)
 
     def save_performance_metrics(self) -> None:
         glue_client = boto3.client("glue")
@@ -135,9 +158,6 @@ class DataFile:
         )
         started_on = response["JobRun"]["StartedOn"].replace(tzinfo=None)
         glue_job_duration = (datetime.now() - started_on).total_seconds()
-        dataset_period = ""
-        if "--period" in response["JobRun"]["Arguments"]:
-            dataset_period = response["JobRun"]["Arguments"]["--period"]
         metrics = {
             "RequestType": "Workload",
             "Metrics": {
@@ -145,8 +165,6 @@ class DataFile:
                 "UUID": self.uuid,
                 "numBytes": self.num_bytes,
                 "numRows": self.num_rows,
-                "datasetType": self.dataset_type,
-                "datasetPeriod": dataset_period,
                 "glueJobDuration": glue_job_duration,
             },
         }
@@ -157,38 +175,23 @@ class DataFile:
         )
         print("Performance metrics:")
         print(metrics)
-
-
-class FactDataset(DataFile):
-    def __init__(self, args):
-        super().__init__(args)
-
-        self.timestamp_column = args["timestamp_column"]
-        self.timeseries_partition_size = args["period"]
-        self.timestamp_str_old = ""
-        self.dataset_type = "FACT"
-
-    def _format_output(self, destination_endpoint_base_url):
-        return (
-            "s3://"
-            + self.output_bucket
-            + "/"
-            + AMC_STR
-            + "/"
-            + self.dataset_id
-            + "/"
-            + self.country_code
-            + "/"
-            + self.timeseries_partition_size
-            + "/"
-            + destination_endpoint_base_url
-            + "/"
-            + re.split(".gz", self.filename, 0)[0]
-            + "-"
-            + self.timestamp_str_old
-            + ".gz"
-        )
-
+    
+    def _format_output(self, amc_instance_id_user_id):
+        country_code = self.country_code
+        if not country_code:
+            country_code = json.dumps(country_code)
+        output = [
+            f"{S3_PREFIX}{self.output_bucket}",
+            AMC_STR,
+            self.dataset_id,
+            self.update_strategy,
+            self.file_format,
+            country_code,
+            amc_instance_id_user_id,
+            f"{re.split('.gz', self.filename, 0)[0]}-{self.partition_identifier}.gz",
+        ]
+        return "/".join(output)
+    
     def timestamp_transform(self) -> None:
         df = self.data
 
@@ -212,212 +215,110 @@ class FactDataset(DataFile):
 
         self.data = df
 
-    def time_series_partitioning(self) -> tuple:
-        df = self.data
-        # AMC supports "Units of upload" of PT1M (minute-by-minute) granularity or longer
-        # so we round timestamps to the nearest minute, below.
-        # But before we write that data to AMC, we will want to restore the timestamp to full precision.
-        # So we record that full precision here so that it can be restored later.
-        df["timestamp_full_precision"] = df[self.timestamp_column]
-        df[self.timestamp_column] = df[self.timestamp_column].dt.round("Min")
-
-        # Prepare to calculate time deltas by sorting on the timeseries column
-        self.unique_timestamps = pd.DataFrame(
-            df[self.timestamp_column].unique()
-        )
-        self.unique_timestamps = self.unique_timestamps.rename(
-            columns={0: "timestamp"}
-        )
-        self.unique_timestamps = self.unique_timestamps.sort_values(
-            by="timestamp"
-        )
-
-        if self.timeseries_partition_size == "autodetect":
-            # Store the time delta between each sequential event
-            self.unique_timestamps["timedelta"] = (
-                self.unique_timestamps["timestamp"]
-                - self.unique_timestamps["timestamp"].shift()
-            )
-
-            # Here we calculate the partition size based on the minimum delta between timestamps in the dataset.
-            zero_timedelta = "0 days 00:00:00"
-            min_timedelta = (
-                self.unique_timestamps["timedelta"][
-                    self.unique_timestamps["timedelta"] != zero_timedelta
-                ]
-                .dropna()
-                .min()
-            )
-
-            # Initialize timeseries partition size. The available options are:
-            #   PT1M (minute)
-            #   PT1H (hour)
-            #   P1D (day)
-            #   P7D (7 days)
-            self.timeseries_partition_size = "PT1M"
-
-            # If the smallest delta between timestamps is at least 60 minutes (3600 seconds), then we'll partition timeseries data into one file for each hour.
-            # Note, timedelta.seconds rolls over to 0 when the timedelta reaches 1 day, so we need to check timedelta.days too:
-            if min_timedelta.seconds >= 3600 and min_timedelta.days == 0:
-                self.timeseries_partition_size = "PT1H"
-
-            # If the smallest delta between timestamps is at least 24 hours, then we'll partition timeseries data into one file for each day.
-            elif 0 < min_timedelta.days < 7:
-                self.timeseries_partition_size = "P1D"
-
-            # If the smallest delta between timestamps is at least 7 days, then we'll partition timeseries data into one file for each week.
-            elif min_timedelta.days >= 7:
-                self.timeseries_partition_size = "P7D"
-
-        self.data = df
-
     def upload_dataset(self, df: pd.DataFrame) -> list:
         uploads = []
-        for destination_endpoint in self.destination_endpoints:
-            # The destination endpoints are URLs.
-            # We're going to pass these endpoints to the amc_uploader.py Lambda function
-            # via the S3 key. But we can't put forward slashes, like "https://" in the S3
-            # key. So, we use the base URL of the endpoint in the s3key.
-            # The amc_uploader.py can prepend "https://" and append "/prod" to
-            # the base url to get the original endpoint URL.
-            destination_endpoint_base_url = destination_endpoint.split("/")[2]
+        for amc_instance in self.amc_instances:
+            # We're going to pass these amc_instance to the amc_uploader.py Lambda function
+            # amc_instance is concatenated with user_id for Aws secret.
+            amc_instance_id_user_id = f"{amc_instance}|{self.user_id}"
             # write the old df_partition to s3
-            output_file = self._format_output(destination_endpoint_base_url)
+            output_file = self._format_output(amc_instance_id_user_id)
             print(WRITING + str(len(df)) + ROWS_TO + output_file)
             self.num_rows += len(df)
             write_to_s3(
                 df=df, filepath=output_file, file_format=self.file_format
+            )
+            s3key = output_file[output_file.find(self.output_bucket) + (len(self.output_bucket) + 1):]
+            s3 = boto3.client("s3")
+            s3.put_object_tagging(
+                Bucket=self.output_bucket,
+                Key=s3key,
+                Tagging={
+                    'TagSet': [
+                        {
+                            'Key': 'instanceId',
+                            'Value': amc_instance
+                        },
+                    ]
+                },
             )
             uploads.append(output_file)
 
         return uploads
 
-    def save_fact_output(self) -> None:
+    def estimate_compression_ratio(self) -> float:
+        """
+        This function estimates gzip compression ratio using some data sampled from raw data.
+        """
         df = self.data
+        df_sample = df.sample(frac=0.001)
+        # Get memory usage of sample data in bytes
+        df_size = df_sample.memory_usage(index=True, deep=True).sum()
+        tmp_compressed_filename = 'tmp_sample_data.gz'
+        # Generate a temporary gzipped file to get the compressed file size
+        if self.file_format == "JSON":
+            df_sample.to_json(
+                tmp_compressed_filename,
+                **pandas_options_to_write_json
+            )
+        elif self.file_format == "CSV":
+            df_sample.to_csv(
+                tmp_compressed_filename,
+                **pandas_options_to_write_csv
+            )
+        compressed_size = os.path.getsize(tmp_compressed_filename)
+        # Delete the temporary gzipped file
+        os.remove(tmp_compressed_filename)
 
-        # Partition the timeseries dataset into separate files for each
-        # unique timestamp.
+        compression_ratio = df_size / compressed_size
+        return compression_ratio
+
+    def estimate_number_of_partitions(self):
+        if self.num_bytes < GZIPPED_OUTPUT_FILE_SIZE_IN_BYTES:
+            print(
+                f"Uncompressed file size is smaller than {GZIPPED_OUTPUT_FILE_SIZE_IN_BYTES} bytes, no need to partition file")
+            return 1
+
+        # Add 2 more partitions into the calculated partition number to
+        # reduce chance of gzipped file size > GZIPPED_OUTPUT_FILE_SIZE_IN_BYTES
+        number_of_partition = 2
+        try:
+            compression_ratio = self.estimate_compression_ratio()
+            compressed_file_size = self.num_bytes / compression_ratio
+            number_of_partition += math.ceil(compressed_file_size / GZIPPED_OUTPUT_FILE_SIZE_IN_BYTES)
+        except Exception as e:
+            # If there is an error in calculating partition number, do nothing. The function
+            # returns default partition number=number_of_partition
+            print(e)
+        return number_of_partition
+
+    def convert_timestamp_format(self, df: pd.DataFrame) -> None:
+        try:
+            # Convert TIMESTAMP and DATE columns to the accepted format.
+            df[self.timestamp_column] = df[self.timestamp_column].dt.strftime(DATETIME_FORMAT)
+        except Exception as e:
+            print(e)
+            print(
+                f"Failed to convert timeseries in column {self.timestamp_column} to accepted format {DATETIME_FORMAT}"
+            )
+            raise e
+
+    def save_output(self) -> None:
+        df = self.data
+        # Partition the dataset into separate files for file size, so that AMC is uploading files < 500MB (compressed)
         output_files = []
+        number_of_partitions = self.estimate_number_of_partitions()
+        dfs_partition = np.array_split(df, number_of_partitions)
 
-        # Initialize a dataframe to hold the dataset for this timestamp:
-        df_partition = pd.DataFrame()
-        for timestamp in self.unique_timestamps.timestamp:
-            # In order to avoid errors like this:
-            #   "The timeWindowStart ... does not align with the data set's period"
-            # we need to save file names with timestamps that use
-            #   00 for seconds in the case of PT1M, PT1H, P1D, and P7D,
-            #   00 for minutes and seconds in the case of PT1H, P1D, P7D,
-            #   and 00 for hours, minutes, and seconds in the case of P1D, P7D.
-            timestamp_str = timestamp.strftime("%Y_%m_%d-%H:%M:00")
-            if self.timeseries_partition_size in ("PT1H", "P1D", "P7D"):
-                timestamp_str = timestamp.strftime("%Y_%m_%d-%H:00:00")
-            if self.timeseries_partition_size in ("P1D", "P7D"):
-                timestamp_str = timestamp.strftime("%Y_%m_%d-00:00:00")
-
-            # Since unique_timestamps is sorted, we can iterate thru
-            # each timestamp to collect all the events which map to the
-            # same timestamp_str, then write them to s3 as a single file
-            # when timestamp_str has changed. The following if condition handles
-            # this:
-
-            # Write rows to s3 if we're processing a new timestamp
-            if self.timestamp_str_old != timestamp_str:
-                # Yes, this timestamp maps to a new timestamp_str.
-                # From now on check to see when timestamp_str is different from this one
-                if self.timestamp_str_old == "":
-                    # ...unless we're just starting out.
-                    self.timestamp_str_old = timestamp_str
-                    # Get all the events that occurred at the first timestamp
-                    # so that they can be recorded when we read the next timestamp.
-                    df_partition = df[df[self.timestamp_column] == timestamp]
-                    df_partition[self.timestamp_column] = df_partition[
-                        self.timestamp_column
-                    ].dt.strftime(DATETIME_FORMAT)
-                    # Now proceed to the next unique timestamp.
-                    continue
-
-                if len(df_partition) > 0:
-                    # Earlier, we rounded the timestamp_column to minute (60s) granularity.
-                    # Now we need to revert it back to full precision in order to avoid data loss.
-                    df_partition[self.timestamp_column] = df_partition[
-                        "timestamp_full_precision"
-                    ].dt.strftime(DATETIME_FORMAT)
-                    df_partition.drop(
-                        "timestamp_full_precision", axis=1, inplace=True
-                    )
-                    uploads = self.upload_dataset(df=df_partition)
-                    output_files.extend(uploads)
-                # reset df_partition for the new timestamp string
-                self.timestamp_str_old = timestamp_str
-                # Get all the events that occurred at this timestamp
-                df_partition = df[df[self.timestamp_column] == timestamp]
-                df_partition[self.timestamp_column] = df_partition[
-                    self.timestamp_column
-                ].dt.strftime(DATETIME_FORMAT)
-
-            else:
-                # Append all the events that occurred at this timestamp to df_partition
-                df_partition2 = df[df[self.timestamp_column] == timestamp]
-                df_partition2[self.timestamp_column] = df_partition2[
-                    self.timestamp_column
-                ].dt.strftime(DATETIME_FORMAT)
-                df_partition = df_partition.append(
-                    df_partition2, ignore_index=True
-                )
-
-        # write the last timestamp to s3
-        if len(df_partition) > 0:
-            # Earlier, we rounded the timestamp_column to minute (60s) granularity.
-            # Now we need to revert it back to full precision in order to avoid data loss.
-            df_partition[self.timestamp_column] = df_partition[
-                "timestamp_full_precision"
-            ].dt.strftime(DATETIME_FORMAT)
-            df_partition.drop("timestamp_full_precision", axis=1, inplace=True)
+        for i, df_partition in enumerate(dfs_partition):
+            self.partition_identifier = str(i)
+            print(f"PARTITION FILE {self.partition_identifier}, ROWS: {len(dfs_partition)}")
+            if self.timestamp_column:
+                self.convert_timestamp_format(df=df_partition)
             uploads = self.upload_dataset(df=df_partition)
             output_files.extend(uploads)
 
         output = {
-            "timeseries granularity": self.timeseries_partition_size,
             "output files": output_files,
         }
         print(output)
-
-
-class DimensionDataset(DataFile):
-    def __init__(self, args):
-        super().__init__(args)
-
-        self.dataset_type = "DIMENSION"
-
-    def save_dimension_output(self):
-        df = self.data
-        for destination_endpoint in self.destination_endpoints:
-            # The destination endpoints are URLs.
-            # We're going to pass these endpoints to the amc_uploader.py Lambda function
-            # via the S3 key. But we can't put forward slashes, like "https://" in the S3
-            # key. So, we use the base URL of the endpoint in the s3key.
-            # The amc_uploader.py can prepend "https://" and append "/prod" to
-            # the base url to get the original endpoint URL.
-            destination_endpoint_base_url = destination_endpoint.split("/")[2]
-            output_file = (
-                "s3://"
-                + self.output_bucket
-                + "/"
-                + AMC_STR
-                + "/"
-                + self.dataset_id
-                + "/"
-                + self.country_code
-                + "/dimension/"
-                + destination_endpoint_base_url
-                + "/"
-                + re.split(".gz", self.filename, 0)[0]
-                + ".gz"
-            )
-            print(WRITING + str(len(df)) + ROWS_TO + output_file)
-            self.num_rows += len(df)
-            write_to_s3(
-                df=df, filepath=output_file, file_format=self.file_format
-            )
-            output = {"output files": output_file}
-            print(output)

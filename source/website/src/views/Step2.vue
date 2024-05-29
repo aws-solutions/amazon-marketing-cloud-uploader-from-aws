@@ -93,15 +93,15 @@ SPDX-License-Identifier: Apache-2.0
                       :aria-describedby="ariaDescribedby"
                       class="mt-1"
                     >
-                      
+
                       <div class="custom-control custom-control-inline custom-checkbox">
                         <input
                           v-model="filterOn"
                           id="filter_endpoint"
                           class="custom-control-input"
                           type="checkbox"
-                          value="endpoint" />
-                          <label class="custom-control-label" for="filter_endpoint">Endpoint</label>
+                          value="instance_id" />
+                          <label class="custom-control-label" for="filter_endpoint">Instance ID</label>
                       </div>
                       <div class="custom-control custom-control-inline custom-checkbox">
                         <input
@@ -138,10 +138,10 @@ SPDX-License-Identifier: Apache-2.0
                 </div>
               </template>
               <template #cell(actions)="row">
-                <b-button v-if="!selected_amc_instances.includes(row.item.endpoint)" size="sm" class="mr-1" @click="select(row.item.endpoint)">
+                <b-button v-if="!selected_amc_instances.map(x => x.instance_id).includes(row.item.instance_id)" size="sm" class="mr-1" @click="select(row.item)">
                   Select
                 </b-button>
-                <b-button v-if="selected_amc_instances.includes(row.item.endpoint)" size="sm" class="mr-1" @click="unselectEndpoint(row.item.endpoint)">
+                <b-button v-if="selected_amc_instances.map(x => x.instance_id).includes(row.item.instance_id)" size="sm" class="mr-1" @click="unselectEndpoint(row.item)">
                   Unselect
                 </b-button>
               </template>
@@ -170,9 +170,10 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script>
-import Header from '@/components/Header.vue'
-import Sidebar from '@/components/Sidebar.vue'
-import {mapState} from "vuex";
+import Header from '@/components/Header.vue';
+import Sidebar from '@/components/Sidebar.vue';
+import { API } from 'aws-amplify';
+import { mapState } from "vuex";
 
 export default {
   name: "Step2",
@@ -185,12 +186,15 @@ export default {
       perPage: 5,
       isBusy: false,
       isStep2Active: true,
-      available_amc_instances: [{"endpoint": "","data_upload_account_id": "", "tags": []}],
+      available_amc_instances: [{"tags": [], "instance_id": "", "advertiser_id": "", "marketplace_id": "", "data_upload_account_id": ""}],
       filtered_amc_instances: [],
       fields: [
         {key: 'actions', label: 'Actions' },
-        {key: 'endpoint', label: 'AMC Endpoint', sortable: true, thStyle: { width: '50%'}},
-        {key: 'tag_list', label: 'Tags', sortable: false}
+        {key: 'instance_id', label: 'AMC Instance ID'},
+        {key: 'advertiser_id', label: 'Amazon Ads Advertiser ID'},
+        {key: 'marketplace_id', label: 'Amazon Ads MarketPlace ID'},
+        {key: 'data_upload_account_id', label: 'Data Upload Account ID'},
+        {key: 'tags', label: 'Tags', sortable: false}
       ],
       filter: null,
       filterOn: [],
@@ -204,16 +208,17 @@ export default {
     formattedItems () {
       if (!this.available_amc_instances) return []
       return this.available_amc_instances.map(item => {
-        if (this.selected_amc_instances.includes(item.endpoint)) {
-          item._rowVariant = "info"
-        }
-        else {
-          item._rowVariant = ""
+        item._rowVariant = ""
+        for(let index in this.selected_amc_instances){
+          if (this.selected_amc_instances[index].instance_id === item.instance_id){
+            item._rowVariant = "info"
+            break
+          }
         }
         return item
       })
     },
-    ...mapState(['destination_endpoints']),
+    ...mapState(['amc_instances_selected']),
   },
   deactivated: function () {
     console.log('deactivated');
@@ -226,7 +231,6 @@ export default {
   },
   mounted: function() {
     this.read_system_configuration('GET', 'system/configuration')
-    this.selected_amc_instances = this.destination_endpoints
   },
   methods: {
     onFiltered(filteredItems) {
@@ -235,31 +239,33 @@ export default {
     selectAll() {
       // apply select all to the filtered table result if it has been filtered
       if (this.filtered_amc_instances.length > 0) {
-        this.filtered_amc_instances.forEach(x => this.select(x.endpoint))
+        this.filtered_amc_instances.forEach(x => this.select(x))
       } else {
-        this.selected_amc_instances = this.available_amc_instances.map(x => x.endpoint)
+        this.selected_amc_instances = this.available_amc_instances.map(x => x)
       }
     },
     clearAll() {
       this.selected_amc_instances = []
     },
-    select(endpoint) {
+    select(item) {
       this.showFormError = false
-      if (!this.selected_amc_instances.includes(endpoint)) {
-        this.selected_amc_instances = this.selected_amc_instances.concat(endpoint)
+      if (!(this.selected_amc_instances.map(x => x.instance_id).includes(item.instance_id))) {
+        this.selected_amc_instances.push(item)
       }
     },
-    unselectEndpoint(endpoint) {
-      if (this.selected_amc_instances.includes(endpoint)) {
-        const index = this.selected_amc_instances.indexOf(endpoint)
-        this.selected_amc_instances.splice(index, 1)
-      }
+    unselectEndpoint(item) {
+      this.selected_amc_instances.map(
+        (x, index) => {
+          if (x.instance_id === item.instance_id){
+            this.selected_amc_instances.splice(index, 1)
+          }
+        })
     },
     onSubmit() {
       this.showServerError = false
       this.showFormError = false
       if (this.validateForm()) {
-        this.$store.commit('updateDestinations', this.selected_amc_instances)
+        this.$store.commit('updateSelectedAmcInstances', this.selected_amc_instances)
         this.$router.push({path: '/step3'})
       }
     },
@@ -278,14 +284,14 @@ export default {
       this.isBusy = true;
       try {
         if (method === "GET") {
-          response = await this.$Amplify.API.get(apiName, resource);
+          response = await API.get(apiName, resource);
         }
         if (Array.isArray(response) && response.length > 0 &&
           typeof response[0] == "object" && "Value" in response[0]) {
           this.available_amc_instances = response[0]["Value"]
-          // set default endpoint if there is only one to choose
+          // set default instance_id if there is only one to choose
           if (this.available_amc_instances.length == 1) {
-            this.select(this.available_amc_instances[0].endpoint)
+            this.select(this.available_amc_instances[0])
           }
         }
       }

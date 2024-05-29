@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
       variant="dark"
     >
       <b-navbar-brand to="/">
-        Amazon Marketing Cloud uploader from AWS
+        Amazon Marketing Cloud Uploader from AWS
       </b-navbar-brand>
       <b-navbar-toggle target="nav-collapse" />
 
@@ -34,17 +34,24 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script>
+import { Auth } from 'aws-amplify';
 export default {
   name: 'Header',
   props: ['isCollectionActive', 'isUploadActive'],
+  data() {
+    return {
+      userId: null
+    }
+  },
+  mounted() {
+    this.userId = this.USERNAME
+  },
   methods: {
     openWindow: function (url) {
       window.open(url, "noopener,noreferer");
     },
     signOut() {
-      this.$Amplify.Auth.signOut()
-          .then(() => this.$router.push({name: "Login"}))
-          .catch(err => console.log(err));
+      Auth.signOut();
     }
   }
 }

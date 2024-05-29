@@ -126,7 +126,6 @@ pip install -q -r tests/requirements-test.txt
 
 # env variables
 export PYTHONDONTWRITEBYTECODE=1
-export AMC_API_ENDPOINT="https://example.com/alpha"
 export AMC_API_ROLE_ARN="arn:aws:iam::999999999999:role/SomeTestRole"
 export SOLUTION_NAME="amcufa test"
 export ARTIFACT_BUCKET="test_bucket"
@@ -136,9 +135,12 @@ export VERSION="0.0.0"
 export botoConfig='{"region_name": "us-east-1"}'
 export AWS_XRAY_SDK_ENABLED=false
 export AMC_GLUE_JOB_NAME="some-GlueStack-123-amc-transformation-job"
-export CUSTOMER_MANAGED_KEY=""
+export CUSTOMER_MANAGED_KEY="test_customer_managed_key"
 export AWS_REGION="us-east-1"
 export SOLUTION_VERSION="0.0.0"
+export CLIENT_ID="123456sdgdg"
+export CLIENT_SECRET="fdvaed4535gd"
+export STACK_NAME="amcufa-stack-name"
 
 echo "------------------------------------------------------------------------------"
 echo "[Test] Run pytest with coverage"
@@ -149,8 +151,8 @@ coverage_report_path=$source_dir/tests/coverage-reports/source.coverage.xml
 echo "coverage report path set to $coverage_report_path"
 cd tests
 # set PYTHONPATH to enable importing modules from ./glue/library,/anonymous_data_logger
-export PYTHONPATH=$PYTHONPATH:../glue:../anonymous_data_logger:../api
-pytest unit_test/. --cov=$source_dir/glue/ --cov=$source_dir/helper/ --cov=$source_dir/amc_uploader/ --cov=$source_dir/anonymous_data_logger/ --cov=$source_dir/api/ --cov=$source_dir/share/ --cov-report term-missing --cov-report term --cov-report "xml:$coverage_report_path" --cov-config=$source_dir/.coveragerc -vv
+export PYTHONPATH=$PYTHONPATH:../anonymous_data_logger:../api:../glue:../helper:../cognito_hosted_ui_resource
+pytest unit_test/. --cov=$source_dir/glue/ --cov=$source_dir/helper/ --cov=$source_dir/amc_uploader/ --cov=$source_dir/anonymous_data_logger/ --cov=$source_dir/api/ --cov=$source_dir/share/ --cov=$source_dir/cognito_hosted_ui_resource/ --cov-report term-missing --cov-report term --cov-report "xml:$coverage_report_path" --cov-config=$source_dir/.coveragerc -vv
 cd ..
 
 # The pytest --cov with its parameters and .coveragerc generates a xml cov-report with `coverage/sources` list

@@ -9,11 +9,13 @@ SPDX-License-Identifier: Apache-2.0
       <Header />
       <b-container fluid>
         <b-alert
+          v-if="showServerError"
           v-model="showServerError"
           variant="danger"
           dismissible
         >
-          Failed to get dataset list from AMC. See Cloudwatch logs for API resource /list_datasets.
+          <div v-if="serverErrorMessage">ERROR. {{ serverErrorMessage }}</div>
+          <div v-else>ERROR. See Cloudwatch logs for API Handler.</div>
         </b-alert>
         <b-alert
           v-model="showFormError"
@@ -37,16 +39,35 @@ SPDX-License-Identifier: Apache-2.0
           <ul>
             <li>PT1H (hour)</li>
             <li>P1D (day)</li>
-            <li>P7D (7 days)</li>
+            <li>P1M (month)</li>
           </ul>
-          <p>PT1M and Autodetect have been temporarily disabled.</p>
-          <p>Autodetect will detect the shortest possible period which is appropriate for your data and partition input files accordingly.</p>
+          <p>Select "DIMENSION" if no specific partition scheme is required for the dataset creation.</p>
         </b-modal>
         <b-modal id="modal-file-format" title="File Format" ok-only>
           <p>The file format for input data, CSV or JSON.</p>
         </b-modal>
         <b-modal id="modal-country" title="Country" ok-only>
           <p><strong>One country per file:</strong> Identities will be resolved and addresses normalized according to the rules of this country. If uploaded data contains hashed identifiers, then separate upload data by country. For example, if you have data with both CA and US records, these records should be split into different files as the tool will apply country-specific identity resolution rules for fields such as phone number and address.</p>
+        </b-modal>
+        <b-modal id="modal-update-strategy" title="Update Strategy" ok-only>
+          <p><strong>ADDITIVE:</strong></p>
+            <ul>
+              <li><strong>For fact datasets:</strong> This strategy adds new records to records that may already be present in each time-based partition of the table. If the table already contains records, then the (new) record set being uploaded may overlap with the existing records. These overlaps are partition overlaps.</li>
+              <li><strong>For dimension datasets:</strong> Dimension datasets are a single partition of records. This strategy, when used with a dimension dataset, will add the uploaded records to the existing records.</li>
+            </ul>
+          <p><strong>FULL_REPLACE:</strong></p>
+            <ul>
+              <li><strong>For fact datasets:</strong> The uploaded data replaces all records previously saved in the tables.</li>
+              <li><strong>For dimension datasets:</strong> Dimension datasets have a single partition of records. This strategy will replace all existing records in that partition with the records to be uploaded.</li>
+            </ul>
+          <p><strong>OVERLAP_REPLACE:</strong></p>
+            <ul>
+              <li><strong>This strategy applies for uploads to fact datasets only:</strong> When a data upload is performed with OVERLAP_REPLACE as the strategy, then new data will be added to table partitions. Any overlapping partitions will be removed and replaced with new content.</li>
+            </ul>
+          <p><strong>OVERLAP_KEEP:</strong></p>
+            <ul>
+              <li><strong>This strategy applies for uploads to fact datasets only:</strong> All new data for non-overlapping partitions will be added to the table. Any overlapping partitions will retain their original data. When the upload overlaps with any partitions that already have data, the original data of the overlapping partition(s) is RETAINED, and those in the upload are ignored.</li>
+            </ul>
         </b-modal>
         <b-row style="text-align: left">
           <b-col cols="2">
@@ -91,21 +112,124 @@ SPDX-License-Identifier: Apache-2.0
                 </div>
               </div>
               <div v-if="dataset_mode === 'JOIN'">
-                Select a dataset:&nbsp;
-                <b-spinner
-                  v-if="datasets.length === 0 && isBusy === true"
-                  type="border"
-                  small
-                >
-                </b-spinner>
-                <div v-else class="w-50">
-                  <select class="custom-select" v-model="new_selected_dataset">
-                    <option disabled :value="null">&#45;&#45; Choose one &#45;&#45;</option>
-                    <option v-for="item in datasets" :key="item.dataSetId">
-                      {{ item }}</option>
-                  </select>
+                <div>
+                  Select a dataset:&nbsp;
+                  <b-spinner
+                    v-if="datasets.length === 0 && isBusy === true"
+                    type="border"
+                    small
+                  >
+                  </b-spinner>
+                  <div v-else class="w-50">
+                    <select class="custom-select" v-model="new_selected_dataset">
+                      <option disabled :value="null">&#45;&#45; Choose one &#45;&#45;</option>
+                      <option v-for="item in datasets" :key="item.dataSetId">
+                        {{ item }}</option>
+                    </select>
+                  </div>
                 </div>
                 <br>
+                <b-row>
+                  <b-col sm="3">
+                    <slot name="label">
+                      Update Strategy:
+                      <b-link v-b-modal.modal-update-strategy>
+                        <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
+                      </b-link>
+                    </slot>
+                      <div class="bv-no-focus-ring" role="radiogroup" tabindex="-1">
+                        <div class="custom-control custom-radio">
+                          <input
+                              v-model="update_strategy"
+                              class="custom-control-input"
+                              type="radio"
+                              name="update-strategy-radios"
+                              value="ADDITIVE"
+                              id="update-strategy-radios_option_1"
+                          />
+                          <label class="custom-control-label" for="update-strategy-radios_option_1">
+                            <span>ADDITIVE</span>
+                          </label>
+                        </div>
+                        <div class="custom-control custom-radio">
+                          <input
+                              v-model="update_strategy"
+                              class="custom-control-input"
+                              type="radio"
+                              name="update-strategy-radios"
+                              value="FULL_REPLACE"
+                              id="update-strategy-radios_option_2"
+                          />
+                          <label class="custom-control-label" for="update-strategy-radios_option_2">
+                            <span>FULL_REPLACE</span>
+                          </label>
+                        </div>
+                        <div class="custom-control custom-radio">
+                          <input
+                              v-model="update_strategy"
+                              class="custom-control-input"
+                              type="radio"
+                              name="update-strategy-radios"
+                              value="OVERLAP_REPLACE"
+                              id="update-strategy-radios_option_3"
+                          />
+                          <label class="custom-control-label" for="update-strategy-radios_option_3">
+                            <span>OVERLAP_REPLACE</span>
+                          </label>
+                        </div>
+                        <div class="custom-control custom-radio">
+                          <input
+                              v-model="update_strategy"
+                              class="custom-control-input"
+                              type="radio"
+                              name="update-strategy-radios"
+                              value="OVERLAP_KEEP"
+                              id="update-strategy-radios_option_4"
+                          />
+                          <label class="custom-control-label" for="update-strategy-radios_option_4">
+                            <span>OVERLAP_KEEP</span>
+                          </label>
+                        </div>
+                      </div>
+                  </b-col>
+                  <b-col sm="3">
+                    <slot name="label">
+                      File Format:
+                      <b-link v-b-modal.modal-file-format>
+                        <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
+                      </b-link>
+                    </slot>
+                    <div class="bv-no-focus-ring" role="radiogroup" tabindex="-1">
+                      <div class="custom-control custom-radio">
+                        <input
+                            v-model="file_format"
+                            class="custom-control-input"
+                            type="radio"
+                            name="file-format-radios"
+                            value="CSV"
+                            id="file_format_radios_option_1"
+                        />
+                        <label class="custom-control-label" for="file_format_radios_option_1">
+                          <span>CSV</span>
+                        </label>
+                      </div>
+                      <div class="custom-control custom-radio">
+                        <input
+                            v-model="file_format"
+                            class="custom-control-input"
+                            type="radio"
+                            name="file-format-radios"
+                            value="JSON"
+                            id="file_format_radios_option_2"
+                        />
+                        <label class="custom-control-label" for="file_format_radios_option_2">
+                          <span>JSON</span>
+                        </label>
+                      </div>
+                    </div>
+                  </b-col>
+                </b-row>
+              <br>
               </div>
               <div v-if="dataset_mode === 'CREATE'">
                 <b-form-group
@@ -123,6 +247,9 @@ SPDX-License-Identifier: Apache-2.0
                     :state="datasetIsValid"
                   >
                   </b-form-input>
+                  <b-form-valid-feedback v-if="isBusy" id="input-live-feedback">
+                    Validating name... <b-spinner small></b-spinner>
+                  </b-form-valid-feedback>
                   <b-form-invalid-feedback id="input-live-feedback">
                     A dataset with that name already exists.
                   </b-form-invalid-feedback>
@@ -139,44 +266,7 @@ SPDX-License-Identifier: Apache-2.0
                   <b-form-input id="dataset-description-input" v-model="description" placeholder="(optional)"></b-form-input>
                 </b-form-group>
                 <b-row>
-                  <b-col sm="2">
-                    <b-form-group>
-                      <slot name="label">
-                        Dataset Type:
-                        <b-link v-b-modal.modal-dataset-type>
-                          <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
-                        </b-link>
-                      </slot>
-                      <div class="bv-no-focus-ring" role="radiogroup" tabindex="-1">
-                        <div class="custom-control custom-radio">
-                          <input
-                            class="custom-control-input"
-                            type="radio"
-                            name="dataset-type-radios"
-                            value="FACT"
-                            id="step_3_dataset_type_radio_fact"
-                            v-model="dataset_type"
-                          /><label class="custom-control-label" for="step_3_dataset_type_radio_fact"
-                            ><span>FACT</span></label
-                          >
-                        </div>
-                        <div class="custom-control custom-radio">
-                          <input
-                            class="custom-control-input"
-                            type="radio"
-                            name="dataset-type-radios"
-                            value="DIMENSION"
-                            id="step_3_dataset_type_radio_dimension"
-                            v-model="dataset_type"
-                          /><label class="custom-control-label" for="step_3_dataset_type_radio_dimension"
-                            ><span>DIMENSION</span></label
-                          >
-                        </div>
-                      </div>
-
-                    </b-form-group>
-                  </b-col>
-                  <b-col v-if="dataset_type==='FACT'" sm="2">
+                  <b-col sm="3">
                     <b-form-group>
                       <slot name="label">
                         Dataset Period:
@@ -194,26 +284,12 @@ SPDX-License-Identifier: Apache-2.0
                           <input
                             v-model="time_period"
                             class="custom-control-input"
-                            id="time_period_options_BV_option_0"
-                            type="radio"
-                            name="time-period-radios"
-                            disabled=""
-                            value="autodetect"
-                          /><label class="custom-control-label" for="time_period_options_BV_option_0"
-                            ><span>Autodetect</span></label
-                          >
-                        </div>
-                        <div class="custom-control custom-radio">
-                          <input
-                            v-model="time_period"
-                            class="custom-control-input"
                             id="time_period_options_BV_option_1"
                             type="radio"
                             name="time-period-radios"
-                            disabled=""
-                            value="PT1M"
+                            value="DIMENSION"
                           /><label class="custom-control-label" for="time_period_options_BV_option_1"
-                            ><span>PT1M (minutely)</span></label
+                            ><span>DIMENSION</span></label
                           >
                         </div>
                         <div class="custom-control custom-radio">
@@ -247,68 +323,15 @@ SPDX-License-Identifier: Apache-2.0
                             id="time_period_options_BV_option_4"
                             type="radio"
                             name="time-period-radios"
-                            value="P7D"
+                            value="P1M"
                           /><label class="custom-control-label" for="time_period_options_BV_option_4"
-                            ><span>P7D (weekly)</span></label
+                            ><span>P1M (monthly)</span></label
                           >
                         </div>
                       </div>
-
                     </b-form-group>
                   </b-col>
-                  <b-col sm="2">
-                    <b-form-group>
-                      <slot name="label">
-                        File Format:
-                        <b-link v-b-modal.modal-file-format>
-                          <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
-                        </b-link>
-                      </slot>
-                      <div class="bv-no-focus-ring" role="radiogroup" tabindex="-1">
-                        <div class="custom-control custom-radio">
-                          <input
-                            v-model="file_format"
-                            class="custom-control-input"
-                            type="radio"
-                            name="file-format-radios"
-                            value="CSV"
-                            id="file_format_radios_option_1"
-                          />
-                          <label class="custom-control-label" for="file_format_radios_option_1">
-                            <span>CSV</span>
-                          </label>
-                        </div>
-                        <div class="custom-control custom-radio">
-                          <input
-                            v-model="file_format"
-                            class="custom-control-input"
-                            type="radio"
-                            name="file-format-radios"
-                            value="JSON"
-                            id="file_format_radios_option_2"
-                          />
-                          <label class="custom-control-label" for="file_format_radios_option_2">
-                            <span>JSON</span>
-                          </label>
-                        </div>
-                      </div>
-                    </b-form-group>
-                  </b-col>
-                  <b-col sm="2">
-                    Encryption Mode:
-                    <b-link v-b-modal.modal-encryption-mode>
-                      <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
-                    </b-link>
-                    <div class="text-muted">
-                      {{ ENCRYPTION_MODE }}
-                    </div>
-                    <br />
-                  </b-col>
-                </b-row>
-              </div>
-              <div>
-                <b-row v-if="dataset_mode === 'JOIN'">
-                  <b-col sm="2">
+                  <b-col sm="3">
                     <slot name="label">
                       File Format:
                       <b-link v-b-modal.modal-file-format>
@@ -344,7 +367,7 @@ SPDX-License-Identifier: Apache-2.0
                         </div>
                       </div>
                   </b-col>
-                  <b-col sm="2">
+                  <b-col sm="3">
                     Encryption Mode:
                     <b-link v-b-modal.modal-encryption-mode>
                       <b-icon-question-circle-fill variant="secondary"></b-icon-question-circle-fill>
@@ -356,6 +379,7 @@ SPDX-License-Identifier: Apache-2.0
                   </b-col>
                 </b-row>
               </div>
+              <br>
               <b-row>
                 <b-col sm="1">
                   <slot name="label">
@@ -371,6 +395,7 @@ SPDX-License-Identifier: Apache-2.0
                   >
                   <div>
                     <select class="custom-select" id="country-code-dropdown" v-model="country_code">
+                      <option value="Not Applicable">Not Applicable</option>
                       <option value="CA">Canada</option>
                       <option value="FR">France</option>
                       <option value="DE">Germany</option>
@@ -390,7 +415,7 @@ SPDX-License-Identifier: Apache-2.0
                 <button type="submit" class="btn btn-outline-primary mb-2" @click="$router.push({path: '/step2'})">
                   Previous
                 </button> &nbsp;
-                <button type="submit" class="btn btn-primary mb-2" @click="onSubmit">
+                <button type="submit" class="btn btn-primary mb-2" :disabled="showServerError || isBusy" @click="onSubmit">
                   Next
                 </button>
               </b-col>
@@ -403,9 +428,10 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script>
-import Header from '@/components/Header.vue'
-import Sidebar from '@/components/Sidebar.vue'
-import { mapState } from 'vuex'
+import Header from '@/components/Header.vue';
+import Sidebar from '@/components/Sidebar.vue';
+import { API } from 'aws-amplify';
+import { mapState } from 'vuex';
 
 export default {
   name: "Step3",
@@ -422,31 +448,32 @@ export default {
       ],
       new_selected_dataset: null,
       new_dataset_definition: {},
-      dataset_id: '',
+      dataset_id: null,
       description: '',
       country_code: '',
-      dataset_type: '',
       // time_period is autodetected in Glue ETL and updated in amc_uploader.py
-      time_period: 'PT1H',
+      time_period: '',
       time_period_options: [
-        { value: "autodetect", text: "Autodetect", disabled: true},
-        { value: "PT1M", text: "PT1M (minutely)", disabled: true },
+        { value: "DIMENSION", text: "DIMENSION" },
         { value: "PT1H", text: "PT1H (hourly)" },
         { value: "P1D", text: "P1D (daily)" },
-        { value: "P7D", text: "P7D (weekly)" }
+        { value: "P1M", text: "P1M (monthly)" }
       ],
       isStep3Active: true,
-      dataset_type_options: ["FACT","DIMENSION"],
       file_format: "",
       file_format_options: ["CSV", "JSON"],
+      update_strategy: "",
       isBusy: false,
       showFormError: false,
       showServerError: false,
-      formErrorMessage: ''
+      serverErrorMessage: '',
+      formErrorMessage: '',
+      userId: null,
+      new_s3key: null,
     }
   },
   computed: {
-    ...mapState(['dataset_definition', 's3key', 'selected_dataset', 'destination_endpoints']),
+    ...mapState(['dataset_definition', 's3key', 'selected_dataset', 'amc_instances_selected']),
     datasetIsValid() {
       if (this.dataset_id === '' || this.dataset_id === undefined) return null
       else return !this.datasets.includes(this.dataset_id)
@@ -462,6 +489,9 @@ export default {
     console.log('created')
   },
   mounted: function() {
+    this.userId = this.USER_POOL_ID
+    this.list_datasets(this.amc_instances_selected)
+    this.new_s3key = this.s3key
     // Avoid running list_datasets() if the user skipped Step 1
     if (this.s3key) {
       // Run list_datasets() so we can warn users when they enter
@@ -469,25 +499,34 @@ export default {
       this.list_datasets()
     }
     // pre-populate the form with previously selected values:
-    if (this.selected_dataset !== null) {
-      this.dataset_mode = 'JOIN'
-      this.new_selected_dataset = this.selected_dataset
+    if (this.dataset_definition) {
+      this.new_dataset_definition = this.dataset_definition
     }
-    this.new_dataset_definition = this.dataset_definition
     this.dataset_id = this.new_dataset_definition['dataSetId']
     this.description = this.new_dataset_definition['description']
     this.country_code = this.new_dataset_definition['countryCode']
     this.file_format = Object.keys(this.new_dataset_definition).includes('fileFormat')?this.new_dataset_definition['fileFormat']:this.file_format
     this.time_period = Object.keys(this.new_dataset_definition).includes('period')?this.new_dataset_definition['period']:this.time_period
-    this.dataset_type = this.new_dataset_definition['dataSetType']
+    this.update_strategy = this.new_dataset_definition['updateStrategy']
   },
   methods: {
-    async list_datasets() {
+    async list_datasets(amc_instances_selected) {
+      if (!amc_instances_selected) return
+      // Close any visible server error alert.
       this.showServerError = false
+      // Reset the dataset list which is shown in the dropdown for JOIN.
       this.datasets = []
+      // Reset the user's previous selection in the dataset dropdown for JOIN.
+      this.new_selected_dataset = null
+      this.$store.commit('updateSelectedDataset', this.new_selected_dataset)
       const apiName = 'amcufa-api'
       const method = 'POST'
-      const data = {'destination_endpoint': this.destination_endpoints[0]}
+      const data = {
+        'instance_id': amc_instances_selected[0].instance_id,
+        "marketplace_id": amc_instances_selected[0].marketplace_id,
+        "advertiser_id": amc_instances_selected[0].advertiser_id,
+        "user_id": this.userId
+      }
       const resource = 'list_datasets'
       this.isBusy = true;
       try {
@@ -496,17 +535,34 @@ export default {
           headers: {'Content-Type': 'application/json'},
           body: data
         };
-        const response = await this.$Amplify.API.post(apiName, resource, requestOpts);
+        const response = await API.post(apiName, resource, requestOpts);
         if (response === null || response.Status === "Error") {
           this.showServerError = true
           this.isBusy = false;
-        } else {
+        } else if (response.authorize_url){
+          const current_page = "step3"
+          const state_key = current_page + this.userId + Date.now()
+          const b64_state_key = btoa(current_page + this.userId + Date.now())
+          let state_vars = {
+            "amc_instances_selected": amc_instances_selected,
+            "s3key": this.new_s3key,
+            "dataset_definition": this.new_dataset_definition,
+            "selected_dataset": this.new_selected_dataset,
+            "current_page": current_page
+          }
+          localStorage.setItem(state_key, JSON.stringify(state_vars))
+          window.location.href = response.authorize_url + "&state=" + b64_state_key
+        }
+        else {
           this.datasets = response.dataSets.map(x => x.dataSetId).sort()
           this.isBusy = false;
         }
       } catch (e) {
         console.log("ERROR: " + e.response.data.message)
         this.response = e.response.data.message
+        this.showServerError = true
+        this.serverErrorMessage = e.response.data.message
+        this.isBusy = false
       }
     },
     updateDatasetMode() {
@@ -517,11 +573,10 @@ export default {
         this.$store.commit('updateSelectedDataset', this.new_selected_dataset)
       }
       if (this.dataset_mode === 'JOIN') {
-        this.list_datasets()
+        this.list_datasets(this.amc_instances_selected)
         // reset form fields for CREATE
         this.dataset_id = ''
         this.dataset_type = ''
-        this.$store.commit('updateSelectedDataset', this.new_selected_dataset)
       }
     },
     onSubmit() {
@@ -529,12 +584,12 @@ export default {
       this.new_dataset_definition['dataSetId'] = this.dataset_id
       this.new_dataset_definition['description'] = this.description
       this.new_dataset_definition['period'] = this.time_period
-      this.new_dataset_definition['dataSetType'] = this.dataset_type
       this.new_dataset_definition['countryCode'] = this.country_code
       this.new_dataset_definition['fileFormat'] = this.file_format
-      // The compressionFormat must be GZIP because GZIP is the only supported
-      // value. See AMC Data Upload documentation.
+      // the Glue script will always output a GZIP compressed file for upload to AMC
       this.new_dataset_definition['compressionFormat'] = 'GZIP'
+      // when creating a new dataset, default update strategy to ADDITIVE since there is no previous data being updated
+      this.new_dataset_definition['updateStrategy'] = (this.dataset_mode === 'CREATE') ? 'ADDITIVE' : this.update_strategy;
       if (!this.validForm()) {
         this.showFormError = true;
       } else {
@@ -555,15 +610,23 @@ export default {
         this.formErrorMessage = "Missing s3key."
         return false
       }
+      if (this.dataset_mode === 'CREATE' && !this.datasetIsValid) {
+        this.formErrorMessage = "Check dataset name."
+        return false
+      }
       if (this.dataset_mode === 'JOIN' && this.new_selected_dataset == null) {
         this.formErrorMessage = "Missing dataset selection."
+        return false
+      }
+      if (this.dataset_mode === 'JOIN' && !this.new_dataset_definition['updateStrategy']) {
+        this.formErrorMessage = "Missing update strategy."
         return false
       }
       if (!this.file_format) {
         this.formErrorMessage = "Missing file format."
         return false
       }
-      if (!this.new_dataset_definition['countryCode']  || this.new_dataset_definition['countryCode'].length === 0) {
+      if (!this.new_dataset_definition['countryCode']) {
         this.formErrorMessage = "Missing country."
         return false
       }
@@ -571,20 +634,16 @@ export default {
         // No more checks needed if user is appending to existing dataset.
         return true
       }
-      if (!this.new_dataset_definition['dataSetId'] || this.new_dataset_definition['dataSetId'].length === 0) {
+      if (!this.new_dataset_definition['dataSetId']) {
         this.formErrorMessage = "Missing dataset name."
         return false
       }
-      if (this.dataset_id.indexOf(' ') >= 0) {
-        this.formErrorMessage = "Dataset name must not contain spaces."
+      if (/^[a-z]([_a-z0-9]+$)/.test(this.dataset_id) === false) {
+        this.formErrorMessage = "Dataset name must match regex ^[a-z]([_a-z0-9]+$)"
         return false
       }
-      if (/^[a-zA-Z0-9_-]+$/.test(this.dataset_id) === false) {
-        this.formErrorMessage = "Dataset name must match regex ^[a-zA-Z0-9_-]+$"
-        return false
-      }
-      if (!this.new_dataset_definition['dataSetType']  || this.new_dataset_definition['dataSetType'].length === 0) {
-        this.formErrorMessage = "Missing dataset type."
+      if (!this.new_dataset_definition['period']) {
+        this.formErrorMessage = "Missing dataset period."
         return false
       }
       return true

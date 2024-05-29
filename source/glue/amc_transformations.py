@@ -15,9 +15,8 @@
 #   --pii_fields: json formatted array containing column names that need to be hashed and the PII type of their data. The type must be FIRST_NAME, LAST_NAME, PHONE, ADDRESS, CITY, STATE, ZIP, or EMAIL.
 #   --deleted_fields: array of strings indicating the names of columns which the user requested to be dropped from the dataset prior to uploading to AMC.
 #   --dataset_id: name of dataset, used as the prefix folder for the output s3key.
-#   --period: time period of dataset, one of ["autodetect","PT1M","PT1H","P1D","P7D"]. Autodetect enabled by default. (optional)
 #   --country_code: country-specific normalization to apply to all rows in the dataset (2-digit ISO country code).
-#   --destination_endpoints: List of AMC endpoints to receive uploads
+#   --amc_instances: List of AMC instances to receive uploads
 #
 # OUTPUT:
 #   - Transformed data files in user-specified output bucket,
@@ -35,7 +34,7 @@
 #    export DATASET_ID='mytest123'
 #    export REGION=us-east-1
 #    aws glue start-job-run --job-name $JOB_NAME --arguments '{"--source_bucket": "'$SOURCE_BUCKET'", "--output_bucket": "'$OUTPUT_BUCKET'", "--source_key": "'$SOURCE_KEY'", "--pii_fields": "'$PII_FIELDS'",
-#    "--deleted_fields": "'$DELETED_FIELDS'", "--timestamp_column": "'$TIMESTAMP_COLUMN'", "--dataset_id": "'$DATASET_ID'", "--period": "autodetect", "--country_code": "US"}' --region $REGION
+#    "--deleted_fields": "'$DELETED_FIELDS'", "--timestamp_column": "'$TIMESTAMP_COLUMN'", "--dataset_id": "'$DATASET_ID'", "--country_code": "US"}' --region $REGION
 #
 ###############################################################################
 
@@ -57,11 +56,12 @@ REQUIRED_PARAMS = [
     "pii_fields",
     "deleted_fields",
     "dataset_id",
-    "country_code",
+    "user_id",
     "file_format",
-    "destination_endpoints",
+    "amc_instances",
+    "update_strategy"
 ]
-OPTIONAL_PARAMS = ["period", "timestamp_column"]
+OPTIONAL_PARAMS = ["timestamp_column", "country_code"]
 
 
 def check_params(required: list, optional: list) -> dict:
@@ -79,22 +79,10 @@ def check_params(required: list, optional: list) -> dict:
         pass
 
     # strip whitespace on applicable fields
-    for i in ("dataset_id", "timestamp_column", "period"):
+    for i in ("dataset_id", "timestamp_column"):
         if i in args.keys():
             args[i] = args[i].strip()
-
-    # check specific params passed in
-    if "period" in args.keys() and args["period"] not in (
-        "autodetect",
-        "PT1M",
-        "PT1H",
-        "P1D",
-        "P7D",
-    ):
-        print("ERROR: Invalid user-defined value for dataset period:")
-        print(args["period"])
-        sys.exit(1)
-    if args["country_code"] not in (
+    if args.get("country_code") and args.get("country_code") not in (
         "US",
         "GB",
         "JP",
@@ -115,8 +103,8 @@ def check_params(required: list, optional: list) -> dict:
         print("ERROR: Invalid file format for input files:")
         print(args["file_format"])
         sys.exit(1)
-    if len(args["destination_endpoints"]) == 0:
-        print("destination_endpoints cannot be empty")
+    if len(args["amc_instances"]) == 0:
+        print("amc_instances cannot be empty")
         sys.exit(1)
     return args
 
@@ -126,26 +114,22 @@ params = check_params(required=REQUIRED_PARAMS, optional=OPTIONAL_PARAMS)
 print("Runtime args:")
 print(params)
 
-if "timestamp_column" in params.keys():
-    file = rw.FactDataset(args=params)
-else:
-    file = rw.DimensionDataset(args=params)
+file = rw.DataFile(args=params)
 
 file.read_bucket()
 file.load_input_data()
 file.remove_deleted_fields()
 
-file.data = transform.transform_data(
-    data=file.data, pii_fields=file.pii_fields, country_code=file.country_code
-)
+if file.country_code:
+    file.data = transform.transform_data(
+        data=file.data, pii_fields=file.pii_fields, country_code=file.country_code
+    )
 file.data = transform.hash_data(data=file.data, pii_fields=file.pii_fields)
 
-if isinstance(file, rw.FactDataset):
+if file.timestamp_column:
     file.timestamp_transform()
-    file.time_series_partitioning()
-    file.save_fact_output()
-else:
-    file.save_dimension_output()
+    
+file.save_output()
 
-if params["enable_anonymous_data"] == "true":
+if params.get("enable_anonymous_data", "false") == "true":
     file.save_performance_metrics()

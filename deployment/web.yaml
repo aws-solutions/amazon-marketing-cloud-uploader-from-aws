@@ -2,21 +2,11 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: "(SO0222web) - Amazon Marketing Cloud Uploader from AWS %%VERSION%%. This AWS CloudFormation template defines front-end resources."
 
 Parameters:
-  DataBucketName:
-    Type: String
-  ArtifactBucketName:
-    Type: String
-  UserPoolId:
-    Type: String
-  IdentityPoolId:
-    Type: String
-  PoolClientId:
-    Type: String
-  ApiEndpoint:
-    Type: String
   RestAPIId:
     Type: String
   CustomerManagedKey:
+    Type: String
+  HostedUIDomain:
     Type: String
 
 Conditions:
@@ -55,7 +45,7 @@ Resources:
             response_data = {'Data': stack_name.lower() + '-website'}
             cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data, "CustomResourcePhysicalID")
       Handler: index.handler
-      Runtime: python3.10
+      Runtime: python3.12
       Role: !GetAtt WebsiteBucketNameExecutionRole.Arn
 
   WebsiteBucketNameFunctionLogGroup:
@@ -67,7 +57,7 @@ Resources:
             reason: "The data generated via this role does not need to be encrypted."
     Properties:
       LogGroupName: !Join ['/', ['/aws/lambda', !Ref WebsiteBucketNameFunction]]
-      RetentionInDays: 30
+      RetentionInDays: 3653
 
   WebsiteBucketNameFunctionPermissions:
     Type: AWS::Lambda::Permission
@@ -108,6 +98,7 @@ Resources:
   WebsiteBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: "Retain"
+    UpdateReplacePolicy: "Retain"
     Properties:
       AccessControl: LogDeliveryWrite
       BucketName: !GetAtt GetWebsiteBucketName.Data
@@ -143,6 +134,8 @@ Resources:
             ExpirationInDays: 3
             AbortIncompleteMultipartUpload:
               DaysAfterInitiation: 1
+      VersioningConfiguration:
+        Status: Enabled
 
   CopyWebSource:
     Type: Custom::WebsiteDeployHelper
@@ -189,6 +182,24 @@ Resources:
               Bool:
                 aws:SecureTransport: false
 
+  CachingDisabledPolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub "${AWS::StackName}-Cache-Policy"
+        MinTTL: 0
+        DefaultTTL: 0
+        MaxTTL: 0
+        ParametersInCacheKeyAndForwardedToOrigin:
+          HeadersConfig:
+            HeaderBehavior: none
+          CookiesConfig:
+            CookieBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+          EnableAcceptEncodingGzip: false
+
+
   WebsiteDistribution:
     Type: AWS::CloudFront::Distribution
     Metadata:
@@ -210,22 +221,9 @@ Resources:
               OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${OriginAccessIdentity}"
         DefaultCacheBehavior:
           TargetOriginId: S3-solution-website
-          AllowedMethods:
-            - GET
-            - HEAD
-            - OPTIONS
-            - PUT
-            - POST
-            - DELETE
-            - PATCH
-          CachedMethods:
-            - GET
-            - HEAD
-            - OPTIONS
-          ForwardedValues:
-            QueryString: false
           ViewerProtocolPolicy: redirect-to-https
           ResponseHeadersPolicyId: !Ref WebsiteResponseHeaders
+          CachePolicyId: !Ref CachingDisabledPolicy
         DefaultRootObject: "index.html"
         CustomErrorResponses:
           - ErrorCode: 404
@@ -248,20 +246,20 @@ Resources:
         Comment: "Response headers based on AWS solution builder guidelines"
         SecurityHeadersConfig:
           ContentSecurityPolicy:
-            ContentSecurityPolicy: !Sub "default-src 'self' ${RestAPIId}.execute-api.${AWS::Region}.amazonaws.com cognito-idp.${AWS::Region}.amazonaws.com cognito-identity.${AWS::Region}.amazonaws.com; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:;"
+            ContentSecurityPolicy: !Sub "default-src 'self' ${RestAPIId}.execute-api.${AWS::Region}.amazonaws.com cognito-idp.${AWS::Region}.amazonaws.com cognito-identity.${AWS::Region}.amazonaws.com ${HostedUIDomain}; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:;"
             Override: false
           ContentTypeOptions:
             # You don't need to specify a value for 'X-Content-Type-Options'.
             # Simply including it in the template sets its value to 'nosniff'.
             Override: false
           FrameOptions:
-            FrameOption: SAMEORIGIN
+            FrameOption: DENY
             Override: false
           ReferrerPolicy:
             ReferrerPolicy: same-origin
             Override: false
           StrictTransportSecurity:
-            AccessControlMaxAgeSec: 63072000
+            AccessControlMaxAgeSec: 47304000
             IncludeSubdomains: true
             Preload: true
             Override: false
@@ -270,6 +268,14 @@ Resources:
             # You can set ModeBlock to 'true' OR set a value for ReportUri, but not both
             Protection: true
             Override: false
+        CustomHeadersConfig:
+          Items:
+            - Header: "Cache-Control"
+              Override: false
+              Value: "no-store, no-cache"
+            - Header: "Pragma"
+              Override: false
+              Value: "no-cache"
 
   WebsiteHelperRole:
     Type: AWS::IAM::Role
@@ -344,18 +350,8 @@ Resources:
       Handler: website_helper.lambda_handler
       MemorySize: 256
       Role: !GetAtt WebsiteHelperRole.Arn
-      Runtime: python3.10
+      Runtime: python3.12
       Timeout: 900
-      Environment:
-        Variables:
-          UserPoolId: !Ref UserPoolId
-          IdentityPoolId: !Ref IdentityPoolId
-          AwsRegion: !Ref AWS::Region
-          PoolClientId: !Ref PoolClientId
-          ApiEndpoint: !Ref ApiEndpoint
-          DataBucketName: !Ref DataBucketName
-          ArtifactBucketName: !Ref ArtifactBucketName
-          EncryptionMode: !If [EnableCmkEncryptionCondition, "aws-kms", "default"]
 
   WebsiteDeployHelperLogGroup:
     Type: AWS::Logs::LogGroup
@@ -366,8 +362,15 @@ Resources:
             reason: "The data generated via this role does not need to be encrypted."
     Properties:
       LogGroupName: !Join ['/', ['/aws/lambda', !Ref WebsiteDeployHelper]]
-      RetentionInDays: 30
+      RetentionInDays: 3653
 
 Outputs:
   CloudfrontUrl:
     Value: !Join ["", ["https://", !GetAtt WebsiteDistribution.DomainName]]
+  EncryptionMode:
+    Value: !If [EnableCmkEncryptionCondition, "aws-kms", "default"]
+  WebsiteBucketName:
+    Value: !Ref WebsiteBucket
+  WebsiteBucketArn:
+    Value: !GetAtt WebsiteBucket.Arn
+  

@@ -17,8 +17,8 @@ export default {
   updateSelectedDataset (state, value) {
     state.selected_dataset = value
   },
-  updateDestinations (state, value) {
-    state.destination_endpoints = value
+  updateSelectedAmcInstances (state, value) {
+    state.amc_instances_selected = value
   },
   updateAmcMonitor (state, value) {
     state.amc_monitor = value

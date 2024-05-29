@@ -14,8 +14,9 @@ import os
 from unittest.mock import MagicMock, mock_open, patch
 
 import boto3
+import botocore
 import pytest
-from moto import mock_s3
+from moto import mock_aws
 
 
 @pytest.fixture
@@ -47,6 +48,30 @@ def fake_event(test_configs):
 
 
 @pytest.fixture
+def fake_config_event(test_configs):
+    return {
+        "StackId": 12345,
+        "RequestId": 67890,
+        "LogicalResourceId": 1112131415,
+        "ResponseURL": "https://test.com/test",
+        "ResourceProperties": {
+            "API_ENDPOINT": "API_ENDPOINT Value",
+            "AWS_REGION": "AWS_REGION Value",
+            "USER_POOL_ID": "USER_POOL_ID Value",
+            "USER_POOL_CLIENT_ID": "USER_POOL_CLIENT_ID Value",
+            "IDENTITY_POOL_ID": "IDENTITY_POOL_ID Value",
+            "DATA_BUCKET_NAME": "DATA_BUCKET_NAME Value",
+            "ARTIFACT_BUCKET_NAME": "ARTIFACT_BUCKET_NAME Value",
+            "ENCRYPTION_MODE": "ENCRYPTION_MODE Value",
+            "HOSTED_UI_DOMAIN": "HOSTED_UI_DOMAIN Value",
+            "COGNITO_CALLBACK_URL": "COGNITO_CALLBACK_URL Value",
+            "COGNITO_LOGOUT_URL": "COGNITO_LOGOUT_URL Value",
+            "WEBSITE_BUCKET": test_configs["s3_bucket"]
+        },
+    }
+
+
+@pytest.fixture
 def fake_context():
     return MagicMock(log_stream_name="fake_log_stream")
 
@@ -54,7 +79,6 @@ def fake_context():
 @pytest.fixture
 def mock_env_variables(test_configs):
     os.environ["UserPoolId"] = "3333"
-    os.environ["AwsRegion"] = "us-east-1"
     os.environ["PoolClientId"] = "4444"
     os.environ["IdentityPoolId"] = "2222"
     os.environ["ApiEndpoint"] = test_configs["api_endpoint"]
@@ -63,7 +87,7 @@ def mock_env_variables(test_configs):
     os.environ["EncryptionMode"] = "Secured"
 
 
-@mock_s3
+@mock_aws
 @patch("urllib.request.build_opener")
 def test_send_response(mock_response, fake_event, fake_context, test_configs):
     from helper.website_helper import send_response
@@ -76,88 +100,36 @@ def test_send_response(mock_response, fake_event, fake_context, test_configs):
     )
 
 
-@mock_s3
-def test_write_to_s3(fake_event, fake_context, test_configs):
-    from helper.website_helper import write_to_s3
-
-    write_to_s3(
-        event=fake_event,
-        context=fake_context,
-        bucket=test_configs["s3_bucket"],
-        key=test_configs["s3_key"],
-        body={},
+@mock_aws
+@patch("urllib.request.build_opener")
+def test_copy_source(mock_response, mock_env_variables, fake_event, fake_context, test_configs):
+    s3 = boto3.client("s3", region_name="us-east-1")
+    s3.create_bucket(Bucket=test_configs["s3_bucket"])
+    s3 = boto3.resource("s3", region_name="us-east-1")
+    s3_object = s3.Object(
+        test_configs["s3_bucket"],
+        f'{test_configs["s3_prefix"]}/{test_configs["s3_key"]}',
     )
+    s3_object.put(Body="{}", ContentType=test_configs["content_type"])
+    file_loc = "./webapp-manifest.json"
+    from helper.website_helper import lambda_handler
 
+    manifest_data = [test_configs["s3_key"]]
 
-@mock_s3
-@patch("urllib.request.build_opener")
-def test_copy_source(mock_response, fake_event, fake_context):
-    from helper.website_helper import copy_source
-
-    fake_event.pop("ResourceProperties")
-
-    copy_source(event=fake_event, context=fake_context)
-
-
-@mock_s3
-@patch("urllib.request.build_opener")
-def test_copy_source_fail_env_key(
-    mock_response, mock_env_variables, fake_event, fake_context, test_configs
-):
-    from helper.website_helper import copy_source
-
-    os.environ.pop("UserPoolId")
-
-    copy_source(event=fake_event, context=fake_context)
-
-
-@patch("urllib.request.build_opener")
-def test_copy_source_else(
-    mock_response, mock_env_variables, fake_event, fake_context, test_configs
-):
-    with mock_s3():
-        s3 = boto3.client("s3", region_name=os.environ["AwsRegion"])
-        s3.create_bucket(Bucket=test_configs["s3_bucket"])
-        s3 = boto3.resource("s3")
-        s3_object = s3.Object(
-            test_configs["s3_bucket"],
-            f'{test_configs["s3_prefix"]}/{test_configs["s3_key"]}',
-        )
-        s3_object.put(Body="{}", ContentType=test_configs["content_type"])
-        file_loc = "./webapp-manifest.json"
-        manifest_data = [test_configs["s3_key"]]
+    with patch(
+        "builtins.open", mock_open(read_data=json.dumps(manifest_data))
+    ) as mock_file:
         from helper.website_helper import copy_source
-
-        with patch(
-            "builtins.open", mock_open(read_data=json.dumps(manifest_data))
-        ) as mock_file:
-            copy_source(event=fake_event, context=fake_context)
-
+        copy_source(event=fake_event)
         mock_file.assert_called_with(file_loc, encoding="utf-8")
 
 
 @patch("urllib.request.build_opener")
-def test_purge_bucket(mock_response, fake_event, fake_context, test_configs):
-    with mock_s3():
-        s3 = boto3.client("s3", region_name=os.environ["AwsRegion"])
-        s3.create_bucket(Bucket=test_configs["s3_bucket"])
-        s3 = boto3.resource("s3")
-        s3_object = s3.Object(
-            test_configs["s3_bucket"],
-            f'{test_configs["s3_prefix"]}/{test_configs["s3_key"]}',
-        )
-        s3_object.put(Body="{}", ContentType=test_configs["content_type"])
-        from helper.website_helper import purge_bucket
-
-        purge_bucket(event=fake_event, context=fake_context)
-
-
-@patch("urllib.request.build_opener")
 def test_lambda_handler(mock_response, fake_event, fake_context, test_configs):
-    with mock_s3():
-        s3 = boto3.client("s3", region_name=os.environ["AwsRegion"])
+    with mock_aws():
+        s3 = boto3.client("s3", region_name="us-east-1")
         s3.create_bucket(Bucket=test_configs["s3_bucket"])
-        s3 = boto3.resource("s3")
+        s3 = boto3.resource("s3", region_name="us-east-1")
         s3_object = s3.Object(
             test_configs["s3_bucket"],
             f'{test_configs["s3_prefix"]}/{test_configs["s3_key"]}',
@@ -180,3 +152,34 @@ def test_lambda_handler(mock_response, fake_event, fake_context, test_configs):
         mock_file.assert_called_with(file_loc, encoding="utf-8")
         fake_event["RequestType"] = "Delete"
         lambda_handler(event=fake_event, context=fake_context)
+
+
+@patch("urllib.request.build_opener")
+def test_config_lambda_handler(mock_response, fake_config_event, fake_context, test_configs):
+    with mock_aws():
+        s3 = boto3.client("s3", region_name="us-east-1")
+        s3.create_bucket(Bucket=test_configs["s3_bucket"])
+        file = "runtimeConfig.json"
+        from helper.config_helper import handler
+
+        fake_config_event["RequestType"] = "Create"
+        handler(event=fake_config_event, context=fake_context)
+        s3.head_object(Bucket=test_configs["s3_bucket"], Key=file)
+
+        fake_config_event["RequestType"] = "Delete"
+        handler(event=fake_config_event, context=fake_context)
+        try:
+            s3.head_object(Bucket=test_configs["s3_bucket"], Key=file)
+        except botocore.exceptions.ClientError:
+            pass
+
+        fake_config_event["RequestType"] = "Update"
+        handler(event=fake_config_event, context=fake_context)
+        s3.head_object(Bucket=test_configs["s3_bucket"], Key=file)
+
+        fake_config_event["RequestType"] = "Delete"
+        handler(event=fake_config_event, context=fake_context)
+        try:
+            s3.head_object(Bucket=test_configs["s3_bucket"], Key=file)
+        except botocore.exceptions.ClientError:
+            pass

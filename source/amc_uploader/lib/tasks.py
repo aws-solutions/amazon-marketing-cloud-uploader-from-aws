@@ -14,5 +14,5 @@
 import importlib
 import sys
 
-sys.path.insert(0, "./share/sigv4.py")
-sigv4 = importlib.import_module("share.sigv4")
+sys.path.insert(0, "./share/tasks.py")
+tasks = importlib.import_module("share.tasks")

@@ -43,6 +43,7 @@ vue under the Massachusetts Institute of Technology license
 vue-cli under the Massachusetts Institute of Technology license
 vue-highlightjs under the Massachusetts Institute of Technology license
 vue-router under the Massachusetts Institute of Technology license
+vue-compat under the Massachusetts Institute of Technology license
 vuex under the Massachusetts Institute of Technology license
 vuex-persistedstate under the Massachusetts Institute of Technology license
 webdriver-manager under the Apache License Version 2.0

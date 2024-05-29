@@ -1,7 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-import datetime
 import json
 import logging
 import os
@@ -18,7 +17,7 @@ from chalice import (
     IAMAuthorizer,
     Response,
 )
-from chalicelib.sigv4 import sigv4
+from chalicelib.tasks import tasks
 
 solution_config = json.loads(os.environ["botoConfig"])
 config = config.Config(**solution_config)
@@ -59,10 +58,12 @@ CSV_CONTENT_TYPE = "text/csv"
 PLAIN_TEXT_CONTENT_TYPE = "text/plain"
 GZIP_CONTENT_TYPE = "application/x-gzip"
 
+
 @app.route(
     "/list_datasets", cors=True, methods=["POST"], authorizer=authorizer
 )
-def list_datasets():
+@tasks.authorize_amc_request(app=app)
+def list_datasets(**kwargs):
     """
     List datasets in AMC.
 
@@ -74,13 +75,29 @@ def list_datasets():
     """
     log_request_parameters()
     try:
-        destination_endpoint = app.current_request.json_body[
-            "destination_endpoint"
-        ]
-        path = "/dataSets"
-        response = sigv4.get(destination_endpoint, path)
+        amc_request = tasks.AMCRequests(
+            amc_path="/dataSets/list",
+            http_method="POST",
+        )
+        response = amc_request.process_request(
+            **kwargs, **app.current_request.json_body
+        )
+        response_json = response.json()
+
+        datasets = response_json.get('dataSets', [])
+        while 'nextToken' in response_json:
+            amc_request = tasks.AMCRequests(
+                amc_path="/dataSets/list",
+                http_method="POST",
+                request_parameters={'nextToken': response_json['nextToken']}
+            )
+            response_json = amc_request.process_request(
+                **kwargs, **app.current_request.json_body
+            ).json()
+            datasets.extend(response_json.get('dataSets', []))
+
         return Response(
-            body=response.text,
+            body=json.dumps({'dataSets': datasets}),
             status_code=response.status_code,
             headers={"Content-Type": JSON_CONTENT_TYPE},
         )
@@ -92,7 +109,8 @@ def list_datasets():
 @app.route(
     "/describe_dataset", cors=True, methods=["POST"], authorizer=authorizer
 )
-def describe_dataset():
+@tasks.authorize_amc_request(app=app)
+def describe_dataset(**kwargs):
     """
     Describe the schema and properties of an existing AMC dataset.
 
@@ -104,12 +122,13 @@ def describe_dataset():
     """
     log_request_parameters()
     try:
-        data_set_id = app.current_request.json_body["dataSetId"]
-        destination_endpoint = app.current_request.json_body[
-            "destination_endpoint"
-        ]
-        path = "/dataSets/" + data_set_id
-        response = sigv4.get(destination_endpoint, path)
+        amc_request = tasks.AMCRequests(
+            amc_path=f"/dataSets/{app.current_request.json_body.pop('dataSetId')}",
+            http_method="GET",
+        )
+        response = amc_request.process_request(
+            **kwargs, **app.current_request.json_body
+        )
         return Response(
             body=response.text,
             status_code=response.status_code,
@@ -123,7 +142,8 @@ def describe_dataset():
 @app.route(
     "/create_dataset", cors=True, methods=["POST"], authorizer=authorizer
 )
-def create_dataset():
+@tasks.authorize_amc_request(app=app)
+def create_dataset(**kwargs):
     """
     Create a dataset in AMC.
 
@@ -136,18 +156,19 @@ def create_dataset():
     log_request_parameters()
     try:
         body = app.current_request.json_body["body"]
-        destination_endpoint = app.current_request.json_body[
-            "destination_endpoint"
-        ]
-        if body["period"] == "autodetect":
-            # Initialize the dataset period to P1D. This will be updated later
-            # when the AWS Glue job measures the actual dataset period.
-            body["period"] = "P1D"
         # If customer provided a CMK, then use the key to encrypt this dataset in AMC.
         if CUSTOMER_MANAGED_KEY != "":
             body["customerEncryptionKeyArn"] = CUSTOMER_MANAGED_KEY
-        path = "/dataSets"
-        response = sigv4.post(destination_endpoint, path, json.dumps(body))
+
+        amc_request = tasks.AMCRequests(
+            amc_path="/dataSets",
+            http_method="POST",
+            payload=json.dumps(body),
+        )
+        response = amc_request.process_request(
+            **kwargs, **app.current_request.json_body
+        )
+
         return Response(
             body=response.text,
             status_code=response.status_code,
@@ -164,11 +185,12 @@ def create_dataset():
     methods=["POST"],
     authorizer=authorizer,
 )
-def start_amc_transformation():
+@tasks.authorize_amc_request(app=app)
+def start_amc_transformation(**_):
     """
     Invoke Glue job to prepare data for uploading into AMC.
     This function is called from the GUI. It may also be called
-    directly (e.g. from an S3 trigger function).  
+    directly (e.g. from an S3 trigger function).
 
     Returns AMC response:
 
@@ -183,21 +205,21 @@ def start_amc_transformation():
         output_bucket = app.current_request.json_body["outputBucket"]
         pii_fields = app.current_request.json_body["piiFields"]
         deleted_fields = app.current_request.json_body["deletedFields"]
-        timestamp_column = app.current_request.json_body["timestampColumn"]
         dataset_id = app.current_request.json_body["datasetId"]
-        period = app.current_request.json_body["period"]
-        country_code = app.current_request.json_body["countryCode"]
+        country_code = app.current_request.json_body.get("countryCode")
+        update_strategy = app.current_request.json_body["updateStrategy"]
         session = boto3.session.Session(region_name=os.environ["AWS_REGION"])
-        destination_endpoints = app.current_request.json_body[
-            "destination_endpoints"
-        ]
-        
-        # The fileFormat parameter is optional. 
+        amc_instances = json.loads(
+            app.current_request.json_body["amc_instances"]
+        )
+        user_id = app.current_request.json_body["user_id"]
+
+        # The fileFormat parameter is optional.
         # If this function  is called from the GUI then the payload will
-        # include fileFormat. If it is called directly, then it might not include 
-        # fileFormat since that is an optional argument. If fileFormat is not 
-        # provided then this function will attempt to infer it from the file 
-        # content_type. 
+        # include fileFormat. If it is called directly, then it might not include
+        # fileFormat since that is an optional argument. If fileFormat is not
+        # provided then this function will attempt to infer it from the file
+        # content_type.
         #
         # At the end of this function, fileFormat is required so that it can be
         # passed to the Glue ETL job.
@@ -216,13 +238,23 @@ def start_amc_transformation():
             "--source_key": source_key,
             "--pii_fields": pii_fields,
             "--deleted_fields": deleted_fields,
-            "--timestamp_column": timestamp_column,
             "--dataset_id": dataset_id,
-            "--period": period,
-            "--country_code": country_code,
             "--file_format": file_format,
-            "--destination_endpoints": destination_endpoints,
+            "--update_strategy": update_strategy,
+            "--user_id": user_id,
+            "--amc_instances": json.dumps(
+                [instance["instance_id"] for instance in amc_instances]
+            ),
         }
+
+        # countryCode is optional
+        if country_code:
+            args["--country_code"] = country_code
+
+        # timestampColumn is optional and will only be present for FACT datasets
+        if app.current_request.json_body.get("timestampColumn", "") != "":
+            args["--timestamp_column"] = app.current_request.json_body["timestampColumn"]
+
         logger.info("Starting Glue job:")
         logger.info("Equivalent AWS CLI command: ")
         # We've intentionally omitted a value for --profile in the
@@ -275,7 +307,8 @@ def get_etl_jobs():
 @app.route(
     "/upload_status", cors=True, methods=["POST"], authorizer=authorizer
 )
-def upload_status():
+@tasks.authorize_amc_request(app=app)
+def upload_status(**kwargs):
     """
     Get the status of an AMC data upload operation.
 
@@ -290,11 +323,14 @@ def upload_status():
     try:
         data_set_id = app.current_request.json_body["dataSetId"]
         upload_id = app.current_request.json_body["uploadId"]
-        destination_endpoint = app.current_request.json_body[
-            "destination_endpoint"
-        ]
-        path = DATA + data_set_id + "/uploads/" + upload_id
-        response = sigv4.get(destination_endpoint, path)
+
+        amc_request = tasks.AMCRequests(
+            amc_path=f"/uploads/{data_set_id}/{upload_id}",
+            http_method="GET",
+        )
+        response = amc_request.process_request(
+            **kwargs, **app.current_request.json_body
+        )
         return Response(
             body=response.text,
             status_code=response.status_code,
@@ -306,7 +342,8 @@ def upload_status():
 
 
 @app.route("/list_uploads", cors=True, methods=["POST"], authorizer=authorizer)
-def list_uploads():
+@tasks.authorize_amc_request(app=app)
+def list_uploads(**kwargs):
     """
     List all the uploads for an AMC dataset.
 
@@ -319,18 +356,19 @@ def list_uploads():
     """
     log_request_parameters()
     try:
-        data_set_id = app.current_request.json_body["dataSetId"]
-        destination_endpoint = app.current_request.json_body[
-            "destination_endpoint"
-        ]
-        next_token = ""
+        request_parameters = {
+            "dataSetId": app.current_request.json_body["dataSetId"]
+        }
         if "nextToken" in app.current_request.json_body:
-            next_token = app.current_request.json_body["nextToken"]
-        path = DATA + data_set_id + "/uploads/"
-        response = sigv4.get(
-            destination_endpoint,
-            path,
-            request_parameters="nextToken=" + next_token,
+            request_parameters["nextToken"] = app.current_request.json_body["nextToken"]
+
+        amc_request = tasks.AMCRequests(
+            amc_path="/uploads/list",
+            http_method="POST",
+            request_parameters=request_parameters,
+        )
+        response = amc_request.process_request(
+            **kwargs, **app.current_request.json_body
         )
         return Response(
             body=response.text,
@@ -342,7 +380,79 @@ def list_uploads():
         return {"Status": "Error", "Message": str(ex)}
 
 
-@app.route("/list_upload_failures", cors=True, methods=["POST"], authorizer=authorizer)
+@app.route(
+    "/get_amc_instances", cors=True, methods=["POST"], authorizer=authorizer
+)
+@tasks.authorize_amc_request(app=app)
+def get_amc_instances(**kwargs):
+    """
+    List all the AMC instances.
+
+    Returns AMC response:
+
+    .. code-block:: python
+
+        { dict }
+
+    """
+    log_request_parameters()
+    try:
+        amc_request = tasks.AMCRequests(
+            amc_path="/amc/instances",
+            http_method="GET",
+            is_amc_report=False,
+        )
+        response = amc_request.process_request(
+            **kwargs, **app.current_request.json_body
+        )
+        return Response(
+            body=response.text,
+            status_code=response.status_code,
+            headers={"Content-Type": JSON_CONTENT_TYPE},
+        )
+    except Exception as ex:
+        logger.error(ex)
+        return {"Status": "Error", "Message": str(ex)}
+
+
+@app.route(
+    "/get_amc_accounts", cors=True, methods=["POST"], authorizer=authorizer
+)
+@tasks.authorize_amc_request(app=app)
+def get_amc_accounts(**kwargs):
+    """
+    List all the AMC accounts.
+
+    Returns AMC response:
+
+    .. code-block:: python
+
+        { dict }
+
+    """
+    log_request_parameters()
+    try:
+        amc_request = tasks.AMCRequests(
+            amc_path="/amc/accounts",
+            http_method="GET",
+            is_amc_report=False,
+        )
+        response = amc_request.process_request(
+            **kwargs, **app.current_request.json_body
+        )
+        return Response(
+            body=response.text,
+            status_code=response.status_code,
+            headers={"Content-Type": JSON_CONTENT_TYPE},
+        )
+    except Exception as ex:
+        logger.error(ex)
+        return {"Status": "Error", "Message": str(ex)}
+
+
+@app.route(
+    "/list_upload_failures", cors=True, methods=["POST"], authorizer=authorizer
+)
 def list_upload_failures():
     """
     List the upload failure message, if any exists, for a specified dataset and AMC instance.
@@ -357,13 +467,15 @@ def list_upload_failures():
     log_request_parameters()
     dynamo_resource = boto3.resource("dynamodb", config=config)
     try:
-        dataset_id = app.current_request.json_body["dataset_id"]
-        destination_endpoint = app.current_request.json_body[
-            "destination_endpoint"
-        ]
-        item_key = {"destination_endpoint": destination_endpoint, "dataset_id": dataset_id}
-        upload_failures_table = dynamo_resource.Table(UPLOAD_FAILURES_TABLE_NAME)
-        item = upload_failures_table.get_item(Key=item_key, ConsistentRead=True)
+        dataset_id = app.current_request.json_body["dataSetId"]
+        instance_id = app.current_request.json_body["instance_id"]
+        item_key = {"instance_id": instance_id, "dataset_id": dataset_id}
+        upload_failures_table = dynamo_resource.Table(
+            UPLOAD_FAILURES_TABLE_NAME
+        )
+        item = upload_failures_table.get_item(
+            Key=item_key, ConsistentRead=True
+        )
         error_message = ""
         if "Item" in item:
             error_message = item["Item"]["Value"]
@@ -379,7 +491,8 @@ def list_upload_failures():
 @app.route(
     "/delete_dataset", cors=True, methods=["POST"], authorizer=authorizer
 )
-def delete_dataset():
+@tasks.authorize_amc_request(app=app)
+def delete_dataset(**kwargs):
     """
     Delete an AMC dataset and all the records uploaded to it.
 
@@ -393,30 +506,31 @@ def delete_dataset():
     log_request_parameters()
     try:
         dataset_id = app.current_request.json_body["dataSetId"]
-        destination_endpoint = app.current_request.json_body[
-            "destination_endpoint"
-        ]
         # Step 1/2: delete uploaded data
         # This should delete any data files that customers uploaded for either FACT or DIMENSION datasets
-        current_datetime = datetime.datetime.now().strftime(
-            "%Y-%m-%dT%H:%M:%SZ"
+
+        amc_request = tasks.AMCRequests(
+            amc_path=f"/dataSets/{dataset_id}",
+            http_method="DELETE",
         )
-        path = (
-            DATA
-            + dataset_id
-            + "?timeWindowStart=1970-01-01T00:00:00Z&timeWindowEnd="
-            + current_datetime
+        response = amc_request.process_request(
+            **kwargs, **app.current_request.json_body
         )
-        sigv4.delete(destination_endpoint, path)
-        path = "/dataSets/" + dataset_id
-        response = sigv4.delete(destination_endpoint, path)
         if response.status_code == 200:
             dynamo_resource = boto3.resource("dynamodb", config=config)
-            item_key = {"destination_endpoint": destination_endpoint, "dataset_id": dataset_id}
-            logger.info("Removing upload record from " + UPLOAD_FAILURES_TABLE_NAME +
-                        " if the following key exists:" +
-                        json.dumps(item_key))
-            upload_failures_table = dynamo_resource.Table(UPLOAD_FAILURES_TABLE_NAME)
+            item_key = {
+                "instance_id": app.current_request.json_body["instance_id"],
+                "dataset_id": dataset_id,
+            }
+            logger.info(
+                "Removing upload record from "
+                + UPLOAD_FAILURES_TABLE_NAME
+                + " if the following key exists:"
+                + json.dumps(item_key)
+            )
+            upload_failures_table = dynamo_resource.Table(
+                UPLOAD_FAILURES_TABLE_NAME
+            )
             try:
                 upload_failures_table.delete_item(Key=item_key)
             except dynamo_resource.meta.client.exceptions.ConditionalCheckFailedException:
@@ -623,29 +737,32 @@ def get_file_format(bucket, key):
 # This function reads the first row of the input file and returns the data
 # fields present in that row along with the content_type of the file.
 def describe_file(bucket, key, file_format):
-    file_description = None
-    if file_format == "JSON":
-        dfs = wr.s3.read_json(
-            path=["s3://" + bucket + "/" + key],
-            chunksize=1,
-            lines=True,
-        )
-        chunk = next(dfs)
-        columns = chunk.columns.to_list()
-        file_description = json.dumps(
-            {"columns": columns, "content_type": JSON_CONTENT_TYPE}
-        )
-    elif file_format == "CSV":
-        dfs = wr.s3.read_csv(
-            path=["s3://" + bucket + "/" + key], chunksize=1
-        )
-        chunk = next(dfs)
-        columns = chunk.columns.to_list()
-        file_description = json.dumps(
-            {"columns": columns, "content_type": CSV_CONTENT_TYPE}
-        )
-    return file_description
-
+    try:
+        file_description = None
+        if file_format == "JSON":
+            dfs = wr.s3.read_json(
+                path=["s3://" + bucket + "/" + key],
+                chunksize=1,
+                lines=True,
+            )
+            chunk = next(dfs)
+            columns = chunk.columns.to_list()
+            file_description = json.dumps(
+                {"columns": columns, "content_type": JSON_CONTENT_TYPE}
+            )
+        elif file_format == "CSV":
+            dfs = wr.s3.read_csv(
+                path=["s3://" + bucket + "/" + key], chunksize=1
+            )
+            chunk = next(dfs)
+            columns = chunk.columns.to_list()
+            file_description = json.dumps(
+                {"columns": columns, "content_type": CSV_CONTENT_TYPE}
+            )
+        return file_description
+    except Exception as ex:
+        logger.error(ex)
+        return {"Status": "Error", "Message": str(ex)}
 
 # Validate the AmcInstances parameter
 def validate_amc_system_parameter(system_parameter):
@@ -665,7 +782,7 @@ def validate_amc_system_parameter(system_parameter):
     for i in range(len(amc_instances)):
         if not isinstance(amc_instances[i], dict):
             raise BadRequestError("AmcInstance value must be of type dict")
-        for key_check in ["endpoint", "data_upload_account_id"]:
+        for key_check in ["instance_id", "advertiser_id", "marketplace_id"]:
             if key_check not in amc_instances[i]:
                 raise BadRequestError(
                     f"AmcInstance value must contain key, '{key_check}'"
@@ -680,9 +797,7 @@ def validate_amc_system_parameter(system_parameter):
     authorizer=authorizer,
 )
 def save_system_configuration():
-    """Add a new system configuration parameter
-    - Updates the system configuration with a new parameter or changes the value of
-      existing parameters
+    """Creates or updates values in the system configuration table.
     Body:
     .. code-block:: python
         {
@@ -691,7 +806,7 @@ def save_system_configuration():
         }
     Supported parameters:
         "Name": "AmcInstances",
-        "Value": {"endpoint": string, "data_upload_account_id": string, ...}
+        "Value": {"instance_id": string, "data_upload_account_id": string, "marketplace_id": string, ...}
             Saves a list of AMC instances and their associated attributes.
     Returns:
         None
@@ -699,8 +814,6 @@ def save_system_configuration():
         500: ChaliceViewError - internal server error
     """
     log_request_parameters()
-    iam_client = boto3.client("iam", config=config)
-    s3_client = boto3.client("s3", config=config)
     dynamo_resource = boto3.resource("dynamodb", config=config)
 
     try:
@@ -713,109 +826,7 @@ def save_system_configuration():
         return {"Status": "Error", "Message": str(ex)}
 
     system_table.put_item(Item=system_parameter)
-    try:
-        logger.info("reading bucket policy")
-        # Get the bucket policy for the ArtifactBucket.
-        result = s3_client.get_bucket_policy(Bucket=ARTIFACT_BUCKET)
-        policy = json.loads(result["Policy"])
-        # Get the AMC instances system configuration
-        response = system_table.get_item(
-            Key={"Name": "AmcInstances"}, ConsistentRead=True
-        )
-        # If there is at least one AMC instance...
-        if "Item" in response and len(response["Item"]["Value"]) > 0:
-            amc_instances = response["Item"]["Value"]
-            # Get the list of data upload account ids associated with each AMC instance.
-            # Use set type to avoid duplicates
-            data_upload_account_ids = set()
-            endpoints = set()
-            for item in amc_instances:
-                data_upload_account_ids.add(item["data_upload_account_id"])
-                endpoints.add(item["endpoint"])
-            data_upload_account_ids = list(data_upload_account_ids)
-            endpoints = list(endpoints)
-            # Construct a bucket policy statement with a principal that includes
-            # each data upload account id.
-            data_upload_statement = (
-                '{"Sid": "AllowDataUploadFromAmc", '
-                + '"Effect": "Allow", '
-                + '"Principal": {"AWS": ['
-            )
-            for i in range(len(data_upload_account_ids) - 1):
-                data_upload_statement += (
-                    '"arn:aws:iam::' + data_upload_account_ids[i] + ':root", '
-                )
-            data_upload_statement += (
-                '"arn:aws:iam::' + data_upload_account_ids[-1] + ':root"]'
-            )
-            data_upload_statement += (
-                "}, "
-                + '"Action": ["s3:GetObject", "s3:GetObjectVersion", "s3:ListBucket"], '
-                + '"Resource": ["arn:aws:s3:::'
-                + ARTIFACT_BUCKET
-                + '/*", '
-                + '"arn:aws:s3:::'
-                + ARTIFACT_BUCKET
-                + '"]}'
-            )
-            # Remove the old "AllowDataUploadFromAmc" statement from the bucket policy.
-            other_statements = [
-                x
-                for x in policy["Statement"]
-                if not ("Sid" in x and x["Sid"] == "AllowDataUploadFromAmc")
-            ]
-            # Add the new "AllowDataUploadFromAmc" statement to the bucket policy
-            policy["Statement"] = [
-                json.loads(data_upload_statement)
-            ] + other_statements
-            # Save the new bucket policy
-            logger.info("new bucket policy:")
-            logger.info(json.dumps(policy))
-            logger.info("saving bucket policy")
-            result = s3_client.put_bucket_policy(
-                Bucket=ARTIFACT_BUCKET, Policy=json.dumps(policy)
-            )
-            logger.info(json.dumps(result))
-
-            # Add permission to use the AMC API endpoint from the AMC_API_ROLE
-            amc_endpoint_access_policy = iam_client.get_role_policy(
-                RoleName=AMC_API_ROLE_ARN.split("/")[1],
-                PolicyName="AmcApiAccess",
-            )
-            other_statements = [
-                x
-                for x in amc_endpoint_access_policy["PolicyDocument"][
-                    "Statement"
-                ]
-                if not ("Sid" in x and x["Sid"] == "AmcEndpointAccessPolicy")
-            ]
-            endpoint_arns = [
-                '"arn:aws:execute-api:*:*:'
-                + x.split("/")[2].split(".")[0]
-                + '/*"'
-                for x in endpoints
-            ]
-            endpoint_arns_string = ", ".join(
-                str(item) for item in endpoint_arns
-            )
-            amc_endpoint_statement = (
-                '{"Sid": "AmcEndpointAccessPolicy", "Action": ["execute-api:Invoke"], "Resource": ['
-                + endpoint_arns_string
-                + '], "Effect": "Allow"}'
-            )
-            amc_endpoint_access_policy["PolicyDocument"][
-                "Statement"
-            ] = other_statements + [json.loads(amc_endpoint_statement)]
-            iam_client.put_role_policy(
-                RoleName=AMC_API_ROLE_ARN.split("/")[1],
-                PolicyName="AmcApiAccess",
-                PolicyDocument=json.dumps(
-                    amc_endpoint_access_policy["PolicyDocument"]
-                ),
-            )
-    except Exception as ex:
-        logger.error("Exception {}".format(ex))
-        return {"Status": "Error", "Message": str(ex)}
+    tasks.apply_amc_bucket_permission()
     return {}
 
 
@@ -823,8 +834,7 @@ def save_system_configuration():
     "/system/configuration", cors=True, methods=["GET"], authorizer=authorizer
 )
 def get_system_configuration():
-    """Get the current system configuration
-    - Gets the current system configuration parameter settings
+    """Get the current system configuration.
     Returns:
         A list of dict containing the current system configuration key-value pairs.
         .. code-block:: python
@@ -840,7 +850,6 @@ def get_system_configuration():
     dynamodb_resource = boto3.resource("dynamodb", config=config)
     try:
         system_table = dynamodb_resource.Table(SYSTEM_TABLE_NAME)
-        # Check if any configuration has been added yet
         response = system_table.scan(ConsistentRead=True)
     except Exception as e:
         logger.error("Exception {}".format(e))
@@ -856,8 +865,98 @@ def log_request_parameters():
     logger.info("method: " + app.current_request.method)
     logger.info("uri parameters: " + str(app.current_request.uri_params))
     logger.info("query parameters: " + str(app.current_request.query_params))
-    logger.info(
+    logger.debug(
         "request ID: " + (app.current_request.context.get("requestId", ""))
     )
     logger.info("request body: " + app.current_request.raw_body.decode())
     logger.debug(app.current_request.to_dict())
+
+
+@app.route(
+    "/validate_amc_request", cors=True, methods=["POST"], authorizer=authorizer
+)
+def validate_amc_request():
+    try:
+        redirect_uri = tasks.get_redirect_uri(app.current_request)
+        return tasks.get_ads_token(
+            **app.current_request.json_body, redirect_uri=redirect_uri
+        )
+    except Exception as ex:
+        logger.error(ex)
+        return {"Status": "Error", "Message": str(ex)}
+
+
+@app.route("/save_secret", cors=True, methods=["POST"], authorizer=authorizer)
+def save_secret():
+    """Saves OAuth client ID and client secret to Secrets Manager.
+    Body:
+    .. code-block:: python
+        {
+            "user_id": "user pool id value",
+            "client_id": "client id value",
+            "client_secret": "client secret value"
+        }
+    Returns:
+        {}
+    Raises:
+        500: ChaliceViewError - internal server error
+    """
+    user_id = app.current_request.json_body["user_id"]
+    client_id = app.current_request.json_body["client_id"]
+    client_secret = app.current_request.json_body["client_secret"]
+    client_token = {"client_id": client_id, "client_secret": client_secret}
+
+    try:
+        secret_key = tasks.format_client_secret_id(user_id)
+        refresh_token = tasks.get_secret(secret_key)["refresh_token"]
+        if refresh_token:
+            # Invalidate the refresh_token so that it will regenerate
+            # with the new client secret.
+            client_token["refresh_token"] = tasks.DELETE_STRING
+    except Exception:
+        pass
+    try:
+        # Return error if client_id or client_secret contain an invalid character
+        lwa_oauth_pattern = r"^[a-zA-Z0-9\-\.]+$"
+        if not re.match(lwa_oauth_pattern, client_id):
+            raise ValueError("Client ID must contain only letters, numbers, dashes, and periods.")
+        if not re.match(lwa_oauth_pattern, client_secret):
+            raise ValueError("Client Secret must contain only letters, numbers, dashes, and periods.")
+
+        tasks.create_update_secret(
+            tasks.format_client_secret_id(user_id),
+            client_token,
+        )
+        return {}
+    except Exception as ex:
+        logger.error(ex)
+        return {"Status": "Error", "Message": str(ex)}
+
+
+@app.route("/describe_secret", cors=True, methods=["POST"], authorizer=authorizer)
+def describe_secret():
+    """Retrieves the list of dictionary keys contained in the user's LwA secret. This does not include any secret value.
+    Body:
+    .. code-block:: python
+        {
+            "user_id": "user pool id value",
+        }
+    Returns:
+        {
+            "secret_string_keys": [
+                "client_id", "client_secret", "refresh_token"
+            ]
+        }
+    Raises:
+        500: ChaliceViewError - internal server error
+    """
+    log_request_parameters()
+    try:
+        user_id = app.current_request.json_body["user_id"]
+        secret_string = tasks.get_secret(tasks.format_client_secret_id(user_id))
+        secret_string_keys = list(secret_string.keys())
+        response = {"secret_string_keys": secret_string_keys}
+        return response
+    except Exception as ex:
+        logger.error(ex)
+        return {"Status": "Error", "Message": str(ex)}

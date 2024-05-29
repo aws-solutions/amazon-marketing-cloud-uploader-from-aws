@@ -101,6 +101,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script>
+  import { API } from 'aws-amplify'
   import Header from '@/components/Header.vue'
   import Sidebar from '@/components/Sidebar.vue'
   import { mapState } from 'vuex'
@@ -158,13 +159,13 @@ SPDX-License-Identifier: Apache-2.0
         this.isBusy = true;
         try {
           if (method === "GET") {
-            response = await this.$Amplify.API.get(apiName, resource);
+            response = await API.get(apiName, resource);
           } else if (method === "POST") {
             let requestOpts = {
               headers: {'Content-Type': 'application/json'},
               body: data
             };
-            response = await this.$Amplify.API.post(apiName, resource, requestOpts);
+            response = await API.post(apiName, resource, requestOpts);
           }
           this.results = response
         }
