@@ -268,7 +268,7 @@ class AMCRequests:
             "Authorization": f'Bearer {kwargs["access_token"]}',
             "Content-Type": "application/json",
             "x-amzn-service-name": "amazon-marketing-cloud-uploader-from-aws",
-            "x-amzn-service-version": "v3.0.0"
+            "x-amzn-service-version": "v3.0.1"
         }
 
         if kwargs.get("advertiser_id"):
