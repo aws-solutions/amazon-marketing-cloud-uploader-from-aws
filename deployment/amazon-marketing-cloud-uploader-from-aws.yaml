@@ -1024,8 +1024,8 @@ Resources:
         RestApiId: !GetAtt ApiStack.Outputs.RestAPIId
         ParentStackName: !Ref AWS::StackName
         CognitoUISubdomain: !Sub "ui${GetShortUUID2.Data}"
-        CognitoCallbackURL: !GetAtt WebStack6.Outputs.CloudfrontUrl
-        CognitoLogoutURL: !GetAtt WebStack6.Outputs.CloudfrontUrl
+        CognitoCallbackURL: !GetAtt WebStack7.Outputs.CloudfrontUrl
+        CognitoLogoutURL: !GetAtt WebStack7.Outputs.CloudfrontUrl
 
   # Glue ETL stack
 
@@ -1056,7 +1056,7 @@ Resources:
 
   # Web stack
 
-  WebStack6:
+  WebStack7:
     Type: "AWS::CloudFormation::Stack"
     Properties:
       TemplateURL: !Join
@@ -1343,7 +1343,7 @@ Resources:
     Properties:
       Application: !GetAtt Application.Id
       Resource:
-        !Ref WebStack6
+        !Ref WebStack7
       ResourceType: CFN_STACK
 
   AppRegistryApplicationStackAssociationNestedGlueStack:
@@ -1406,7 +1406,7 @@ Resources:
                   - "s3:PutObject"
                   - "s3:DeleteObject"
                 Resource:
-                  - !Sub ${WebStack6.Outputs.WebsiteBucketArn}/runtimeConfig.json
+                  - !Sub ${WebStack7.Outputs.WebsiteBucketArn}/runtimeConfig.json
               - Effect: Allow
                 Action:
                   - "logs:CreateLogStream"
@@ -1464,12 +1464,12 @@ Resources:
       IDENTITY_POOL_ID: !GetAtt AuthStack.Outputs.IdentityPoolId
       DATA_BUCKET_NAME: !Ref DataBucketName
       ARTIFACT_BUCKET_NAME: !Ref ArtifactBucket
-      ENCRYPTION_MODE: !GetAtt WebStack6.Outputs.EncryptionMode
+      ENCRYPTION_MODE: !GetAtt WebStack7.Outputs.EncryptionMode
       HOSTED_UI_DOMAIN: !GetAtt AuthStack.Outputs.HostedUIDomain
-      COGNITO_CALLBACK_URL: !GetAtt WebStack6.Outputs.CloudfrontUrl
-      COGNITO_LOGOUT_URL: !GetAtt WebStack6.Outputs.CloudfrontUrl
-      WEBSITE_BUCKET: !GetAtt WebStack6.Outputs.WebsiteBucketName
+      COGNITO_CALLBACK_URL: !GetAtt WebStack7.Outputs.CloudfrontUrl
+      COGNITO_LOGOUT_URL: !GetAtt WebStack7.Outputs.CloudfrontUrl
+      WEBSITE_BUCKET: !GetAtt WebStack7.Outputs.WebsiteBucketName
 
 Outputs:
   UserInterface:
-    Value: !GetAtt WebStack6.Outputs.CloudfrontUrl
+    Value: !GetAtt WebStack7.Outputs.CloudfrontUrl
