@@ -69,14 +69,17 @@ def check_params(required: list, optional: list) -> dict:
     try:
         args = getResolvedOptions(sys.argv, required)
     except GlueArgumentError as e:
+        # If any required parameter is missing then stop execution.
         print(e)
         sys.exit(1)
 
     # assign optional params
-    try:
-        args.update(getResolvedOptions(sys.argv, optional))
-    except GlueArgumentError:
-        pass
+    for parameter in optional:
+        try:
+            args.update(getResolvedOptions(sys.argv, [parameter]))
+        except GlueArgumentError as e:
+            # Continue execution if any optional parameter is missing.
+            pass
 
     # strip whitespace on applicable fields
     for i in ("dataset_id", "timestamp_column"):
