@@ -3,8 +3,9 @@
 #
 # ###############################################################################
 # PURPOSE:
-#   Upload data files to AMC.
-#   Data file must be in the format required by AMC. i.e. transformation is done.
+#   Upload data files to AMC from a .txt manifest file that points to multiple
+#   distinct S3 objects.
+#   Data files must be in the format required by AMC.
 #
 # USAGE:
 #   Start this Lambda with an S3 CreateObject trigger on the bucket where
@@ -12,7 +13,7 @@
 #
 # REQUIREMENTS:
 #   Input files are expected to be in the following s3 key pattern:
-#     s3://[bucket_name]/amc/[dataset_id]/[update_strategy]/[file_format]/[country_code]/[instance_id|user_id]/[datafile]
+#     s3://[bucket_name]/amc/[dataset_id]/[update_strategy]/[file_format]/[country_code]/[instance_id|user_id]/[manifest].txt
 ###############################################################################
 
 import json
@@ -58,13 +59,16 @@ def lambda_handler(event, context):
     logger.info("context:\n {s}".format(s=context))
     bucket = event["Records"][0]["s3"]["bucket"]["name"]
     key = urllib.parse.unquote_plus(event["Records"][0]["s3"]["object"]["key"])
-    if _is_dataset(key):
+    if _is_manifest(key):
         upload_res_info = _start_upload(bucket=bucket, key=key)
         logger.debug(upload_res_info)
+    else:
+        message = f"The key '{key}' is not a .txt manifest file. Exiting."
+        logger.info(message)
+        return {"Status": "Warning", "Message": message}
 
-
-def _is_dataset(key):
-    return key.endswith(".gz")
+def _is_manifest(key):
+    return key.endswith(".txt")
 
 
 def get_dynamo_table(table_name):
@@ -131,7 +135,7 @@ def _start_upload(**kwargs):
         key = kwargs["key"]
 
         # s3Key must be in the following format:
-        #   amc/[dataset_id]/[update_strategy]/[country_code]/[instance_id|user_id]/[datafile].gz
+        #   amc/[dataset_id]/[update_strategy]/[country_code]/[instance_id|user_id]/[manifest].txt
 
         _, dataset_id, update_strategy, file_format, country_code, instance_id_user_id, filename_quoted = key.split('/')
         instance_id, user_id = instance_id_user_id.split("|")
@@ -157,17 +161,13 @@ def _start_upload(**kwargs):
             + " to dataSetId "
             + dataset_id
         )
-        # the glue script will always output a GZIP-compressed file
         data = {
             "countryCode": safe_json_loads(country_code),
             "updateStrategy": update_strategy,
             "compressionFormat": "GZIP",
             "dataSource": {
                 "sourceS3Bucket": bucket,
-                "sourceFileS3Key": key,
-            },
-            "fileFormat": {
-                "jsonDataFormat": "LINES"
+                "sourceManifestS3Key": key,
             }
         }
         if file_format == "CSV":

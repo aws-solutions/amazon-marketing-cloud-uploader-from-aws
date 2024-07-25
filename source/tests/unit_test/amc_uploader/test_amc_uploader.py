@@ -34,8 +34,8 @@ def test_configs():
         "stack_name": os.environ["STACK_NAME"],
         "client_id": os.environ["CLIENT_ID"],
         "client_secret": os.environ["CLIENT_SECRET"],
-        "s3_dimension_key": "amc/dataset123/ADDITIVE/US/dimension/amc12345678|us-east-1_Z85CJEZK1/dimension_file.json.gz",
-        "s3_fact_key": "amc/dataset123/ADDITIVE/US/P1D/amc12345678|us-east-1_Z85CJEZK1/fact_file.json-2023_05_11-00:00:00.gz",
+        "s3_dimension_key": "amc/dataset123/ADDITIVE/US/dimension/amc12345678|us-east-1_Z85CJEZK1/dimension_manifest.txt",
+        "s3_fact_key": "amc/dataset123/ADDITIVE/US/P1D/amc12345678|us-east-1_Z85CJEZK1/fact_manifest.txt",
     }
 
 
@@ -70,11 +70,11 @@ def fake_context():
     return MagicMock(log_stream_name="fake_log_stream")
 
 
-def test_is_dataset():
-    from amc_uploader.amc_uploader import _is_dataset
+def test_is_manifest():
+    from amc_uploader.amc_uploader import _is_manifest
 
-    assert _is_dataset("text.gz") is True
-    assert _is_dataset("text.zip") is False
+    assert _is_manifest("manifest.txt") is True
+    assert _is_manifest("data.gz") is False
 
 
 @patch("amc_uploader.amc_uploader._start_upload")

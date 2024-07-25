@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.2] - 2024-07-25
+
+### Changed
+
+- Remove Android (AAID) and iOS (IDFA) options for Mobile Ad Id (MAID) because MAID now supersedes AAID and IDFA.
+
+### Fixed 
+
+- Avoid dropping Country Code when LiveRamp, Experian, or Mobile Ad IDs are used for identity resolution instead of hashed PII.  
+- Upload with manifest files rather than individual files so that the partitions of large files do not overwrite each other when using the FULL_REPLACE update strategy. 
+- Fix error parsing the Glue ETL parameter for timestamp_column when country_code parameter is unspecified
+
+## [3.0.1] - 2024-06-21
+
+### Security
+
+- Updated npm and python dependencies
+
 ## [3.0.0] - 2024-05-29
 
 ### Added

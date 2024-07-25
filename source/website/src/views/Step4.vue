@@ -350,16 +350,12 @@ SPDX-License-Identifier: Apache-2.0
           { value: 'METRIC', text: 'Metric', disabled: false},
           { value: 'isMainEventTime', text: 'MainEventTime', disabled: false},
           { value: 'LiveRamp ID', text: 'LiveRamp ID', disabled: false},
-          { value: 'Android Mobile Ad ID', text: 'Mobile Ad ID (Android)', disabled: false},
-          { value: 'iOS Mobile Ad ID', text: 'Mobile Ad ID (iOS)', disabled: false},
           { value: 'Mobile Ad ID', text: 'Mobile Ad ID', disabled: false},
           { value: 'Experian ID', text: 'Experian ID', disabled: false},
         ],
         data_types_column_type_options: [
           {column_type: 'Experian ID', value: "STRING"},
           {column_type: 'LiveRamp ID', value: "STRING"},
-          {column_type: 'Android Mobile Ad ID', value: "STRING"},
-          {column_type: 'iOS Mobile Ad ID', value: "STRING"},
           {column_type: 'Mobile Ad ID', value: "STRING"},
           {column_type: 'isMainEventTime', value: "TIMESTAMP"},
         ],
@@ -398,7 +394,7 @@ SPDX-License-Identifier: Apache-2.0
         return this.items.filter(x => (x.column_type === 'LiveRamp ID')).length > 0
       },
       contains_maid() {
-        return this.items.filter(x => (x.column_type === 'Android Mobile Ad ID')).length > 0 || this.items.filter(x => (x.column_type === 'iOS Mobile Ad ID')).length > 0 || this.items.filter(x => (x.column_type === 'Mobile Ad ID')).length > 0
+        return this.items.filter(x => (x.column_type === 'Mobile Ad ID')).length > 0
       },
       contains_experian_id() {
         return this.items.filter(x => (x.column_type === 'Experian ID')).length > 0
@@ -427,8 +423,8 @@ SPDX-License-Identifier: Apache-2.0
       mainEventTimeSelected() {
         return this.items.filter(x => (x.column_type === 'isMainEventTime')).length > 0
       },
-      PIISelected() {
-        return this.items.filter(x => (x.column_type === 'PII')).length > 0
+      contains_identity() {
+        return this.contains_hashed_identifier || this.contains_liveramp_id || this.contains_maid || this.contains_experian_id
       },
     },
     activated: function () {
@@ -623,21 +619,6 @@ SPDX-License-Identifier: Apache-2.0
             this.columns.push(column_definition)
           })
         // add Mobile Ad identifier
-        this.items.filter(x => (x.column_type === 'Android Mobile Ad ID' || x.column_type === 'iOS Mobile Ad ID'))
-          .forEach(x => {
-            const column_definition = {
-              "name": x.name,
-              "description": x.description,
-              "dataType": x.data_type,
-              "columnType": "DIMENSION",
-              "externalUserIdType": {
-                "externalIdentity": "IDFA"
-              }
-            }
-            if (x.nullable === true) column_definition.nullable = true
-            this.columns.push(column_definition)
-          })
-         // add MAID
          this.items.filter(x => x.column_type === 'Mobile Ad ID')
           .forEach(x => {
             const column_definition = {
@@ -685,8 +666,6 @@ SPDX-License-Identifier: Apache-2.0
         this.items.filter(x => (x.pii_type === "" && (
             x.column_type !== 'isMainEventTime' &&
             x.column_type !== 'LiveRamp ID' &&
-            x.column_type !== 'Android Mobile Ad ID' &&
-            x.column_type !== 'iOS Mobile Ad ID' &&
             x.column_type !== 'Mobile Ad ID' &&
             x.column_type !== 'Experian ID'
           )))
@@ -710,7 +689,7 @@ SPDX-License-Identifier: Apache-2.0
           console.log("ERROR: unrecognized content_type, " + this.content_type)
           this.showServerError = true;
 
-        this.new_dataset_definition["PIISelected"] = this.PIISelected
+        this.new_dataset_definition["ContainsIdentity"] = this.contains_identity
         this.$store.commit('updateDatasetDefinition', this.new_dataset_definition)
         this.$router.push({path: '/step5'})
       },
