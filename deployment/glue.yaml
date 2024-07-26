@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "(SO0222glue) - Amazon Marketing Cloud Uploader from AWS %%VERSION%%. This AWS CloudFormation template defines Glue ETL resources."
+Description: "(SO0222glue) - Amazon Marketing Cloud Uploader from AWS. This AWS CloudFormation template defines Glue ETL resources. %%VERSION%%"
 
 Parameters:
   ArtifactBucketName:

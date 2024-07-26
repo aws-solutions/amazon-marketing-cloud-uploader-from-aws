@@ -371,7 +371,7 @@ SPDX-License-Identifier: Apache-2.0
           this.dataset_definition.countryCode === null ||
           this.dataset_definition.countryCode.length === 0 ||
           !this.dataset_definition.countryCode
-        ) && this.dataset_definition.PIISelected
+        ) && this.dataset_definition.ContainsIdentity
       },
       copyText(elementId) {
         const element = document.getElementById(elementId);
@@ -394,7 +394,14 @@ SPDX-License-Identifier: Apache-2.0
         if (this.dataset_definition.countryCode === "Not Applicable"){
           this.dataset_definition['countryCode'] = null
         }
-        if (this.dataset_definition.countryCode !== "Not Applicable" && !this.dataset_definition.PIISelected){
+        // If user specified a Country Code but did not specify any
+        // data columns for identity resolution, then set the Country
+        // Code to null. Country code should not be specified when
+        // creating datasets that do not contain columns for identity
+        // resolution. Otherwise, AMC responds with error, "Country
+        // code cannot be specified for a data set that does not
+        // contain identity".
+        if (this.dataset_definition.countryCode !== "Not Applicable" && !this.dataset_definition.ContainsIdentity) {
           this.dataset_definition['countryCode'] = null
         }
         // Send a request to create datasets to each instance_id in parallel.
@@ -404,7 +411,7 @@ SPDX-License-Identifier: Apache-2.0
           this.check_dataset_exists(this.amc_instances_selected, this.selected_dataset)
         }
         console.log("Finished defining datasets.")
-        
+
         // Wait for all those requests to complete, then start the glue job.
         this.start_amc_transformation('POST', 'start_amc_transformation', {
           'sourceBucket': this.DATA_BUCKET_NAME,
@@ -566,7 +573,7 @@ SPDX-License-Identifier: Apache-2.0
       savePermissionsPolicy() {
         const account_id = "*"
         const api_name = this.API_ENDPOINT.split("https://")[1].split(".")[0]
-        const permissions_policy = 
+        const permissions_policy =
             "{\n" +
             "    \"Version\": \"2012-10-17\",\n" +
             "    \"Statement\": [\n" +
@@ -597,7 +604,7 @@ SPDX-License-Identifier: Apache-2.0
             "        }\n" +
             "    ]\n" +
             "}"
-        
+
         const blob = new Blob([permissions_policy], {type: 'text/plain'});
         const e = document.createEvent('MouseEvents'),
             a = document.createElement('a');
@@ -608,7 +615,7 @@ SPDX-License-Identifier: Apache-2.0
         a.dispatchEvent(e);
       },
       saveTrustPolicy() {
-        const trust_policy = 
+        const trust_policy =
             "{\n" +
             "  \"Version\": \"2012-10-17\",\n" +
             "  \"Statement\": {\n" +
@@ -619,7 +626,7 @@ SPDX-License-Identifier: Apache-2.0
             "    \"Action\": \"sts:AssumeRole\"\n" +
             "  }\n" +
             "}"
-        
+
         const blob = new Blob([trust_policy], {type: 'text/plain'});
         const e = document.createEvent('MouseEvents'),
             a = document.createElement('a');
@@ -630,13 +637,13 @@ SPDX-License-Identifier: Apache-2.0
         a.dispatchEvent(e);
       },
       saveFile() {
-        const sigv4_post_python_code = 
+        const sigv4_post_python_code =
             "#Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.\n" +
             "#SPDX-License-Identifier: Apache-2.0\n" +
             "\n" +
             "import sys, os, base64, datetime, hashlib, hmac, logging\n" +
-            "import requests\n" + 
-            "\n" + 
+            "import requests\n" +
+            "\n" +
             "# format log messages like this:\n" +
             "formatter = logging.Formatter(\n" +
             "    \"{%(pathname)s:%(lineno)d} %(levelname)s - %(message)s\"\n" +
@@ -675,7 +682,7 @@ SPDX-License-Identifier: Apache-2.0
             "    region = '" + this.AWS_REGION + "'\n" +
             "    endpoint = '" + this.API_ENDPOINT + "start_amc_transformation'\n" +
             "    # POST requests use a content type header.\n" +
-            "    content_type = 'application/json'\n" + 
+            "    content_type = 'application/json'\n" +
             "    origin = os.environ.get('AWS_LAMBDA_FUNCTION_NAME')\n" +
             "    source_key = event['Records'][0]['s3']['object']['key']\n" +
             "    \n" +
@@ -780,7 +787,7 @@ SPDX-License-Identifier: Apache-2.0
             "    print('\\nRESPONSE++++++++++++++++++++++++++++++++++++')\n" +
             "    print('Response code: %d\\n' % r.status_code)\n" +
             "    print(r.text)"
-        
+
         const blob = new Blob([sigv4_post_python_code], {type: 'text/plain'});
         const e = document.createEvent('MouseEvents'),
             a = document.createElement('a');

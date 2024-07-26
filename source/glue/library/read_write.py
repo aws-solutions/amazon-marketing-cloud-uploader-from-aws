@@ -10,6 +10,7 @@ import boto3
 import pandas as pd
 import numpy as np
 import os
+import urllib.parse
 
 ###############################
 # CONSTANTS
@@ -317,6 +318,45 @@ class DataFile:
                 self.convert_timestamp_format(df=df_partition)
             uploads = self.upload_dataset(df=df_partition)
             output_files.extend(uploads)
+
+        if not output_files:
+            print("No output files to put in manifest")
+        else:
+            s3 = boto3.client("s3")
+            # Each output_file is an s3Key in the following format:
+            #   amc/[dataset_id]/[update_strategy]/[country_code]/[instance_id|user_id]/[data_file]-[partition_number].gz
+            # The manifest file will have the same S3 key prefix as each output_file
+            # except it will not contain the partition number, and it will have suffix .txt instead of .gz.
+            # Parse the S3 key prefix for each output_file, so we can construct the S3 key for the manifest file.
+            _, dataset_id, update_strategy, file_format, country_code, instance_id_user_id, filename_quoted = output_files[0].replace(f's3://{self.output_bucket}/', '').split('/')
+            instance_id, user_id = instance_id_user_id.split("|")
+            filename = urllib.parse.unquote_plus(filename_quoted)
+            filename_base = filename.rsplit('-', 1)[0].rsplit('.', 1)[0]
+
+            for amc_instance in self.amc_instances:
+                # Generate separate manifest files for each user-specified AMC instance
+                manifest_file = f"amc/{dataset_id}/{update_strategy}/{file_format}/{country_code}/{amc_instance}|{user_id}/{filename_base}.txt"
+                data = "\n".join([line for line in output_files if amc_instance in line])
+                # Save the manifest file to the S3 key derived above.
+                response = s3.put_object(Bucket=self.output_bucket, Key=manifest_file, Body=data)
+                # Check if that operation was successful.
+                if response['ResponseMetadata']['HTTPStatusCode'] == 200:
+                    print(f"Created manifest file: s3://{self.output_bucket}{manifest_file}\n")
+                    # Tag the manifest file to the target AMC instance, as required by AMC.
+                    s3.put_object_tagging(
+                        Bucket=self.output_bucket,
+                        Key=manifest_file,
+                        Tagging={
+                            'TagSet': [
+                                {
+                                    'Key': 'instanceId',
+                                    'Value': amc_instance
+                                },
+                            ]
+                        },
+                    )
+                else:
+                    print(f"Error creating manifest file: {response}")
 
         output = {
             "output files": output_files,

@@ -275,7 +275,7 @@ Resources:
               S3Key:
                 Rules:
                   - Name: suffix
-                    Value: '.gz'
+                    Value: '.txt'
                   - Name: prefix
                     Value: 'amc/'
       Tags:
@@ -1024,12 +1024,12 @@ Resources:
         RestApiId: !GetAtt ApiStack.Outputs.RestAPIId
         ParentStackName: !Ref AWS::StackName
         CognitoUISubdomain: !Sub "ui${GetShortUUID2.Data}"
-        CognitoCallbackURL: !GetAtt WebStack7.Outputs.CloudfrontUrl
-        CognitoLogoutURL: !GetAtt WebStack7.Outputs.CloudfrontUrl
+        CognitoCallbackURL: !GetAtt Webstack8.Outputs.CloudfrontUrl
+        CognitoLogoutURL: !GetAtt Webstack8.Outputs.CloudfrontUrl
 
   # Glue ETL stack
 
-  GlueStack5:
+  GlueStack6:
     Type: "AWS::CloudFormation::Stack"
     Properties:
       TemplateURL: !Join
@@ -1056,7 +1056,7 @@ Resources:
 
   # Web stack
 
-  WebStack7:
+  Webstack8:
     Type: "AWS::CloudFormation::Stack"
     Properties:
       TemplateURL: !Join
@@ -1171,7 +1171,7 @@ Resources:
         ArtifactBucket: !Ref ArtifactBucket
         DataBucketName: !Ref DataBucketName
         AmcApiRoleArn: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-AmcApiAccessRole'
-        AmcGlueJobName: !GetAtt GlueStack5.Outputs.AmcGlueJobName
+        AmcGlueJobName: !GetAtt GlueStack6.Outputs.AmcGlueJobName
         TracingConfigMode: "Active"
         CustomerManagedKey: !Ref CustomerManagedKey
         LambdaLayer: !Ref LambdaLayer
@@ -1343,7 +1343,7 @@ Resources:
     Properties:
       Application: !GetAtt Application.Id
       Resource:
-        !Ref WebStack7
+        !Ref Webstack8
       ResourceType: CFN_STACK
 
   AppRegistryApplicationStackAssociationNestedGlueStack:
@@ -1351,7 +1351,7 @@ Resources:
     Properties:
       Application: !GetAtt Application.Id
       Resource:
-        !Ref GlueStack5
+        !Ref GlueStack6
       ResourceType: CFN_STACK
 
   AppRegistryApplicationStackAssociationNestedAuthStack:
@@ -1406,7 +1406,7 @@ Resources:
                   - "s3:PutObject"
                   - "s3:DeleteObject"
                 Resource:
-                  - !Sub ${WebStack7.Outputs.WebsiteBucketArn}/runtimeConfig.json
+                  - !Sub ${Webstack8.Outputs.WebsiteBucketArn}/runtimeConfig.json
               - Effect: Allow
                 Action:
                   - "logs:CreateLogStream"
@@ -1464,12 +1464,12 @@ Resources:
       IDENTITY_POOL_ID: !GetAtt AuthStack.Outputs.IdentityPoolId
       DATA_BUCKET_NAME: !Ref DataBucketName
       ARTIFACT_BUCKET_NAME: !Ref ArtifactBucket
-      ENCRYPTION_MODE: !GetAtt WebStack7.Outputs.EncryptionMode
+      ENCRYPTION_MODE: !GetAtt Webstack8.Outputs.EncryptionMode
       HOSTED_UI_DOMAIN: !GetAtt AuthStack.Outputs.HostedUIDomain
-      COGNITO_CALLBACK_URL: !GetAtt WebStack7.Outputs.CloudfrontUrl
-      COGNITO_LOGOUT_URL: !GetAtt WebStack7.Outputs.CloudfrontUrl
-      WEBSITE_BUCKET: !GetAtt WebStack7.Outputs.WebsiteBucketName
+      COGNITO_CALLBACK_URL: !GetAtt Webstack8.Outputs.CloudfrontUrl
+      COGNITO_LOGOUT_URL: !GetAtt Webstack8.Outputs.CloudfrontUrl
+      WEBSITE_BUCKET: !GetAtt Webstack8.Outputs.WebsiteBucketName
 
 Outputs:
   UserInterface:
-    Value: !GetAtt WebStack7.Outputs.CloudfrontUrl
+    Value: !GetAtt Webstack8.Outputs.CloudfrontUrl

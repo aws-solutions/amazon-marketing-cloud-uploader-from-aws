@@ -44,7 +44,47 @@ vue-cli under the Massachusetts Institute of Technology license
 vue-highlightjs under the Massachusetts Institute of Technology license
 vue-router under the Massachusetts Institute of Technology license
 vue-compat under the Massachusetts Institute of Technology license
+@vue/compat under the Massachusetts Institute of Technology license
 vuex under the Massachusetts Institute of Technology license
 vuex-persistedstate under the Massachusetts Institute of Technology license
 webdriver-manager under the Apache License Version 2.0
 webpack-subresource-integrity under the Massachusetts Institute of Technology license
+Jinja2 under the BSD license
+MarkupSafe under the three-clause BSD license
+Werkzeug under the BSD license
+attrs under the Massachusetts Institute of Technology license
+aws-cdk-lib under the Apache License Version 2.0
+aws-cdk.asset-awscli-v1 under the Apache License Version 2.0
+aws-cdk.asset-kubectl-v20 under the Apache License Version 2.0
+aws-cdk.asset-node-proxy-agent-v6 under the Apache License Version 2.0
+blessed under the Massachusetts Institute of Technology license
+cattrs under the Massachusetts Institute of Technology license
+cffi under the Massachusetts Institute of Technology license
+cfnresponse under the Apache License Version 2.0
+click under the BSD license
+constructs under the Apache License Version 2.0
+cryptography under the three-clause BSD license
+importlib_resources under the Apache License Version 2.0
+iniconfig under the Massachusetts Institute of Technology license
+inquirer under the Massachusetts Institute of Technology license
+jmespath under the Massachusetts Institute of Technology license
+joserfc under the Massachusetts Institute of Technology license
+jsii under the three-clause BSD license
+numpy under the BSD license
+pluggy under the Massachusetts Institute of Technology license
+publication under the Massachusetts Institute of Technology license
+py-partiql-parser under the Massachusetts Institute of Technology license
+pyarrow under the Apache License Version 2.0
+pycparser under the BSD license
+pytest-dependency under the Apache License Version 2.0
+python-dateutil under the Apache License Version 2.0
+python-editor under the Apache License Version 2.0
+pytz under the Apache License Version 2.0
+readchar under the Massachusetts Institute of Technology license
+responses under the Apache License Version 2.0
+s3transfer under the Apache License Version 2.0
+typeguard under the Massachusetts Institute of Technology license
+typing_extensions under the Massachusetts Institute of Technology license
+tzdata under the Apache License Version 2.0
+wrapt under the BSD license
+xmltodict under the Massachusetts Institute of Technology license

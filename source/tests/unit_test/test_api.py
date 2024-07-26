@@ -866,7 +866,7 @@ def test_upload_status(
 ):
     expected_amc_response = {
         "sourceS3Bucket": "some_bucket",
-        "sourceFileS3Key": "some_key",
+        "sourceManifestS3Key": "some_key",
         "status": ["Succeeded"],
     }
 

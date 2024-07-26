@@ -264,7 +264,8 @@ SPDX-License-Identifier: Apache-2.0
                     </div>
                   </template>
                   <template #cell(sourceFileS3Key)="row">
-                    {{ row.item.dataSource.sourceFileS3Key.split('/').slice(-1)[0] }}
+                    <!-- This returns values from any of the supported dataSource types -->
+                    {{ (row.item.dataSource.sourceFileS3Key || row.item.dataSource.sourceS3Prefix || row.item.dataSource.sourceManifestS3Key || row.item.dataSource.sourceS3Bucket).split('/').slice(-1)[0] }}
                   </template>
                   <template #cell(show_details)="row">
                     <b-form-checkbox @change="row.toggleDetails">

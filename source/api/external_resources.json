@@ -1,5 +1,5 @@
 {
-  "Description": "(SO0222api) - Amazon Marketing Cloud Uploader from AWS. This AWS CloudFormation template defines resources for the REST API. %%VERSION%%.",
+  "Description": "(SO0222api) - Amazon Marketing Cloud Uploader from AWS. This AWS CloudFormation template defines resources for the REST API. %%VERSION%%",
   "Parameters": {
     "botoConfig": {
       "Type": "String",

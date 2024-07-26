@@ -337,13 +337,13 @@ SPDX-License-Identifier: Apache-2.0
         return (account_id !== undefined && account_id.match('^[0-9]{12}$') != null)
       },
       isValidAmcInstances(){
-        let result = true
-        for (let i = 0; i < this.amcInstances.length; i++) {
+        let result = true;
+        for (const instance of this.amcInstances) {
           if (
-              this.isValidAccountId(this.amcInstances[i].data_upload_account_id) === false ||
-              this.isEmpty(this.amcInstances[i].instance_id) ||
-              this.isEmpty(this.amcInstances[i].advertiser_id) ||
-              this.isEmpty(this.amcInstances[i].marketplace_id)
+              this.isValidAccountId(instance.data_upload_account_id) === false ||
+              this.isEmpty(instance.instance_id) ||
+              this.isEmpty(instance.advertiser_id) ||
+              this.isEmpty(instance.marketplace_id)
           ) {
             result = false;
             break;
