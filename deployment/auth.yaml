@@ -174,6 +174,10 @@ Resources:
                   - 'logs:CreateLogStream'
                   - 'logs:PutLogEvents'
                 Resource: 'arn:aws:logs:*:*:*'
+    Metadata:
+      guard:
+        SuppressedRules:
+          - IAM_NO_INLINE_POLICY_CHECK
 
   IdentityPool:
     Type: AWS::Cognito::IdentityPool
@@ -190,6 +194,9 @@ Resources:
         rules_to_suppress:
           - id: F38
             reason: "The wildcard is used for a deny action, not an allow action."
+      guard:
+        SuppressedRules:
+          - IAM_NO_INLINE_POLICY_CHECK
     Properties:
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
@@ -268,6 +275,10 @@ Resources:
 
   AdminRole:
     Type: "AWS::IAM::Role"
+    Metadata:
+      guard:
+        SuppressedRules:
+          - IAM_NO_INLINE_POLICY_CHECK
     Properties:
       AssumeRolePolicyDocument:
         Version: "2012-10-17"

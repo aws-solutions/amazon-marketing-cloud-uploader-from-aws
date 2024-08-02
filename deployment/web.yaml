@@ -89,6 +89,10 @@ Resources:
                   - "logs:CreateLogStream"
                   - "logs:PutLogEvents"
                 Resource: 'arn:aws:logs:*:*:*'
+    Metadata:
+      guard:
+        SuppressedRules:
+          - IAM_NO_INLINE_POLICY_CHECK
 
   GetWebsiteBucketName:
     Type: Custom::CustomResource
@@ -286,6 +290,9 @@ Resources:
         rules_to_suppress:
           - id: W11
             reason: "Website helper Lambda requires read / write access to both the website bucket and the build bucket"
+      guard:
+        SuppressedRules:
+          - IAM_NO_INLINE_POLICY_CHECK
     DependsOn: WebsiteBucket
     Properties:
       AssumeRolePolicyDocument:

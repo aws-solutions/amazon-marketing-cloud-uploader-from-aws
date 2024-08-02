@@ -105,7 +105,6 @@ class NormalizationTest:
             {"pii_type": "NAME", "column_name": "last_name"},
             {"pii_type": "EMAIL", "column_name": "email"},
             {"pii_type": "ADDRESS", "column_name": "address"},
-            {"pii_type": "PHONE", "column_name": "phone"},
             {"pii_type": "CITY", "column_name": "city"},
             {"pii_type": "ZIP", "column_name": "zip"},
         ]

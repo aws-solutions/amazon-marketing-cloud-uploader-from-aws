@@ -411,7 +411,7 @@ then
 
     set -exuo pipefail
 
-    GLUE_RESOURCE_ID=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id GlueStack5 --query "StackResources[0].PhysicalResourceId" --region $AWS_REGION $(if [ ! -z $AWS_DEFAULT_PROFILE ]; then echo "--profile $AWS_DEFAULT_PROFILE"; fi))
+    GLUE_RESOURCE_ID=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --logical-resource-id GlueStack6 --query "StackResources[0].PhysicalResourceId" --region $AWS_REGION $(if [ ! -z $AWS_DEFAULT_PROFILE ]; then echo "--profile $AWS_DEFAULT_PROFILE"; fi))
     echo $GLUE_RESOURCE_ID
     GLUE_NESTED_STACK_ID=$(echo $GLUE_RESOURCE_ID | cut -d "/" -f 2)
     echo $GLUE_NESTED_STACK_ID

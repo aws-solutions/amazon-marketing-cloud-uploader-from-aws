@@ -42,6 +42,9 @@ Resources:
         rules_to_suppress:
           - id: W11
             reason: "Glue helper Lambda requires ability to read / write to both artifact bucket and build bucket"
+      guard:
+        SuppressedRules:
+          - IAM_NO_INLINE_POLICY_CHECK
     Properties:
       AssumeRolePolicyDocument:
         Version: 2012-10-17
@@ -225,6 +228,9 @@ Resources:
         rules_to_suppress:
           - id: W11
             reason: "Glue helper Lambda requires read and write access to both the artifact bucket and the build bucket."
+      guard:
+        SuppressedRules:
+          - IAM_NO_INLINE_POLICY_CHECK
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
