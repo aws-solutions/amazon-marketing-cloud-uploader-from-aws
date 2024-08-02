@@ -18,7 +18,6 @@ and others relevant to the AWS resources in use. This function assumes IAM permi
 to the specified S3 bucket and prefix are in place.
 """
 
-
 import json
 import logging
 from typing import Any, Dict
@@ -31,13 +30,15 @@ WEB_RUNTIME_CONFIG = "runtimeConfig.json"
 
 def handler(event: Dict[str, Any], context: Any) -> None:
     """Handles CloudFormation custom resource requests."""
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
     try:
-        logger = logging.getLogger()
-        logger.setLevel(logging.INFO)
         request_type = event["RequestType"]
         properties = event["ResourceProperties"]
+        response_data = {"Message": ""}
         logger.info(
-            f"Resource properties: {json.dumps(properties, default=str)}"
+            f"Resource properties: {json.dumps(properties, default=str)}, request_type: {request_type}"
         )
         s3 = boto3.client("s3")
         if request_type in ["Create", "Update"]:
@@ -63,15 +64,6 @@ def handler(event: Dict[str, Any], context: Any) -> None:
                 Body=json.dumps(data, indent=4),
             )
             response_data = {"Message": f"Put {WEB_RUNTIME_CONFIG}"}
-        elif request_type == "Delete":
-            try:
-                s3.delete_object(
-                    Bucket=properties["WEBSITE_BUCKET"],
-                    Key=WEB_RUNTIME_CONFIG
-                )
-                response_data = {"Message": f"Deleted {WEB_RUNTIME_CONFIG}"}
-            except Exception as del_exception:
-                response_data = {"Message": str(del_exception)}
 
         # Send success response back to CloudFormation for Create/Update and Delete
         send_response(event, context, "SUCCESS", response_data)

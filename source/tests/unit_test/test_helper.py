@@ -166,20 +166,10 @@ def test_config_lambda_handler(mock_response, fake_config_event, fake_context, t
         handler(event=fake_config_event, context=fake_context)
         s3.head_object(Bucket=test_configs["s3_bucket"], Key=file)
 
-        fake_config_event["RequestType"] = "Delete"
-        handler(event=fake_config_event, context=fake_context)
-        try:
-            s3.head_object(Bucket=test_configs["s3_bucket"], Key=file)
-        except botocore.exceptions.ClientError:
-            pass
-
         fake_config_event["RequestType"] = "Update"
         handler(event=fake_config_event, context=fake_context)
         s3.head_object(Bucket=test_configs["s3_bucket"], Key=file)
 
         fake_config_event["RequestType"] = "Delete"
         handler(event=fake_config_event, context=fake_context)
-        try:
-            s3.head_object(Bucket=test_configs["s3_bucket"], Key=file)
-        except botocore.exceptions.ClientError:
-            pass
+        s3.head_object(Bucket=test_configs["s3_bucket"], Key=file)

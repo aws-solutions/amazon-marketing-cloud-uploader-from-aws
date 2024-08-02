@@ -33,7 +33,7 @@ class NormalizationPatterns:
             "ADDRESS": AddressNormalizer(country_code),
             "STATE": StateNormalizer(country_code),
             "ZIP": ZipNormalizer(country_code),
-            "PHONE": PhoneNormalizer(country_code),
+            "PHONE": PhoneNormalizer(),
             "EMAIL": EmailNormalizer(),
             "CITY": CityNormalizer(),
         }

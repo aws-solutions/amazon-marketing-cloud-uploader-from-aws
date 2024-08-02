@@ -228,6 +228,9 @@ Resources:
             reason: "Used to store access logs for other buckets"
           - id: W51
             reason: "Bucket is private and does not need a bucket policy"
+      guard:
+        SuppressedRules:
+          - S3_BUCKET_SERVER_SIDE_ENCRYPTION_ENABLED
 
   ArtifactBucket:
     Type: AWS::S3::Bucket
@@ -281,6 +284,10 @@ Resources:
       Tags:
         - Key: "Environment"
           Value: "amcufa"
+    Metadata:
+      guard:
+        SuppressedRules:
+          - S3_BUCKET_SERVER_SIDE_ENCRYPTION_ENABLED
 
   # Tables
 
@@ -365,6 +372,9 @@ Resources:
         rules_to_suppress:
           - id: W11
             reason: "The X-Ray policy uses actions that must be applied to all resources. See https://docs.aws.amazon.com/xray/latest/devguide/security_iam_id-based-policy-examples.html#xray-permissions-resources"
+      guard:
+        SuppressedRules:
+          - IAM_NO_INLINE_POLICY_CHECK
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -653,6 +663,9 @@ Resources:
             reason: "This Lambda function does not need to access any resource provisioned within a VPC."
           - id: W92
             reason: "This function does not require performance optimization, so the default concurrency limits suffice."
+      guard:
+        SuppressedRules:
+          - IAM_NO_INLINE_POLICY_CHECK
     Properties:
       Environment:
         Variables:
@@ -880,6 +893,10 @@ Resources:
       Tags:
         - Key: "Environment"
           Value: "amcufa"
+    Metadata:
+      guard:
+        SuppressedRules:
+          - IAM_NO_INLINE_POLICY_CHECK
 
   BucketRemovalHelperRole:
     Type: AWS::IAM::Role
@@ -967,6 +984,10 @@ Resources:
       Tags:
         - Key: "Environment"
           Value: "amcufa"
+    Metadata:
+      guard:
+        SuppressedRules:
+          - IAM_NO_INLINE_POLICY_CHECK
 
   BucketNameHelperPermissions:
     Type: AWS::Lambda::Permission
@@ -1085,6 +1106,10 @@ Resources:
         rules_to_suppress:
           - id: W28
             reason: "Role name is constructed with stack name. Updates will keep the existing role name."
+      guard:
+        SuppressedRules:
+          - CFN_NO_EXPLICIT_RESOURCE_NAMES
+          - IAM_NO_INLINE_POLICY_CHECK
     Type: AWS::IAM::Role
     Properties:
       Description: "IAM role to grant access to the AMC API."
@@ -1186,6 +1211,10 @@ Resources:
 
   AnonymousDataCustomResourceRole:
     Type: AWS::IAM::Role
+    Metadata:
+      guard:
+        SuppressedRules:
+          - IAM_NO_INLINE_POLICY_CHECK
     Properties:
       AssumeRolePolicyDocument:
         Version: 2012-10-17
@@ -1281,7 +1310,11 @@ Resources:
                   - logs:PutLogEvents
                 Resource:
                   - !Join [ "", [ "arn:aws:logs:", Ref: "AWS::Region", ":", Ref: "AWS::AccountId", ":log-group:/aws/lambda/*" ] ]
-  
+    Metadata:
+      guard:
+        SuppressedRules:
+          - IAM_NO_INLINE_POLICY_CHECK
+
   CognitoHostedUIResourceUpdateCustomResource:
     Type: AWS::Lambda::Function
     Properties:
@@ -1296,6 +1329,11 @@ Resources:
       Environment:
         Variables:
           USER_POOL_ID: !GetAtt AuthStack.Outputs.UserPoolId
+    Metadata:
+      guard:
+        SuppressedRules:
+          - LAMBDA_CONCURRENCY_CHECK
+          - LAMBDA_INSIDE_VPC
 
   CognitoHostedUIResourceUpdateCustomResourceInvoke:
     Type: "Custom::CognitoHostedUIResourceUpdateCustomResourceInvoke"
@@ -1387,6 +1425,9 @@ Resources:
         rules_to_suppress:
           - id: W11
             reason: "Config helper Lambda requires write/delete access to the website bucket"
+      guard:
+        SuppressedRules:
+          - IAM_NO_INLINE_POLICY_CHECK
     Properties:
       AssumeRolePolicyDocument:
         Version: 2012-10-17
@@ -1469,6 +1510,7 @@ Resources:
       COGNITO_CALLBACK_URL: !GetAtt Webstack8.Outputs.CloudfrontUrl
       COGNITO_LOGOUT_URL: !GetAtt Webstack8.Outputs.CloudfrontUrl
       WEBSITE_BUCKET: !GetAtt Webstack8.Outputs.WebsiteBucketName
+      SolutionVersion: "%%VERSION%%"
 
 Outputs:
   UserInterface:
