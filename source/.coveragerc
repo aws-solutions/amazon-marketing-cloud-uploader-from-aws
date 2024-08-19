@@ -1,0 +1,14 @@
+[run]
+omit =
+    tests/*
+    api/tests/*
+
+source =
+    api
+    glue
+    helper
+    amc_uploader
+    anonymous_data_logger
+
+[report]
+fail_under = 82
