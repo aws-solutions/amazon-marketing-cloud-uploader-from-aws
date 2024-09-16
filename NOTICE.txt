@@ -57,6 +57,7 @@ aws-cdk-lib under the Apache License Version 2.0
 aws-cdk.asset-awscli-v1 under the Apache License Version 2.0
 aws-cdk.asset-kubectl-v20 under the Apache License Version 2.0
 aws-cdk.asset-node-proxy-agent-v6 under the Apache License Version 2.0
+aws-cdk.cloud-assembly-schema under the Apache License Version 2.0
 blessed under the Massachusetts Institute of Technology license
 cattrs under the Massachusetts Institute of Technology license
 cffi under the Massachusetts Institute of Technology license
