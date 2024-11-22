@@ -356,20 +356,6 @@ Example body for uploading to a new PT1H, P1D, or P1M dataset with deleted field
 6. The Glue job can be monitored in the solution's UI or the AWS Console
 ---
 
-## Local development for web console
-
-* Step 1: Deploy the solution.
-* Step 2: Open the URL shown in the `UserInterface` output of the base stack and login.
-* Step 3: Open the Javascript console of your web browser and copy the runtime config values printed by `main.js` into your local `src/website/public/runtimeConfig.json`
-* Step 4: Specify `http://localhost:8080` for `COGNITO_CALLBACK_URL` in your local `src/website/public/runtimeConfig.json`
-* Step 5: Specify `http://localhost:8080` for `COGNITO_LOGOUT_URL` in your local `src/website/public/runtimeConfig.json`
-* Step 6: Open Amazon Cognito console, select the corresponding User pool, click the App integration tab, select application details in the App client list, edit Hosted UI, and set a new URL: http://localhost:8080 into Allowed callback URLs.
-* Step 7: Run `npm start run` from `src/website/`
-```
-cd src/website
-npm run start
-```
-* Step 8: Open http://localhost:8080
 
 # Troubleshooting
 
