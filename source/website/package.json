@@ -1,6 +1,6 @@
 {
   "name": "amcufa",
-  "version": "3.0.7",
+  "version": "3.0.8",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -9,12 +9,12 @@
   },
   "dependencies": {
     "@babel/core": "^7.23.2",
-    "@vue/compat": "^3.4.21",
+    "@vue/compat": "^3.5.13",
     "aws-amplify": "^5.3.15",
     "bootstrap": "^4.6.2",
     "bootstrap-vue": "^2.23.1",
     "register-service-worker": "^1.7.2",
-    "vue": "^3.4.21",
+    "vue": "^3.5.13",
     "vue-router": "^3.6.5",
     "vuex": "^4.0.2",
     "webpack-subresource-integrity": "^5.1.0"
@@ -40,7 +40,10 @@
     "fast-xml-parser": "4.4.1",
     "ip": "^2.0.1",
     "postcss": "^8.4.31",
-    "semver": "7.5.2"
+    "semver": "7.5.2",
+    "cross-spawn": "^7.0.6",
+    "cookie": "^0.7.0",
+    "vue": "^3.5.13"
   },
   "resolutions": {
     "fast-xml-parser": "4.4.1",
