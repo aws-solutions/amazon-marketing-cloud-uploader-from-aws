@@ -91,7 +91,7 @@ tzdata under the Apache License Version 2.0
 wrapt under the BSD license
 xmltodict under the Massachusetts Institute of Technology license
 
-docker/library/alpine license unknown or missing
+docker/library/alpine license under the MIT license.
 @ampproject/remapping under the Apache-2.0 license.
 @jridgewell/gen-mapping under the MIT license.
 @jridgewell/set-array under the MIT license.
