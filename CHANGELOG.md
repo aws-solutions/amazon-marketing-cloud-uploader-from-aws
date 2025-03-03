@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.9] - 2025-03-03
+
+### Security
+
+- Updated python and npm dependencies
+
 ## [3.0.8] - 2024-11-25
 
 ### Security
@@ -47,11 +53,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove Android (AAID) and iOS (IDFA) options for Mobile Ad Id (MAID) because MAID now supersedes AAID and IDFA.
 
-### Fixed 
+### Fixed
 
-- Avoid dropping Country Code when LiveRamp, Experian, or Mobile Ad IDs are used for identity resolution instead of hashed PII.  
-- Upload with manifest files rather than individual files so that the partitions of large files do not overwrite each other when using the FULL_REPLACE update strategy. 
-- Fix error parsing the Glue ETL parameter for timestamp_column when country_code parameter is unspecified
+- Avoid dropping Country Code when LiveRamp, Experian, or Mobile Ad IDs are used for identity resolution instead of hashed PII.
+- Upload with manifest files rather than individual files so that the partitions of large files do not overwrite each other when using the FULL_REPLACE update strategy.
+- Fix error parsing the Glue ETL parameter for timestamp_column when country_code parameter is unspecified.
 
 ## [3.0.1] - 2024-06-21
 
@@ -67,7 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Migrated all AMC requests to use OAuth and the AMC API provided by Amazon Ads instead of instance-level APIs. 
+- Migrated all AMC requests to use OAuth and the AMC API provided by Amazon Ads instead of instance-level APIs.
 - Migrated the front-end to align with the AMC API provided by Amazon Ads.
 - Migrated the front-end to use the Amazon Cognito hosted user interface for login instead of AWS Amplify.
 - Replaced time-series based file partitioning (which the AMC API no longer requires) with a strategy based on file size so that pseudonymized files will not exceed 500MB (compressed).
@@ -85,7 +91,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.3.0] - 2024-02-29
 
 ### Changed
- 
+
 - Provide country code when creating dataset in AMC.  
 
 ### Security
