@@ -1131,6 +1131,19 @@ pytest-dependency under the Apache-2.0 license.
 cfnresponse under the Apache-2.0 license.
 urllib3 under the MIT license.
 aws-cdk-lib under the Apache-2.0 license.
+es-set-tostringtag under the MIT license.
+call-bind-apply-helpers under the MIT license.
+es-object-atoms under the MIT license.
+get-proto under the MIT license.
+dunder-proto under the MIT license.
+math-intrinsics under the MIT license.
+has-tostringtag under the MIT license.
+@types/eslint-scope under the MIT license.
+side-channel-list under the MIT license.
+side-channel-map under the MIT license.
+call-bound under the MIT license.
+side-channel-weakmap under the MIT license.
+xml-name-validator under the Apache-2.0 license.
 
 ********************
 OPEN SOURCE LICENSES
