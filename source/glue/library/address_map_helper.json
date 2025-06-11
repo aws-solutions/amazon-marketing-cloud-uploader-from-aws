@@ -21,6 +21,12 @@
   ],
   "DirectionalWords": [
     {
+      "WEST": "W"
+    },
+    {
+      "W": "W"
+    },
+    {
       "EAST": "E"
     },
     {

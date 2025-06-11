@@ -76,6 +76,7 @@ DELIMITER_PATTERN_MAP = {
     "OPEN_BRACKET": "[\\[\\{\\(]",
     "CLOSE_BRACKET": "[\\]\\}\\)]",
     "SPACE": "\\s+",
+    "DOT": "\\.",
 }
 
 
