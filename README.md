@@ -1,3 +1,10 @@
+# Important
+
+This solution will retire in October 2025. Deployments (via CloudFormation or GitHub) will remain operational, but customers will assume responsibility for maintenance and API-related updates after support ends.
+
+We encourage customers to explore using [Amazon Ads Data Manager Console and APIs](https://advertising.amazon.com/API/docs/en-us/adm/1_ads-data-manager-console-overview) for uploading their ads data to Amazon Ads and Amazon Marketing Cloud.
+
+
 # Amazon Marketing Cloud (AMC) Uploader from AWS
 
 This solution enables users to upload first party datasets from Amazon S3 into the Amazon Marketing Cloud (AMC). It includes a web application in which users are guided through the process of defining datasets and their PII attributes. Once this information is submitted, the solution initiates an ETL workflow that performs data normalization, hashing of plain-text PII, time-series partitioning, and upload to AMC.
