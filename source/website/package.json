@@ -1,6 +1,6 @@
 {
   "name": "amcufa",
-  "version": "3.0.12",
+  "version": "3.0.13",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -46,11 +46,13 @@
     "semver": "7.6.2",
     "cross-spawn": "^7.0.6",
     "cookie": "^0.7.0",
-    "vue": "^3.5.13"
+    "vue": "^3.5.13",
+    "form-data": "4.0.4"
   },
   "resolutions": {
     "fast-xml-parser": "4.4.1",
-    "semver": "7.6.2"
+    "semver": "7.6.2",
+    "form-data": "4.0.4"
   },
   "browserslist": [
     "> 1%",

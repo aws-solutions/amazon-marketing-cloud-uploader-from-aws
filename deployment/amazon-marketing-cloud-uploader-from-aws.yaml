@@ -25,7 +25,6 @@ Mappings:
       Id: "SO0222"
       Name: "amcufa"
       Version: "%%VERSION%%"
-      AppRegistryApplicationName: 'amazon-marketing-cloud-uploader-from-aws'
       ApplicationType: 'AWS-Solutions'
     SourceCode:
       GlobalS3Bucket: "%%GLOBAL_BUCKET_NAME%%"
@@ -1339,84 +1338,6 @@ Resources:
     Type: "Custom::CognitoHostedUIResourceUpdateCustomResourceInvoke"
     Properties:
       ServiceToken: !GetAtt CognitoHostedUIResourceUpdateCustomResource.Arn
-
-  # App Registry
-
-  Application:
-    Type: AWS::ServiceCatalogAppRegistry::Application
-    Properties:
-      Description: Service Catalog application to track and manage all your resources for the solution Amazon Marketing Cloud uploader from AWS
-      Name:
-        !Join
-        - "-"
-        - - !FindInMap [ Application, Solution, "AppRegistryApplicationName" ]
-          - !Ref AWS::Region
-          - !Ref AWS::AccountId
-          - !Ref AWS::StackName
-      Tags: {
-        'Solutions:SolutionID': !FindInMap [ Application, Solution, "Id" ],
-        'Solutions:SolutionVersion': !FindInMap [ Application, Solution, "Version" ],
-        'Solutions:SolutionName': !FindInMap [ Application, Solution, "Name" ],
-        'Solutions:ApplicationType': !FindInMap [ Application, Solution, "ApplicationType" ],
-      }
-
-  AppRegistryApplicationStackAssociation:
-    Type: AWS::ServiceCatalogAppRegistry::ResourceAssociation
-    Properties:
-      Application: !GetAtt Application.Id
-      Resource:
-        !Ref AWS::StackId
-      ResourceType: CFN_STACK
-
-  AppRegistryApplicationStackAssociationNestedApiStack:
-    Type: AWS::ServiceCatalogAppRegistry::ResourceAssociation
-    Properties:
-      Application: !GetAtt Application.Id
-      Resource:
-        !Ref ApiStack
-      ResourceType: CFN_STACK
-
-  AppRegistryApplicationStackAssociationNestedWebStack:
-    Type: AWS::ServiceCatalogAppRegistry::ResourceAssociation
-    Properties:
-      Application: !GetAtt Application.Id
-      Resource:
-        !Ref Webstack8
-      ResourceType: CFN_STACK
-
-  AppRegistryApplicationStackAssociationNestedGlueStack:
-    Type: AWS::ServiceCatalogAppRegistry::ResourceAssociation
-    Properties:
-      Application: !GetAtt Application.Id
-      Resource:
-        !Ref GlueStack6
-      ResourceType: CFN_STACK
-
-  AppRegistryApplicationStackAssociationNestedAuthStack:
-    Type: AWS::ServiceCatalogAppRegistry::ResourceAssociation
-    Properties:
-      Application: !GetAtt Application.Id
-      Resource:
-        !Ref AuthStack
-      ResourceType: CFN_STACK
-
-  DefaultApplicationAttributes:
-    Type: AWS::ServiceCatalogAppRegistry::AttributeGroup
-    Properties:
-      Name: !Join [ '-', [ !Ref 'AWS::Region', !Ref 'AWS::StackName' ] ]
-      Description: Attribute group for solution information.
-      Attributes: {
-        "ApplicationType": !FindInMap [ Application, Solution, "ApplicationType" ],
-        "Version": !FindInMap [ Application, Solution, "Version" ],
-        "SolutionID": !FindInMap [ Application, Solution, "Id" ],
-        "SolutionName": !FindInMap [ Application, Solution, "Name" ]
-      }
-
-  AppRegistryApplicationAttributeAssociation:
-    Type: AWS::ServiceCatalogAppRegistry::AttributeGroupAssociation
-    Properties:
-      Application: !GetAtt Application.Id
-      AttributeGroup: !GetAtt DefaultApplicationAttributes.Id
 
   ConfigHelperRole:
     Type: AWS::IAM::Role
