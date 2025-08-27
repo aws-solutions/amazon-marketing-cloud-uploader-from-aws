@@ -971,6 +971,7 @@ renderkid under the MIT license.
 requests under the Apache License Version 2.0
 requests under the Apache-2.0 license.
 requests_aws4auth under the MIT license.
+requests-mock under the Apache-2.0 license.
 require-directory under the MIT license.
 require-from-string under the MIT license.
 requires-port under the MIT license.

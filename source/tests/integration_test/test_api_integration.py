@@ -20,11 +20,13 @@ import app
 import boto3
 import pandas as pd
 import pytest
+import requests_mock
+from contextlib import contextmanager
 from chalice.test import Client
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 SKIP_REASON = "Optimize tests to prevent timeouts."
 RUN_DEEP_TEST = os.environ.get("DEEP_TEST", False)
@@ -127,6 +129,26 @@ _test_data = [
     },  # test invalid email
 ]
 
+
+@pytest.fixture
+def mock_advertising_api():
+    """Mock requests to advertising-api.amazon.com domain with custom response body."""
+    @contextmanager
+    def _mock(response_body, status_code=200, method="GET"):
+        with requests_mock.Mocker(real_http=True) as m:
+            m.register_uri(
+                method,
+                requests_mock.ANY,
+                json=response_body,
+                status_code=status_code,
+                additional_matcher=lambda request: "advertising-api.amazon.com" in request.url
+            )
+            yield m
+            # Assert the expected call was made
+            assert m.called
+            assert any("advertising-api.amazon.com" in req.url for req in m.request_history)
+    
+    return _mock
 
 
 def _get_secret(secret_id, region, client=None):
@@ -481,58 +503,83 @@ def test_list_bucket(test_configs):
 
 
 @pytest.mark.dependency(depends=["test_setup_amc_instance"])
-def test_get_amc_instances(test_configs, get_origin_headers):
-    with Client(app.app) as client:
-        response = client.http.post(
-            "/get_amc_instances",
-            headers={
-                "Content-Type": test_configs["content_type"],
-                **get_origin_headers,
-            },
-            body=json.dumps(
-                {
-                    "user_id": test_configs["user_id"],
-                    "marketplace_id": test_configs["marketplace_id"],
-                    "advertiser_id": test_configs["advertiser_id"],
-                    "state": test_configs["state"],
-                }
-            ),
-        )
-        assert response.status_code == 200
-        assert response.json_body["instances"]
-        assert len(response.json_body["instances"]) > 0
-        assert response.json_body["instances"][0]["instanceId"] is not None
+def test_get_amc_instances(test_configs, get_origin_headers, mock_advertising_api):
+    mock_response = {
+        "instances": [
+            {
+                "instanceId": 12345,
+                "dataUploadAwsAccountId": test_configs["data_upload_account_id"],
+                "instanceName": "Test Instance",
+            }
+        ]
+    }
+    with mock_advertising_api(mock_response, status_code=200):
+        with Client(app.app) as client:
+            response = client.http.post(
+                "/get_amc_instances",
+                headers={
+                    "Content-Type": test_configs["content_type"],
+                    **get_origin_headers,
+                },
+                body=json.dumps(
+                    {
+                        "user_id": test_configs["user_id"],
+                        "marketplace_id": test_configs["marketplace_id"],
+                        "advertiser_id": test_configs["advertiser_id"],
+                        "state": test_configs["state"],
+                    }
+                ),
+            )
+            assert response.status_code == 200
+            assert response.json_body["instances"]
+            assert len(response.json_body["instances"]) > 0
+        assert response.json_body["instances"][0]["instanceId"] == mock_response["instances"][0]["instanceId"]
         assert (
             response.json_body["instances"][0]["dataUploadAwsAccountId"]
-            is not None
+            == mock_response["instances"][0]["dataUploadAwsAccountId"]
         )
-        assert response.json_body["instances"][0]["instanceName"] is not None
+        assert response.json_body["instances"][0]["instanceName"] == mock_response["instances"][0]["instanceName"]
 
 
 @pytest.mark.dependency(depends=["test_setup_amc_instance"])
-def test_get_amc_accounts(test_configs, get_origin_headers):
-    with Client(app.app) as client:
-        response = client.http.post(
-            "/get_amc_accounts",
-            headers={
-                "Content-Type": test_configs["content_type"],
-                **get_origin_headers,
-            },
-            body=json.dumps(
-                {
-                    "user_id": test_configs["user_id"],
-                    "state": test_configs["state"],
-                }
-            ),
-        )
-        assert response.status_code == 200
-        assert response.json_body["amcAccounts"]
-        assert len(response.json_body["amcAccounts"]) > 0
-        assert response.json_body["amcAccounts"][0]["accountName"] is not None
-        assert response.json_body["amcAccounts"][0]["accountId"] is not None
-        assert (
-            response.json_body["amcAccounts"][0]["marketplaceId"] is not None
-        )
+def test_get_amc_accounts(test_configs, get_origin_headers, mock_advertising_api):
+    mock_response = {
+        "amcAccounts": [
+            {
+                "accountId": "123456789012",
+                "accountName": "Test Account",
+                "marketplaceId": test_configs["marketplace_id"],
+            }
+        ]
+    }
+
+    with mock_advertising_api(mock_response, status_code=200):
+        with Client(app.app) as client:
+            response = client.http.post(
+                "/get_amc_accounts",
+                headers={
+                    "Content-Type": test_configs["content_type"],
+                    **get_origin_headers,
+                },
+                body=json.dumps(
+                    {
+                        "user_id": test_configs["user_id"],
+                        "state": test_configs["state"],
+                    }
+                ),
+            )
+            assert response.status_code == 200
+            assert response.json_body["amcAccounts"]
+            assert len(response.json_body["amcAccounts"]) > 0
+            assert response.json_body["amcAccounts"][0]["accountId"] == mock_response["amcAccounts"][0]["accountId"]
+            assert (
+                response.json_body["amcAccounts"][0]["accountName"]
+                == mock_response["amcAccounts"][0]["accountName"]
+            )
+            assert (
+                response.json_body["amcAccounts"][0]["marketplaceId"]
+                == mock_response["amcAccounts"][0]["marketplaceId"]
+            )
 
 
 @pytest.fixture
@@ -557,6 +604,7 @@ class TestDataSetType():
     uploads_to_delete = None
 
     def __init__(self, **kwargs) -> None:
+        self.mock_advertising_api = kwargs["mock_advertising_api"]
         self.period_selection = kwargs.get("period_selection") or random.choice(PERIOD_SELECTION)
         self.country_selection = kwargs.get("country_selection") or random.choice(COUNTRIES)
         self.random_4d = random.randrange(1000, 9999)
@@ -698,46 +746,50 @@ class TestDataSetType():
         ]
     
     def test_create_data_set(self):
-        with Client(app.app) as client:
-            # create_dataset
-            response = client.http.post(
-                "/create_dataset",
-                headers=self.get_default_headers(),
-                body=json.dumps(
-                    {
-                        "body": {
-                            "dataSet": {
-                                "dataSetId": self.data_set_id,
-                                "fileFormat": self.file_format,
-                                "countryCode": self.country_selection,
-                                "compressionFormat": "GZIP",
-                                "columns": self.test_columns,
-                                "description": f"AMCUFA Integration Tests @ {datetime.datetime.utcnow()} UTC for {self.data_set_id}.",
-                                **self.get_period_object()
-                            }
-                            
-                        },
-                        "user_id": self.user_id,
-                        "instance_id": self.instance_id,
-                        "advertiser_id": self.advertiser_id,
-                        "marketplace_id": self.marketplace_id,
-                    }
-                ),
-            )
-            assert response.status_code == 200
-            assert response.json_body["dataSetId"] == self.data_set_id
-            assert response.json_body["instanceId"] == self.instance_id
+        mock_response = {"dataSetId": self.data_set_id, "instanceId": self.instance_id}
+        with self.mock_advertising_api(mock_response, method="POST"):
+            with Client(app.app) as client:
+                # create_dataset
+                response = client.http.post(
+                    "/create_dataset",
+                    headers=self.get_default_headers(),
+                    body=json.dumps(
+                        {
+                            "body": {
+                                "dataSet": {
+                                    "dataSetId": self.data_set_id,
+                                    "fileFormat": self.file_format,
+                                    "countryCode": self.country_selection,
+                                    "compressionFormat": "GZIP",
+                                    "columns": self.test_columns,
+                                    "description": f"AMCUFA Integration Tests @ {datetime.datetime.utcnow()} UTC for {self.data_set_id}.",
+                                    **self.get_period_object()
+                                }
+                                
+                            },
+                            "user_id": self.user_id,
+                            "instance_id": self.instance_id,
+                            "advertiser_id": self.advertiser_id,
+                            "marketplace_id": self.marketplace_id,
+                        }
+                    ),
+                )
+                assert response.status_code == 200
+                assert response.json_body["dataSetId"] == self.data_set_id
+                assert response.json_body["instanceId"] == self.instance_id
 
     def test_describe_dataset(self):
-         # check if it exists in AMC
-        with Client(app.app) as client:
-            response = client.http.post(
-                "/describe_dataset",
-                headers=self.get_default_headers(),
-               body=json.dumps(self.get_auth_payload()),
-            )
-            assert response.status_code == 200
-            assert response.json_body["dataSet"]["dataSetId"] == self.data_set_id
+        # check if it exists in AMC
+        mock_response = {"dataSet": {"dataSetId": self.data_set_id}}
+        with self.mock_advertising_api(mock_response):
+            with Client(app.app) as client:
+                response = client.http.post(
+                    "/describe_dataset",
+                    headers=self.get_default_headers(),
+                body=json.dumps(self.get_auth_payload()),
+                )
+                assert response.status_code == 200
+                assert response.json_body["dataSet"]["dataSetId"] == self.data_set_id
 
     def test_start_transformation(self):
         # start_amc_transformation
@@ -813,65 +865,69 @@ class TestDataSetType():
             )
 
     def test_list_uploads(self):
-        self.wait(3*60) # wait 3 minutes for upload to complete.
-        with Client(app.app) as client:
-            response = client.http.post(
-                "/list_uploads",
-                headers=self.get_default_headers(),
-                body=json.dumps(self.get_auth_payload()),
-            )
+        mock_response = {"uploads": [{"uploadId": "test123", "status": "SUCCESS"}]}
+        with self.mock_advertising_api(mock_response, method="POST"):
+            self.wait(3*60) # wait 3 minutes for upload to complete.
+            with Client(app.app) as client:
+                response = client.http.post(
+                    "/list_uploads",
+                    headers=self.get_default_headers(),
+                    body=json.dumps(self.get_auth_payload()),
+                )
 
-            assert response.status_code == 200
-            assert len(response.json_body["uploads"]) >= 1
+                assert response.status_code == 200
+                assert len(response.json_body["uploads"]) >= 1
 
-            for upload_item in response.json_body["uploads"]:
-                self.uploads_to_delete[upload_item["uploadId"]] = False # set to False by default.
+                for upload_item in response.json_body["uploads"]:
+                    self.uploads_to_delete[upload_item["uploadId"]] = False # set to False by default.
 
-            for upload_item in response.json_body["uploads"]:
-                assert upload_item["uploadId"] is not None
-                assert upload_item["status"] in [
-                    "IN_PROGRESS",
-                    "SUBMITTED",
-                    "SUCCESS",
-                ]
-                self.test_upload_status(upload_item["uploadId"])
+                for upload_item in response.json_body["uploads"]:
+                    assert upload_item["uploadId"] is not None
+                    assert upload_item["status"] in [
+                        "IN_PROGRESS",
+                        "SUBMITTED",
+                        "SUCCESS",
+                    ]
+                    self.test_upload_status(upload_item["uploadId"])
 
     def test_upload_status(self, upload_id, wait_count=0):
         # upload_status
-        with Client(app.app) as client:
-            response = client.http.post(
-                "/upload_status",
-                headers=self.get_default_headers(),
-                body=json.dumps(
-                    {
-                        "uploadId": str(
-                            upload_id
-                        ),
-                        **self.get_auth_payload()
-                    }
-                ),
-            )
-            assert response.status_code == 200
-            upload_item_status = response.json_body["upload"]["status"]
-            if upload_item_status in ["FAILED", "SUCCESS"]:
-                self.uploads_to_delete[upload_id] = True
-                if upload_item_status == "FAILED":
-                    raise AssertionError(f"Upload failed during submission - {response.json_body}")
-            else:
-                self.uploads_to_delete[upload_id] = False # Do not delete dataset with IN_PROGRESS upload status. 
-                logger.info(response.json_body)
-                if wait_count > self.max_wait:
-                    logger.error(f"Failed to upload in {self.max_wait}mins.")
-                    logger.warning(f"""
-                        Upload still in {upload_item_status or 'IN_PROGRESS'} status; Integ test does not need to fail.
-                        However, is good to know why it could take more than {self.max_wait or 'X'} mins to upload a dataset.
-                        ToDo: Setup clean-up task to delete integ datasets.
-                    """)
-                    return
+        mock_response = {"upload": {"status": "SUCCESS"}}
+        with self.mock_advertising_api(mock_response, method="GET"):
+            with Client(app.app) as client:
+                response = client.http.post(
+                    "/upload_status",
+                    headers=self.get_default_headers(),
+                    body=json.dumps(
+                        {
+                            "uploadId": str(
+                                upload_id
+                            ),
+                            **self.get_auth_payload()
+                        }
+                    ),
+                )
+                assert response.status_code == 200
+                upload_item_status = response.json_body["upload"]["status"]
+                if upload_item_status in ["FAILED", "SUCCESS"]:
+                    self.uploads_to_delete[upload_id] = True
+                    if upload_item_status == "FAILED":
+                        raise AssertionError(f"Upload failed during submission - {response.json_body}")
+                else:
+                    self.uploads_to_delete[upload_id] = False # Do not delete dataset with IN_PROGRESS upload status. 
+                    logger.info(response.json_body)
+                    if wait_count > self.max_wait:
+                        logger.error(f"Failed to upload in {self.max_wait}mins.")
+                        logger.warning(f"""
+                            Upload still in {upload_item_status or 'IN_PROGRESS'} status; Integ test does not need to fail.
+                            However, is good to know why it could take more than {self.max_wait or 'X'} mins to upload a dataset.
+                            ToDo: Setup clean-up task to delete integ datasets.
+                        """)
+                        return
 
-                wait_count += 1
-                self.wait(seconds=60)
-                self.test_upload_status(upload_id)
+                    wait_count += 1
+                    self.wait(seconds=60)
+                    self.test_upload_status(upload_id)
 
 
     def test_delete_data_set(self):
@@ -883,15 +939,17 @@ class TestDataSetType():
 
         if self.delete_data_set():
             # test /delete_dataset
-            with Client(app.app) as client:
-                response = client.http.post(
-                    "/delete_dataset",
-                    headers=self.get_default_headers(),
-                    body=json.dumps(self.get_auth_payload()),
-                )
-                assert response.status_code == 200
-                assert response.json_body["dataSetId"] == self.data_set_id
-                assert response.json_body["instanceId"] == self.instance_id
+            mock_response = {"dataSetId": self.data_set_id, "instanceId": self.instance_id}
+            with self.mock_advertising_api(mock_response, method="DELETE"):
+                with Client(app.app) as client:
+                    response = client.http.post(
+                        "/delete_dataset",
+                        headers=self.get_default_headers(),
+                        body=json.dumps(self.get_auth_payload()),
+                    )
+                    assert response.status_code == 200
+                    assert response.json_body["dataSetId"] == self.data_set_id
+                    assert response.json_body["instanceId"] == self.instance_id
         else:
             logger.warning(f"Dataset: {self.data_set_id} not deleted.")
 
@@ -916,6 +974,7 @@ def execute_dataset_steps(
     get_etl_data_by_job_id,
     get_origin_headers,
     test_configs,
+    mock_advertising_api
 ):
     def _method(**test_parameters):
         process_wait_time = 30
@@ -932,6 +991,7 @@ def execute_dataset_steps(
             get_etl_data_by_job_id=get_etl_data_by_job_id,
             get_origin_headers=get_origin_headers,
             test_configs=test_configs,
+            mock_advertising_api=mock_advertising_api,
             **test_parameters
 
         )
