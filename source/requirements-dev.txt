@@ -9,7 +9,7 @@ phonenumbers==8.13.36
 pytest==8.2.0
 pytest-cov==5.0.0
 regex==2024.4.28
-requests>=2.32.2
+requests>=2.32.4
 requests_aws4auth==1.2.3
 selenium==4.10.0
 webdriver-manager==4.0.1
