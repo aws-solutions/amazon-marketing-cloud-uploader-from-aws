@@ -1,9 +1,4 @@
-# Important
-
-This solution will retire in October 2025. Deployments (via CloudFormation or GitHub) will remain operational, but customers will assume responsibility for maintenance and API-related updates after support ends.
-
-We encourage customers to explore using [Amazon Ads Data Manager Console and APIs](https://advertising.amazon.com/API/docs/en-us/adm/1_ads-data-manager-console-overview) for uploading their ads data to Amazon Ads and Amazon Marketing Cloud.
-
+#### **IMPORTANT: This AWS Solution has been retired. Customers assume responsibility for maintenance and API-related updates. The functionality provided by this solution has been superseded by functionality in [Amazon Ads Data Manager Console and APIs](https://advertising.amazon.com/API/docs/en-us/adm/1_ads-data-manager-console-overview). We encourage you to explore this solution for uploading data to Amazon Ads and Amazon Marketing Cloud.**
 
 # Amazon Marketing Cloud (AMC) Uploader from AWS
 
